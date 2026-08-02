@@ -1,0 +1,31 @@
+# secrets
+.env
+.env.*
+!.env.example
+*.key
+*-sa.json
+*credentials*.json
+
+# python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+*.sqlite3
+
+# node
+node_modules/
+dist/
+build/
+
+# flutter
+.dart_tool/
+.flutter-plugins*
+.packages
+**/build/
+*.g.dart
+
+# os / ide
+.DS_Store
+.idea/
+.vscode/
