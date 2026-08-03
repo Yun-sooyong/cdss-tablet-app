@@ -73,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.park, size: 72, color: AppColors.primary),
+                Image.asset('assets/images/tree_logo.png', height: 140),
                 const SizedBox(height: 32),
                 TextField(
                   controller: _emailController,
@@ -125,11 +125,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 48,
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                          color: AppColors.primary, width: 1.2),
+                      foregroundColor: Colors.black87,
+                    ),
                     icon: const Icon(Icons.g_mobiledata),
                     label: const Text('구글로 계속하기'),
-                    onPressed: _isLoading
-                        ? null
-                        : () => _handleSocialLogin('google'),
+                    onPressed:
+                        _isLoading ? null : () => _handleSocialLogin('google'),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -137,11 +141,15 @@ class _LoginScreenState extends State<LoginScreen> {
                   width: double.infinity,
                   height: 48,
                   child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(
+                          color: AppColors.primary, width: 1.2),
+                      foregroundColor: Colors.black87,
+                    ),
                     icon: const Icon(Icons.chat_bubble),
                     label: const Text('카카오로 계속하기'),
-                    onPressed: _isLoading
-                        ? null
-                        : () => _handleSocialLogin('kakao'),
+                    onPressed:
+                        _isLoading ? null : () => _handleSocialLogin('kakao'),
                   ),
                 ),
                 const SizedBox(height: 16),

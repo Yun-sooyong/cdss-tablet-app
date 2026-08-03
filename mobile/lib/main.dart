@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
-import 'screens/login_screen.dart';
 import 'theme/app_colors.dart';
+import 'screens/splash_screen.dart';
 
 void main() {
   runApp(const PatientApp());
@@ -22,7 +22,7 @@ class PatientApp extends StatelessWidget {
         colorSchemeSeed: AppColors.primary,
         scaffoldBackgroundColor: AppColors.background,
       ),
-      home: LoginScreen(authService: authService),
+      home: SplashScreen(authService: authService),
     );
   }
 }

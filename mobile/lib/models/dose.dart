@@ -30,13 +30,22 @@ class DoseItem {
 }
 
 class WeeklyAdherence {
-  final DateTime weekStart;
-  final double rate; // 0.0 ~ 1.0
-  final List<bool> dayCompleted; // 주간 캘린더 점 표시용 (일~토 7칸)
+  final List<bool> dayCompleted; // 일~토 순서, 그날 복용 다 했는지
 
-  WeeklyAdherence({
-    required this.weekStart,
-    required this.rate,
-    required this.dayCompleted,
-  });
+  const WeeklyAdherence({required this.dayCompleted});
+
+  double get rate {
+    if (dayCompleted.isEmpty) return 0;
+    final doneCount = dayCompleted.where((d) => d).length;
+    return doneCount / dayCompleted.length;
+  }
+}
+
+class DailyDoseRecord {
+  final DateTime date;
+  final List<DoseItem> doses;
+
+  const DailyDoseRecord({required this.date, required this.doses});
+
+  bool get allTaken => doses.isNotEmpty && doses.every((d) => d.taken);
 }
