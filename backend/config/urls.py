@@ -1,7 +1,14 @@
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    # TODO: path("api/v1/", include(...)) — 앱별 라우터 연결
+    path("api/v1/auth/login/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path(
+        "api/v1/auth/login/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh",
+    ),
+    path("api/v1/analysis/", include("apps.analysis.urls")),
 ]
