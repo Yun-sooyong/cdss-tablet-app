@@ -1,0 +1,414 @@
+openapi: 3.0.3
+info:
+  title: medical-ai-platform API
+  version: 0.1.0
+  description: CDSS 백엔드 API. 세로 슬라이스(로그인~job 조회) 우선 구현.
+paths:
+  /api/v1/analysis/batches/:
+    get:
+      operationId: v1_analysis_batches_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Batch'
+          description: ''
+    post:
+      operationId: v1_analysis_batches_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+          description: ''
+  /api/v1/analysis/batches/{batch_id}/images/:
+    post:
+      operationId: v1_analysis_batches_images_create
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+          description: ''
+  /api/v1/analysis/images/{image_id}/jobs/:
+    post:
+      operationId: v1_analysis_images_jobs_create
+      parameters:
+      - in: path
+        name: image_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/analysis/jobs/{job_id}/:
+    get:
+      operationId: v1_analysis_jobs_retrieve
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/analysis/jobs/{job_id}/callback/:
+    post:
+      operationId: v1_analysis_jobs_callback_create
+      description: 워커가 결과를 보고하는 엔드포인트. 환자 정보는 담기지 않는다 (README 6절).
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/auth/login/refresh/:
+    post:
+      operationId: v1_auth_login_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+components:
+  schemas:
+    Batch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BatchStatusEnum'
+          readOnly: true
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - status
+      - updated_at
+    BatchStatusEnum:
+      enum:
+      - pending
+      - processing
+      - done
+      - failed
+      type: string
+      description: |-
+        * `pending` - 대기
+        * `processing` - 처리중
+        * `done` - 완료
+        * `failed` - 실패
+    ImageUploadRequest:
+      type: object
+      properties:
+        original_filename:
+          type: string
+          maxLength: 255
+      required:
+      - original_filename
+    ImageUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        batch:
+          type: string
+          format: uuid
+          readOnly: true
+        storage_key:
+          type: string
+          readOnly: true
+        original_filename:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        upload_url:
+          type: string
+          format: uri
+      required:
+      - batch
+      - created_at
+      - id
+      - original_filename
+      - storage_key
+      - upload_url
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        image:
+          type: string
+          format: uuid
+          readOnly: true
+        model_version:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JobStatusEnum'
+          readOnly: true
+        result:
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - error_message
+      - finished_at
+      - id
+      - image
+      - model_version
+      - result
+      - started_at
+      - status
+    JobCallback:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/JobCallbackStatusEnum'
+        result: {}
+        error_message:
+          type: string
+          default: ''
+      required:
+      - status
+    JobCallbackStatusEnum:
+      enum:
+      - succeeded
+      - failed
+      type: string
+      description: |-
+        * `succeeded` - succeeded
+        * `failed` - failed
+    JobCreate:
+      type: object
+      properties:
+        model_version_id:
+          type: string
+          format: uuid
+    JobStatusEnum:
+      enum:
+      - queued
+      - running
+      - succeeded
+      - failed
+      type: string
+      description: |-
+        * `queued` - 대기
+        * `running` - 실행중
+        * `succeeded` - 성공
+        * `failed` - 실패
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

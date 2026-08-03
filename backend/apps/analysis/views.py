@@ -2,6 +2,7 @@ import uuid
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -12,6 +13,7 @@ from .serializers import (
     BatchSerializer,
     ImageSerializer,
     ImageUploadRequestSerializer,
+    ImageUploadResponseSerializer,
     JobCallbackSerializer,
     JobCreateSerializer,
     JobSerializer,
@@ -29,11 +31,13 @@ def get_staff_or_403(user):
 class BatchListCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses=BatchSerializer(many=True))
     def get(self, request):
         staff = get_staff_or_403(request.user)
         batches = Batch.objects.filter(created_by=staff).order_by("-created_at")
         return Response(BatchSerializer(batches, many=True).data)
 
+    @extend_schema(request=None, responses=BatchSerializer)
     def post(self, request):
         staff = get_staff_or_403(request.user)
         batch = Batch.objects.create(created_by=staff)
@@ -43,6 +47,9 @@ class BatchListCreateView(APIView):
 class BatchImageUploadView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(
+        request=ImageUploadRequestSerializer, responses=ImageUploadResponseSerializer
+    )
     def post(self, request, batch_id):
         staff = get_staff_or_403(request.user)
         batch = get_object_or_404(Batch, id=batch_id, created_by=staff)
@@ -63,6 +70,7 @@ class BatchImageUploadView(APIView):
 class ImageJobCreateView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(request=JobCreateSerializer, responses=JobSerializer)
     def post(self, request, image_id):
         staff = get_staff_or_403(request.user)
         image = get_object_or_404(Image, id=image_id, batch__created_by=staff)
@@ -96,6 +104,7 @@ class ImageJobCreateView(APIView):
 class JobDetailView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @extend_schema(responses=JobSerializer)
     def get(self, request, job_id):
         staff = get_staff_or_403(request.user)
         job = get_object_or_404(Job, id=job_id, image__batch__created_by=staff)
@@ -108,6 +117,7 @@ class JobCallbackView(APIView):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(request=JobCallbackSerializer, responses=JobSerializer)
     def post(self, request, job_id):
         token = request.headers.get("X-Internal-Token", "")
         if not settings.INTERNAL_API_TOKEN or token != settings.INTERNAL_API_TOKEN:
