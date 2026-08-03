@@ -59,9 +59,18 @@ const baseUrl = String.fromEnvironment(
 | GET | `/api/v1/analysis/model-versions/` | 업로드 화면 모델 드롭다운 |
 | POST | `/api/v1/analysis/jobs/{job_id}/callback/` | **워커 전용.** 앱은 호출하지 않음 |
 
-### 아직 없는 것
+### 저장소에는 있으나 아직 배포되지 않은 것
 
-`GET /api/v1/analysis/batches/{id}/` (배치 상세), 공유(`analysis_share`), 채팅, 환자/진료.
+`docs/openapi.yaml`(정다희 님 생성본)에는 아래가 더 있다. 배포본에는 아직 없다.
+
+| `GET/PATCH` | `/api/v1/patients/me/` · `/api/v1/patients/me/reservations/` · `/api/v1/reservations/{id}/` |
+| --- | --- |
+
+전부 **환자용(mobile) 예약 기능**이라 tablet에서는 쓰지 않는다.
+
+### 어디에도 없는 것
+
+`GET /api/v1/analysis/batches/{id}/` (배치 상세), 공유(`analysis_share`), 채팅.
 와이어프레임에 있는 `공유`·`공유 현황`은 **서버에 아직 없다.**
 
 > ⚠️ 위 뷰들은 **`feature/dahee` 브랜치에만 있고 `main`에는 아직 병합되지 않았다.**
