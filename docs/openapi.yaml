@@ -247,6 +247,58 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/patients/me/:
+    get:
+      operationId: v1_patients_me_retrieve
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    patch:
+      operationId: v1_patients_me_partial_update
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    delete:
+      operationId: v1_patients_me_destroy
+      description: |-
+        회원탈퇴 — 설계문서 12장: is_active=false + 식별정보 가명처리,
+        진료기록 본체는 보존(soft delete).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/staff/invitations/:
     post:
       operationId: v1_staff_invitations_create
@@ -544,6 +596,71 @@ components:
       - is_active
       - name
       - version
+    PatchedPatient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - birth_date
+      - created_at
+      - id
+      - name
+      - phone
+      - updated_at
     RoleEnum:
       enum:
       - doctor
@@ -554,6 +671,18 @@ components:
         * `doctor` - 의사
         * `nurse` - 간호사
         * `admin` - 관리자
+    SexEnum:
+      enum:
+      - M
+      - F
+      - O
+      - U
+      type: string
+      description: |-
+        * `M` - 남성
+        * `F` - 여성
+        * `O` - 기타
+        * `U` - 미상
     TokenObtainPair:
       type: object
       properties:
