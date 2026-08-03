@@ -36,10 +36,16 @@ def dispatch_job(job):
     job.save(update_fields=["status", "started_at", "updated_at"])
 
     if settings.USE_MOCK_INFERENCE:
+        # 실제 워커(박검모) 출력 키에 맞춘 mock. worker/INTERFACE.md 참고.
         mock_result = {
-            "prediction": "normal",
-            "confidence": 0.93,
-            "conformal_q": job.model_version.conformal_q,
+            "stil_value": 0.42,
+            "sigma": 0.05,
+            "class_composition": {"normal": 0.81, "abnormal": 0.19},
+            "lower": 0.37,
+            "upper": 0.47,
+            "abstain": False,
+            "decision": "normal",
+            "medgemma_report": "mock report text",
         }
         apply_job_result(job, status=job.Status.SUCCEEDED, result=mock_result)
         return
