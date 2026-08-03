@@ -40,11 +40,33 @@ backend가 조인한다.
 ## 2. 이미지 다운로드
 
 워커가 GCS에서 `image_key`로 직접 pull한다 (backend를 거치지 않음).
-필요한 것: 워커 실행 환경에 **읽기 전용** 서비스 계정 키. 버킷의 `uploads/`
-경로에 대해서만 권한 발급 (전체 버킷 접근 금지). `GOOGLE_APPLICATION_CREDENTIALS`
-환경변수로 지정.
 
-→ **TODO (정다희, GCP 담당)**: `uploads/` prefix 한정 read-only 서비스 계정 발급.
+- **버킷**: `gs://model-platform-502402-data`
+- **경로**: `uploads/` prefix에 대해서만 읽기 권한 (전체 버킷 접근 불가)
+- **서비스 계정**: `worker-gcs-reader@model-platform-502402.iam.gserviceaccount.com`
+  (역할: `roles/storage.objectViewer`, IAM 조건으로 `uploads/`만 허용)
+
+**키 파일 대신 impersonation 방식** (2026-08-03 확정) — 이 프로젝트가 속한
+조직 정책(`constraints/iam.disableServiceAccountKeyCreation`)이 서비스
+계정 키 발급 자체를 막고 있어서(프로젝트 Owner 권한으로도 해제 불가),
+워커는 `GOOGLE_APPLICATION_CREDENTIALS`(키 파일) 대신 본인 구글 계정으로
+아래 명령을 실행해 인증한다:
+
+```
+gcloud auth application-default login --impersonate-service-account=worker-gcs-reader@model-platform-502402.iam.gserviceaccount.com
+```
+
+이 명령을 실행한 박검모 계정(`teammate@example.com`)에는 해당 서비스
+계정에 대한 `roles/iam.serviceAccountTokenCreator`가 부여되어 있다.
+`worker/.env.example`의 `GOOGLE_APPLICATION_CREDENTIALS` 항목은 이 방식
+에서는 사용하지 않는다.
+
+**학원 공용 컴퓨터 보안 수칙**: 작업이 끝나면 반드시 로그아웃할 것
+(박검모 제안, 2026-08-03):
+
+```
+gcloud auth application-default revoke
+```
 
 ## 3. 콜백: 결과 보고 (2단계)
 
@@ -122,19 +144,31 @@ backend는 `result`를 **덮어쓰지 않고 기존 값에 병합(merge)** 한�
 `backend/.env`와 `worker/.env`의 `INTERNAL_API_TOKEN` 값이 동일해야 한다.
 값이 다르면 콜백이 조용히 401로 실패한다. 전달은 슬랙 DM으로 (평문 커밋 금지).
 
-## 5. Redis
+## 5. Redis (2026-08-03 구축 완료)
 
-- 위치: GCP, backend(Cloud Run)와 같은 프로젝트에 올림.
+- 위치: GCP `asia-northeast3` (backend Cloud Run과 동일 리전), VM 이름
+  `medai-redis`.
 - 스펙: e2-micro.
-- **보안 필수 설정** (VM 세팅 담당자 확인):
-  - `requirepass`로 비밀번호 설정
-  - 방화벽으로 접속 IP 제한 (최소 Cloud Run 아웃바운드 + 워커 IP만 허용)
-- `CELERY_BROKER_URL` 형식은 비밀번호 적용 후 `redis://:<password>@<host>:6379/0`
-  으로 바뀐다. 확정되면 `backend/.env.example`, `worker/.env.example` 둘 다 갱신.
+- **보안 설정 적용됨**:
+  - `requirepass`로 비밀번호 설정 완료
+  - 방화벽 규칙 `allow-redis`로 `tcp:6379` 인바운드 허용 (현재는
+    `0.0.0.0/0` — Cloud Run이 고정 아웃바운드 IP를 안 쓰고 워커도
+    IP가 유동적이라 소스 제한은 보류. requirepass가 1차 방어선)
+- `CELERY_BROKER_URL` 값(호스트/비밀번호 포함)은 **슬랙 DM으로 전달됨** —
+  이 문서엔 평문으로 남기지 않는다. backend Cloud Run에는 Secret Manager
+  (`celery-broker-url`)로 이미 연결되어 있다.
 
-## 6. 현재 상태
+## 6. 현재 상태 (2026-08-03 기준)
 
-- backend: `USE_MOCK_INFERENCE=true`로 로컬 검증 완료. 위 result 키 형태로
-  mock 결과를 만들어 콜백 로직을 통과시킨 상태 (`apps/analysis/services.py`).
-- worker: 실제 Celery 태스크(`worker/tasks.py`) 및 GCS pull, Mosec 연동은
-  진행 중.
+- **backend**: Cloud Run에 배포 완료.
+  - Service URL: `https://medai-backend-XXXXXXXXXX.asia-northeast3.run.app`
+  - API base: `.../api/v1`, 문서: `.../api/docs/`
+  - Cloud SQL(Postgres) 연결 + 마이그레이션 완료
+  - `USE_MOCK_INFERENCE` 플래그로 mock/실제 큐 전환 가능. **기본값은
+    `true`(mock) — 워커가 실제로 큐를 소비하기 시작하기 전까지는 프론트
+    팀 테스트를 막지 않기 위해 mock으로 유지한다.** 검모님이 실제 워커로
+    테스트할 때만 서로 확인 후 `false`로 잠깐 전환.
+  - 실제 큐 dispatch(`config/celery.py`)까지 curl로 검증 완료 — job이
+    `status=running`으로 정상 등록되는 것 확인함.
+- **worker**: 실제 Celery 태스크(`worker/tasks.py`), GCS pull, Mosec 연동
+  진행 중 (박검모).
