@@ -9,11 +9,11 @@
 | 폴더 | 내용 | 배포 위치 | 담당 |
 |---|---|---|---|
 | `backend/` | Django REST API | GCP Cloud Run | 정다희 |
-| `worker/` | Celery 워커 + 추론 파이프라인 | 학원 workstation | 최일운 |
+| `worker/` | Celery 워커 + 추론 파이프라인 | 학원 workstation | 박검모 |
 | `shared/` | Flutter 공유 패키지 (theme / api / models / auth) | 패키지 | 공용 |
 | `mobile/` | Flutter 환자용 앱 | 앱 스토어 | 서정은 |
 | `tablet/` | Flutter 의료진용 앱 | 원내 배포 | 윤수용 |
-| `react/` | React 웹 | Vercel | **미정** |
+| `react/` | React 웹 | Vercel | 최일운 |
 
 `backend`와 `worker`는 코드를 공유하지 않는다. 태스크 이름(`analysis.run_job`)과
 payload 키만으로 연결되며, 이 때문에 워커에는 DB 접속 정보를 두지 않는다.

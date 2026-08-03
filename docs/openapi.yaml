@@ -1,0 +1,924 @@
+openapi: 3.0.3
+info:
+  title: medical-ai-platform API
+  version: 0.1.0
+  description: CDSS 백엔드 API. 세로 슬라이스(로그인~job 조회) 우선 구현.
+paths:
+  /api/v1/analysis/batches/:
+    get:
+      operationId: v1_analysis_batches_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Batch'
+          description: ''
+    post:
+      operationId: v1_analysis_batches_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+          description: ''
+  /api/v1/analysis/batches/{batch_id}/images/:
+    post:
+      operationId: v1_analysis_batches_images_create
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+          description: ''
+  /api/v1/analysis/images/{image_id}/jobs/:
+    post:
+      operationId: v1_analysis_images_jobs_create
+      parameters:
+      - in: path
+        name: image_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/analysis/jobs/{job_id}/:
+    get:
+      operationId: v1_analysis_jobs_retrieve
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/analysis/jobs/{job_id}/callback/:
+    post:
+      operationId: v1_analysis_jobs_callback_create
+      description: 워커가 결과를 보고하는 엔드포인트. 환자 정보는 담기지 않는다 (README 6절).
+      parameters:
+      - in: path
+        name: job_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/JobCallback'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+          description: ''
+  /api/v1/analysis/model-versions/:
+    get:
+      operationId: v1_analysis_model_versions_list
+      description: 업로드 화면의 '모델 선택' 드롭다운용 — 활성 모델 버전 목록.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ModelVersion'
+          description: ''
+  /api/v1/auth/invitations/redeem/:
+    post:
+      operationId: v1_auth_invitations_redeem_create
+      description: 초대코드로 의료진 가입 — 로그인 불필요.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/auth/login/:
+    post:
+      operationId: v1_auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/auth/login/refresh/:
+    post:
+      operationId: v1_auth_login_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/patients/me/:
+    get:
+      operationId: v1_patients_me_retrieve
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    patch:
+      operationId: v1_patients_me_partial_update
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    delete:
+      operationId: v1_patients_me_destroy
+      description: |-
+        회원탈퇴 — 설계문서 12장: is_active=false + 식별정보 가명처리,
+        진료기록 본체는 보존(soft delete).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/patients/me/reservations/:
+    get:
+      operationId: v1_patients_me_reservations_list
+      description: |-
+        설계문서 7.3절 — GET /patients/me/reservations. 3.1-b.
+
+        POST는 설계문서 API 표에는 없지만(예약 신청 경로가 없으면 예약을
+        아무도 못 만든다는 설계 공백), 예약 요청 흐름상 필요해서 추가했다.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+          description: ''
+    post:
+      operationId: v1_patients_me_reservations_create
+      description: |-
+        설계문서 7.3절 — GET /patients/me/reservations. 3.1-b.
+
+        POST는 설계문서 API 표에는 없지만(예약 신청 경로가 없으면 예약을
+        아무도 못 만든다는 설계 공백), 예약 요청 흐름상 필요해서 추가했다.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+  /api/v1/reservations/{reservation_id}/:
+    get:
+      operationId: v1_reservations_retrieve
+      description: 설계문서 7.3절 — 예약 상세/변경/취소. 본인 예약만 접근 가능.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+    patch:
+      operationId: v1_reservations_partial_update
+      description: 예약일 변경 — reservation_history 자동 기록.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+    delete:
+      operationId: v1_reservations_destroy
+      description: 예약 취소 — 물리 삭제가 아니라 status=CANCELED로 처리.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/staff/invitations/:
+    post:
+      operationId: v1_staff_invitations_create
+      description: 초대코드 발급 — 관리자 권한 의료진만 (설계문서 7장/12장).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
+          description: ''
+components:
+  schemas:
+    Batch:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/BatchStatusEnum'
+          readOnly: true
+        created_by:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - created_by
+      - id
+      - status
+      - updated_at
+    BatchStatusEnum:
+      enum:
+      - pending
+      - processing
+      - done
+      - failed
+      type: string
+      description: |-
+        * `pending` - 대기
+        * `processing` - 처리중
+        * `done` - 완료
+        * `failed` - 실패
+    ImageUploadRequest:
+      type: object
+      properties:
+        original_filename:
+          type: string
+          maxLength: 255
+      required:
+      - original_filename
+    ImageUploadResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        batch:
+          type: string
+          format: uuid
+          readOnly: true
+        storage_key:
+          type: string
+          readOnly: true
+        original_filename:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        upload_url:
+          type: string
+          format: uri
+      required:
+      - batch
+      - created_at
+      - id
+      - original_filename
+      - storage_key
+      - upload_url
+    Invitation:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_used:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - department
+      - expires_at
+      - is_used
+      - role
+    InvitationIssue:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        department:
+          type: string
+          default: ''
+          maxLength: 100
+        expires_in_days:
+          type: integer
+          maximum: 30
+          minimum: 1
+          default: 7
+      required:
+      - role
+    InvitationRedeem:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 12
+        username:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - code
+      - email
+      - password
+      - username
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        image:
+          type: string
+          format: uuid
+          readOnly: true
+        model_version:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/JobStatusEnum'
+          readOnly: true
+        result:
+          readOnly: true
+          nullable: true
+        error_message:
+          type: string
+          readOnly: true
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        finished_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - error_message
+      - finished_at
+      - id
+      - image
+      - model_version
+      - result
+      - started_at
+      - status
+    JobCallback:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/JobCallbackStatusEnum'
+        result: {}
+        error_message:
+          type: string
+          default: ''
+      required:
+      - status
+    JobCallbackStatusEnum:
+      enum:
+      - stil_done
+      - succeeded
+      - failed
+      type: string
+      description: |-
+        * `stil_done` - stil_done
+        * `succeeded` - succeeded
+        * `failed` - failed
+    JobCreate:
+      type: object
+      properties:
+        model_version_id:
+          type: string
+          format: uuid
+    JobStatusEnum:
+      enum:
+      - queued
+      - running
+      - stil_done
+      - succeeded
+      - failed
+      type: string
+      description: |-
+        * `queued` - 대기
+        * `running` - 실행중
+        * `stil_done` - sTIL 완료 (리포트 대기)
+        * `succeeded` - 성공
+        * `failed` - 실패
+    ModelVersion:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        version:
+          type: string
+          readOnly: true
+        conformal_q:
+          type: number
+          format: double
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - conformal_q
+      - created_at
+      - id
+      - is_active
+      - name
+      - version
+    PatchedPatient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedReservationReschedule:
+      type: object
+      properties:
+        scheduled_at:
+          type: string
+          format: date-time
+        change_reason:
+          type: string
+          default: ''
+          maxLength: 200
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - birth_date
+      - created_at
+      - id
+      - name
+      - phone
+      - updated_at
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        department:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservationStatusEnum'
+          readOnly: true
+        change_reason:
+          type: string
+          maxLength: 200
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - department
+      - id
+      - patient
+      - scheduled_at
+      - staff
+      - status
+      - updated_at
+    ReservationCreate:
+      type: object
+      properties:
+        department:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+      required:
+      - department
+      - scheduled_at
+    ReservationStatusEnum:
+      enum:
+      - REQUESTED
+      - CONFIRMED
+      - CHANGED
+      - CANCELED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `REQUESTED` - 요청됨
+        * `CONFIRMED` - 확정
+        * `CHANGED` - 변경됨
+        * `CANCELED` - 취소됨
+        * `NO_SHOW` - 미방문
+    RoleEnum:
+      enum:
+      - doctor
+      - nurse
+      - admin
+      type: string
+      description: |-
+        * `doctor` - 의사
+        * `nurse` - 간호사
+        * `admin` - 관리자
+    SexEnum:
+      enum:
+      - M
+      - F
+      - O
+      - U
+      type: string
+      description: |-
+        * `M` - 남성
+        * `F` - 여성
+        * `O` - 기타
+        * `U` - 미상
+    TokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - password
+      - refresh
+      - username
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
