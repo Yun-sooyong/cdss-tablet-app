@@ -4,7 +4,7 @@ backend(정다희)와 worker(박검모)는 코드를 공유하지 않는다. 태
 payload 키, 콜백 엔드포인트만으로 연결된다. 이 문서가 계약의 기준이며,
 변경 시 양쪽을 같은 PR에서 고친다.
 
-확정일: 2026-08-03
+확정일: 2026-08-03 (result 필드 상세는 2026-08-03 2차 수정)
 
 ---
 
@@ -53,20 +53,37 @@ Content-Type: application/json
 }
 ```
 
-`result`는 자유 형식 JSON (backend는 그대로 저장만 함). 워커가 실제로 넣는 키:
+`result`는 자유 형식 JSON — backend는 스키마 검증 없이 그대로 저장만 한다
+(`JobCallbackSerializer.result`는 `JSONField`라 object/string/array 무엇이든
+받는다). 워커가 실제로 넣는 키:
 
 ```json
 {
-  "stil_value": 0.42,
-  "sigma": 0.05,
-  "class_composition": {"normal": 0.81, "abnormal": 0.19},
-  "lower": 0.37,
-  "upper": 0.47,
+  "stil_value": 42.0,
+  "sigma": 5.0,
+  "class_composition": {
+    "tumor": 45.2,
+    "stroma": 28.1,
+    "immune": 15.3,
+    "necrosis": 6.8,
+    "other": 4.6
+  },
+  "lower": 37.0,
+  "upper": 47.0,
   "abstain": false,
-  "decision": "normal",
-  "medgemma_report": "..."
+  "decision": "LOW",
+  "n_valid": 128,
+  "cp_value": 0.87,
+  "medgemma_report": {"summary": "...", "generation_failed": false}
 }
 ```
+
+- `stil_value` / `lower` / `upper` / `sigma`: 0~100 스케일 (0~1 아님)
+- `class_composition`: 5개 조직 분류 (`tumor`/`stroma`/`immune`/`necrosis`/`other`)
+- `decision`: `"LOW"` / `"HIGH"` / `"ABSTAIN"` 중 하나
+- `n_valid`, `cp_value`: 필수로 같이 보냄
+- `medgemma_report`: 객체 (`{"summary": ..., "generation_failed": ...}`).
+  backend는 타입 제약이 없어 object 그대로 받아도 문제 없음.
 
 `status="failed"`일 때는 `error_message`를 채우고 `result`는 생략 가능.
 
