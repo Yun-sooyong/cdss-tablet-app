@@ -5,7 +5,7 @@
 import os
 
 from celery_app import app
-from clients.mosec_mock import call_segmentation
+from clients.mosec import call_segmentation
 from clients.backend_api import report_stil_done, report_result, report_error, send_heartbeat
 from pipeline.til_conformal import compute_stil_and_conformal
 from pipeline.medgemma_mock import generate_report
