@@ -1,0 +1,9 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args: ["build", "-f", "backend/Dockerfile", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
+substitutions:
+  _IMAGE: "asia-northeast3-docker.pkg.dev/${PROJECT_ID}/medai-repo/backend:latest"
+options:
+  logging: CLOUD_LOGGING_ONLY

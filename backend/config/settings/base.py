@@ -13,6 +13,7 @@ INSTALLED_APPS = [
     # third-party
     "rest_framework",
     "drf_spectacular",
+    "encrypted_model_fields",
     # local apps
     "apps.common",
     "apps.accounts",
@@ -46,6 +47,9 @@ USE_MOCK_INFERENCE = os.environ.get("USE_MOCK_INFERENCE", "true").lower() == "tr
 
 # worker -> backend 콜백 인증용. worker/.env의 값과 반드시 동일해야 한다 (README 6절).
 INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN", "")
+
+# backend는 워커에게 작업을 등록(send_task)만 한다 — 큐를 소비하지 않는다 (config/celery.py).
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "")
 
 # 최초 migrate 이전에 반드시 설정되어 있어야 한다. 자세한 내용은 README 참조.
 AUTH_USER_MODEL = "accounts.User"
@@ -83,4 +87,5 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
