@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Batch, Image, Job
+from .models import Batch, Image, Job, ModelVersion
+
+
+class ModelVersionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ModelVersion
+        fields = ["id", "name", "version", "conformal_q", "is_active", "created_at"]
+        read_only_fields = fields
 
 
 class BatchSerializer(serializers.ModelSerializer):
