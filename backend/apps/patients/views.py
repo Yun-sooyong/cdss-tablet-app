@@ -1,19 +1,12 @@
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
-from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Patient
+from apps.common.permissions import get_patient_or_404
+
 from .serializers import PatientSerializer
-
-
-def get_patient_or_404(user):
-    patient = getattr(user, "patient", None)
-    if patient is None:
-        raise NotFound("환자 프로필이 없습니다.")
-    return patient
 
 
 class PatientMeView(APIView):
