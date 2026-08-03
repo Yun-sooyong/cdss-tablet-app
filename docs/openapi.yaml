@@ -170,6 +170,29 @@ paths:
                 items:
                   $ref: '#/components/schemas/ModelVersion'
           description: ''
+  /api/v1/auth/invitations/redeem/:
+    post:
+      operationId: v1_auth_invitations_redeem_create
+      description: 초대코드로 의료진 가입 — 로그인 불필요.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvitationRedeem'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/auth/login/:
     post:
       operationId: v1_auth_login_create
@@ -223,6 +246,33 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/staff/invitations/:
+    post:
+      operationId: v1_staff_invitations_create
+      description: 초대코드 발급 — 관리자 권한 의료진만 (설계문서 7장/12장).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/InvitationIssue'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invitation'
           description: ''
 components:
   schemas:
@@ -306,6 +356,73 @@ components:
       - original_filename
       - storage_key
       - upload_url
+    Invitation:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+        is_used:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - code
+      - created_at
+      - department
+      - expires_at
+      - is_used
+      - role
+    InvitationIssue:
+      type: object
+      properties:
+        role:
+          $ref: '#/components/schemas/RoleEnum'
+        department:
+          type: string
+          default: ''
+          maxLength: 100
+        expires_in_days:
+          type: integer
+          maximum: 30
+          minimum: 1
+          default: 7
+      required:
+      - role
+    InvitationRedeem:
+      type: object
+      properties:
+        code:
+          type: string
+          maxLength: 12
+        username:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+      required:
+      - code
+      - email
+      - password
+      - username
     Job:
       type: object
       properties:
@@ -427,6 +544,16 @@ components:
       - is_active
       - name
       - version
+    RoleEnum:
+      enum:
+      - doctor
+      - nurse
+      - admin
+      type: string
+      description: |-
+        * `doctor` - 의사
+        * `nurse` - 간호사
+        * `admin` - 관리자
     TokenObtainPair:
       type: object
       properties:
