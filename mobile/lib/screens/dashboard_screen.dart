@@ -12,6 +12,7 @@ class DashboardScreen extends StatefulWidget {
   final VisitService visitService;
   final ReservationService reservationService;
   final void Function(int tabIndex) onNavigate;
+  final VoidCallback onOpenQr;
 
   const DashboardScreen({
     super.key,
@@ -20,6 +21,7 @@ class DashboardScreen extends StatefulWidget {
     required this.visitService,
     required this.reservationService,
     required this.onNavigate,
+    required this.onOpenQr,
   });
 
   @override
@@ -29,8 +31,7 @@ class DashboardScreen extends StatefulWidget {
 // MainShell 탭 순서(약관리=1, 진료내역=2, QR=3, 예약=4, 마이페이지=5)와 반드시 맞춰야 함.
 class _TabIndex {
   static const medication = 1;
-  static const visit = 2;
-  static const qr = 3;
+  static const visit = 3;
   static const reservation = 4;
 }
 
@@ -78,112 +79,106 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final patient = widget.authService.currentPatient;
-    return Scaffold(
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : RefreshIndicator(
-                onRefresh: _load,
-                child: ListView(
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Row(
-                      children: [
-                        const CircleAvatar(
-                          radius: 24,
-                          child: Icon(Icons.person),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${patient?.name ?? '환자'}님, 안녕하세요',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Text(
-                              '오늘도 건강 관리 잊지 마세요',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    GridView.count(
-                      crossAxisCount: 2,
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 1.4,
-                      children: [
-                        _DashboardCard(
-                          icon: Icons.medication_outlined,
-                          label: '약 관리',
-                          value:
-                              '복약률 ${((_adherenceRate ?? 0) * 100).round()}%',
-                          onTap: () => widget.onNavigate(_TabIndex.medication),
-                        ),
-                        _DashboardCard(
-                          icon: Icons.history_outlined,
-                          label: '진료내역',
-                          value: _latestVisitSummary ?? '-',
-                          onTap: () => widget.onNavigate(_TabIndex.visit),
-                        ),
-                        _DashboardCard(
-                          icon: Icons.event_outlined,
-                          label: '예약 관리',
-                          value: _nextReservationSummary ?? '-',
-                          onTap: () => widget.onNavigate(_TabIndex.reservation),
-                        ),
-                        _DashboardCard(
-                          icon: Icons.qr_code_outlined,
-                          label: 'QR 발급',
-                          value: '환자 확인용',
-                          onTap: () => widget.onNavigate(_TabIndex.qr),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      '오늘 복용',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+    return SafeArea(
+      child: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Row(
+                    children: [
+                      const CircleAvatar(
+                        radius: 24,
+                        child: Icon(Icons.person),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    ..._todayDoses
-                        .take(2)
-                        .map(
-                          (dose) => Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: Icon(
-                                dose.taken
-                                    ? Icons.check_circle
-                                    : Icons.circle_outlined,
-                                color: dose.taken
-                                    ? AppColors.primary
-                                    : Colors.grey,
-                              ),
-                              title: Text(
-                                '${dose.time.label} · ${dose.medicationName}',
-                              ),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () =>
-                                  widget.onNavigate(_TabIndex.medication),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${patient?.name ?? '환자'}님, 안녕하세요',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
+                          const Text(
+                            '오늘도 건강 관리 잊지 마세요',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1.4,
+                    children: [
+                      _DashboardCard(
+                        icon: Icons.medication_outlined,
+                        label: '약 관리',
+                        value: '복약률 ${((_adherenceRate ?? 0) * 100).round()}%',
+                        onTap: () => widget.onNavigate(_TabIndex.medication),
+                      ),
+                      _DashboardCard(
+                        icon: Icons.history_outlined,
+                        label: '진료내역',
+                        value: _latestVisitSummary ?? '-',
+                        onTap: () => widget.onNavigate(_TabIndex.visit),
+                      ),
+                      _DashboardCard(
+                        icon: Icons.event_outlined,
+                        label: '예약 관리',
+                        value: _nextReservationSummary ?? '-',
+                        onTap: () => widget.onNavigate(_TabIndex.reservation),
+                      ),
+                      _DashboardCard(
+                        icon: Icons.qr_code_outlined,
+                        label: 'QR 발급',
+                        value: '환자 확인용',
+                        onTap: widget.onOpenQr,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '오늘 복용',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ..._todayDoses.take(2).map(
+                        (dose) => Card(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          child: ListTile(
+                            leading: Icon(
+                              dose.taken
+                                  ? Icons.check_circle
+                                  : Icons.circle_outlined,
+                              color:
+                                  dose.taken ? AppColors.primary : Colors.grey,
+                            ),
+                            title: Text(
+                              '${dose.time.label} · ${dose.medicationName}',
+                            ),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: () =>
+                                widget.onNavigate(_TabIndex.medication),
+                          ),
                         ),
-                  ],
-                ),
+                      ),
+                ],
               ),
-      ),
+            ),
     );
   }
 }

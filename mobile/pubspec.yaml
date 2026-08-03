@@ -1,0 +1,29 @@
+name: mobile
+description: 병원 환자용 Flutter 앱 — 로그인/약관리/진료내역/예약관리/QR발급/마이페이지
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  qr_flutter: ^4.1.0       # QR 발급 화면에서 씀
+  intl: ^0.19.0             # 날짜 포맷
+  shared_preferences: ^2.2.0  # 나중에 로그인 토큰 저장용
+  http: ^1.2.0  
+  table_calendar: ^3.1.2            # 나중에 진짜 서버 붙일 때 씀
+  flutter_local_notifications: ^22.2.0
+  timezone: ^0.11.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/tree_logo.png
+    - assets/images/tree_loading.gif

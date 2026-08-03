@@ -15,10 +15,28 @@ class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _phoneController = TextEditingController();
+  DateTime? _birthDate;
   bool _isLoading = false;
   String? _error;
 
+  Future<void> _pickBirthDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000, 1, 1),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+    if (picked == null) return;
+    setState(() => _birthDate = picked);
+  }
+
   Future<void> _handleSignup() async {
+    if (_birthDate == null) {
+      setState(() => _error = '생년월일을 선택해줘');
+      return;
+    }
     setState(() {
       _isLoading = true;
       _error = null;
@@ -28,6 +46,9 @@ class _SignupScreenState extends State<SignupScreen> {
         email: _emailController.text,
         password: _passwordController.text,
         name: _nameController.text,
+        birthDate: _birthDate!,
+        address: _addressController.text,
+        phone: _phoneController.text,
       );
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
@@ -47,6 +68,8 @@ class _SignupScreenState extends State<SignupScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _addressController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -82,6 +105,32 @@ class _SignupScreenState extends State<SignupScreen> {
                 obscureText: true,
                 decoration: const InputDecoration(
                   hintText: '비밀번호',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: _pickBirthDate,
+                child: Text(
+                  _birthDate == null
+                      ? '생년월일 선택'
+                      : '${_birthDate!.year}.${_birthDate!.month.toString().padLeft(2, '0')}.${_birthDate!.day.toString().padLeft(2, '0')}',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _addressController,
+                decoration: const InputDecoration(
+                  hintText: '주소',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: const InputDecoration(
+                  hintText: '전화번호',
                   border: OutlineInputBorder(),
                 ),
               ),
