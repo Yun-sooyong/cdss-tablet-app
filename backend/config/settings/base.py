@@ -13,6 +13,7 @@ INSTALLED_APPS = [
     # third-party
     "rest_framework",
     "drf_spectacular",
+    "encrypted_model_fields",
     # local apps
     "apps.common",
     "apps.accounts",

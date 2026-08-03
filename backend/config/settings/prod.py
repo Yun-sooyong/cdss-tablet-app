@@ -8,6 +8,10 @@ SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 DEBUG = False
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "").split(",")
 
+# 환자 식별정보 컬럼 암호화 키. SECRET_KEY와 별도 값이어야 하고, 유출 시
+# 암호화된 기존 데이터를 복호화할 수 없게 되므로 반드시 백업해둘 것.
+FIELD_ENCRYPTION_KEY = os.environ["FIELD_ENCRYPTION_KEY"]
+
 # Cloud Run -> Cloud SQL은 유닉스 소켓(Auth Proxy 내장 방식)으로 붙는다.
 # --add-cloudsql-instances로 지정한 인스턴스가 /cloudsql/<연결이름>에 마운트된다.
 # DATABASE_URL 형식:
