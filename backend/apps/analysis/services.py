@@ -81,6 +81,7 @@ def dispatch_job(job):
             "job_id": str(job.id),
             "image_key": job.image.storage_key,
             "model_version_id": str(job.model_version.id),
+            "model_name": job.model_version.name,
             "conformal_q": job.model_version.conformal_q,
         },
         queue="gpu",
