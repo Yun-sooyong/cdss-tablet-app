@@ -21,6 +21,14 @@ class ImageUploadRequestSerializer(serializers.Serializer):
     original_filename = serializers.CharField(max_length=255)
 
 
+class ImageUploadResponseSerializer(ImageSerializer):
+    upload_url = serializers.URLField()
+
+    class Meta(ImageSerializer.Meta):
+        fields = ImageSerializer.Meta.fields + ["upload_url"]
+        read_only_fields = fields
+
+
 class JobSerializer(serializers.ModelSerializer):
     class Meta:
         model = Job

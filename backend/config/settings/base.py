@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # third-party
     "rest_framework",
+    "drf_spectacular",
     # local apps
     "apps.common",
     "apps.accounts",
@@ -29,6 +30,14 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "medical-ai-platform API",
+    "DESCRIPTION": "CDSS 백엔드 API. 세로 슬라이스(로그인~job 조회) 우선 구현.",
+    "VERSION": "0.1.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
 # 로컬/데모 환경에서 워커(Celery+GPU) 없이 세로 슬라이스를 끝까지 돌리기 위한 플래그.
