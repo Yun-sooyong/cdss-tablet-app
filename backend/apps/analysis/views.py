@@ -70,7 +70,7 @@ class BatchImageUploadView(APIView):
         serializer.is_valid(raise_exception=True)
         filename = serializer.validated_data["original_filename"]
 
-        storage_key = f"batches/{batch.id}/{uuid.uuid4()}_{filename}"
+        storage_key = f"uploads/{batch.id}/{uuid.uuid4()}_{filename}"
         image = Image.objects.create(
             batch=batch, storage_key=storage_key, original_filename=filename
         )
