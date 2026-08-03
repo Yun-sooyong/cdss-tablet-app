@@ -58,6 +58,6 @@ class JobCreateSerializer(serializers.Serializer):
 
 
 class JobCallbackSerializer(serializers.Serializer):
-    status = serializers.ChoiceField(choices=["succeeded", "failed"])
+    status = serializers.ChoiceField(choices=["stil_done", "succeeded", "failed"])
     result = serializers.JSONField(required=False)
     error_message = serializers.CharField(required=False, allow_blank=True, default="")

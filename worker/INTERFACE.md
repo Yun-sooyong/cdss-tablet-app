@@ -4,7 +4,7 @@ backend(정다희)와 worker(박검모)는 코드를 공유하지 않는다. 태
 payload 키, 콜백 엔드포인트만으로 연결된다. 이 문서가 계약의 기준이며,
 변경 시 양쪽을 같은 PR에서 고친다.
 
-확정일: 2026-08-03 (result 필드 상세는 2026-08-03 2차 수정)
+확정일: 2026-08-03 (result 필드 상세는 2026-08-03 2차 수정, 콜백 2단계 구조는 2026-08-03 3차 수정)
 
 ---
 
@@ -37,9 +37,10 @@ backend가 조인한다.
 
 → **TODO (정다희, GCP 담당)**: `uploads/` prefix 한정 read-only 서비스 계정 발급.
 
-## 3. 콜백: 결과 보고
+## 3. 콜백: 결과 보고 (2단계)
 
-워커가 처리 완료 후 backend에 HTTP로 보고한다.
+MedGemma 리포트 생성에 시간이 걸리므로, 워커는 **콜백을 두 번** 보낸다.
+엔드포인트/바디 구조는 매번 동일하고 `status` 값만 다르다.
 
 ```
 POST {BACKEND_API_BASE}/analysis/jobs/{job_id}/callback/
@@ -47,15 +48,24 @@ Header: X-Internal-Token: <INTERNAL_API_TOKEN>
 Content-Type: application/json
 
 {
-  "status": "succeeded" | "failed",
+  "status": "stil_done" | "succeeded" | "failed",
   "result": { ... },
   "error_message": ""
 }
 ```
 
-`result`는 자유 형식 JSON — backend는 스키마 검증 없이 그대로 저장만 한다
-(`JobCallbackSerializer.result`는 `JSONField`라 object/string/array 무엇이든
-받는다). 워커가 실제로 넣는 키:
+**시퀀스**:
+1. sTIL·Conformal 끝나면 `status="stil_done"`으로 1차 콜백 — `medgemma_report` 없이 나머지 필드만.
+2. MedGemma 리포트까지 끝나면 `status="succeeded"`로 2차 콜백 — `medgemma_report`만 보내도 됨.
+3. 어느 단계에서든 실패하면 `status="failed"`로 **한 번만** 콜백 (그 시점까지의 진행 상황과 무관하게 종료).
+
+backend는 `result`를 **덮어쓰지 않고 기존 값에 병합(merge)** 한다
+(`apps/analysis/services.py`의 `apply_job_result`). 그래서 2차 콜백은
+`medgemma_report`만 보내도 되고, 혹시 전체를 다시 다 보내도 문제없다 —
+같은 키는 최신 값으로 갱신될 뿐이다. `result`는 스키마 검증 없는
+자유 형식 JSON(`JSONField`)이라 object/string 무엇이든 받는다.
+
+1차 콜백(`stil_done`)에서 워커가 넣는 키:
 
 ```json
 {
@@ -73,7 +83,14 @@ Content-Type: application/json
   "abstain": false,
   "decision": "LOW",
   "n_valid": 128,
-  "cp_value": 0.87,
+  "cp_value": 0.87
+}
+```
+
+2차 콜백(`succeeded`)에서 워커가 넣는 키:
+
+```json
+{
   "medgemma_report": {"summary": "...", "generation_failed": false}
 }
 ```
@@ -86,6 +103,10 @@ Content-Type: application/json
   backend는 타입 제약이 없어 object 그대로 받아도 문제 없음.
 
 `status="failed"`일 때는 `error_message`를 채우고 `result`는 생략 가능.
+
+**프론트 영향**: `Job.status`가 `stil_done`일 때는 "sTIL 분석 완료, 리포트
+작성 중" 같은 중간 상태 UI가 필요하다. `finished_at`은 `succeeded`/`failed`
+에서만 채워지고 `stil_done`에서는 비어있다 — 진행 중임을 이걸로 구분 가능.
 
 ## 4. INTERNAL_API_TOKEN
 

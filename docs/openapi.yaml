@@ -368,10 +368,12 @@ components:
       - status
     JobCallbackStatusEnum:
       enum:
+      - stil_done
       - succeeded
       - failed
       type: string
       description: |-
+        * `stil_done` - stil_done
         * `succeeded` - succeeded
         * `failed` - failed
     JobCreate:
@@ -384,12 +386,14 @@ components:
       enum:
       - queued
       - running
+      - stil_done
       - succeeded
       - failed
       type: string
       description: |-
         * `queued` - 대기
         * `running` - 실행중
+        * `stil_done` - sTIL 완료 (리포트 대기)
         * `succeeded` - 성공
         * `failed` - 실패
     ModelVersion:

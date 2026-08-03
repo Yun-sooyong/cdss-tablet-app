@@ -49,6 +49,7 @@ class Job(BaseModel):
     class Status(models.TextChoices):
         QUEUED = "queued", "대기"
         RUNNING = "running", "실행중"
+        STIL_DONE = "stil_done", "sTIL 완료 (리포트 대기)"
         SUCCEEDED = "succeeded", "성공"
         FAILED = "failed", "실패"
 
