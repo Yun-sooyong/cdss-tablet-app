@@ -4,9 +4,10 @@ from django.conf import settings
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
-from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from apps.common.permissions import get_staff_or_403
 
 from .models import Batch, Image, Job, ModelVersion
 from .serializers import (
@@ -20,13 +21,6 @@ from .serializers import (
     ModelVersionSerializer,
 )
 from .services import apply_job_result, build_upload_url, dispatch_job
-
-
-def get_staff_or_403(user):
-    staff = getattr(user, "staff", None)
-    if staff is None:
-        raise PermissionDenied("의료진(staff) 계정이 아닙니다.")
-    return staff
 
 
 class ModelVersionListView(APIView):
@@ -70,7 +64,7 @@ class BatchImageUploadView(APIView):
         serializer.is_valid(raise_exception=True)
         filename = serializer.validated_data["original_filename"]
 
-        storage_key = f"batches/{batch.id}/{uuid.uuid4()}_{filename}"
+        storage_key = f"uploads/{batch.id}/{uuid.uuid4()}_{filename}"
         image = Image.objects.create(
             batch=batch, storage_key=storage_key, original_filename=filename
         )

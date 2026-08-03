@@ -5,12 +5,12 @@ from django.utils import timezone
 def build_upload_url(storage_key: str) -> str:
     """이미지 업로드용 URL 발급.
 
-    실제로는 GCS 서명 URL을 발급해야 하지만, 로컬/데모 환경에서는
-    GCS 연동 없이 흐름을 검증할 수 있도록 mock URL을 돌려준다.
+    TODO: 실제 GCS 서명 URL 발급으로 교체할 것. USE_MOCK_INFERENCE(추론/큐
+    모킹 여부)와는 별개 관심사라 그 플래그에 묶지 않는다 — 큐를 실제
+    Redis로 돌리기 시작해도 업로드 URL은 이 함수가 준비될 때까지 계속
+    mock으로 동작해야 한다.
     """
-    if settings.USE_MOCK_INFERENCE:
-        return f"https://mock-upload.local/{storage_key}"
-    raise NotImplementedError("GCS 서명 URL 연동은 아직 구현되지 않았습니다.")
+    return f"https://mock-upload.local/{storage_key}"
 
 
 def apply_job_result(job, status, result=None, error_message=""):
@@ -81,6 +81,7 @@ def dispatch_job(job):
             "job_id": str(job.id),
             "image_key": job.image.storage_key,
             "model_version_id": str(job.model_version.id),
+            "model_name": job.model_version.name,
             "conformal_q": job.model_version.conformal_q,
         },
         queue="gpu",
