@@ -17,6 +17,7 @@ from .serializers import (
     JobCallbackSerializer,
     JobCreateSerializer,
     JobSerializer,
+    ModelVersionSerializer,
 )
 from .services import apply_job_result, build_upload_url, dispatch_job
 
@@ -26,6 +27,17 @@ def get_staff_or_403(user):
     if staff is None:
         raise PermissionDenied("의료진(staff) 계정이 아닙니다.")
     return staff
+
+
+class ModelVersionListView(APIView):
+    """업로드 화면의 '모델 선택' 드롭다운용 — 활성 모델 버전 목록."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=ModelVersionSerializer(many=True))
+    def get(self, request):
+        versions = ModelVersion.objects.filter(is_active=True).order_by("name")
+        return Response(ModelVersionSerializer(versions, many=True).data)
 
 
 class BatchListCreateView(APIView):

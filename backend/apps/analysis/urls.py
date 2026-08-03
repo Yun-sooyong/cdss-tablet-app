@@ -3,6 +3,11 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    path(
+        "model-versions/",
+        views.ModelVersionListView.as_view(),
+        name="model-version-list",
+    ),
     path("batches/", views.BatchListCreateView.as_view(), name="batch-list-create"),
     path(
         "batches/<uuid:batch_id>/images/",
