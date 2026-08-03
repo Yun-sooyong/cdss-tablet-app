@@ -30,9 +30,9 @@ app.send_task(
 `model_name`은 `ModelVersion.name` 값 그대로다. 워커의 `model_registry.py`가
 `"unet_v1"` / `"attention_unet_v1"` 같은 **이름 문자열**로 모델을 찾기 때문에
 `model_version_id`(UUID)만으로는 조회가 안 돼서 추가했다 (박검모 발견,
-2026-08-03). 지금 backend에 등록된 값은 `til-scoring-attention-unet`인데,
-워커 쪽 `model_registry.py`의 키 이름과 정확히 일치해야 한다 — 다르면
-`ModelVersion.name`을 워커 레지스트리 키에 맞춰 갱신할 것.
+2026-08-03). backend의 `ModelVersion.name`을 워커 레지스트리 키와 동일하게
+`attention_unet_v1`로 맞춰뒀다 (2026-08-03, local + prod 둘 다 갱신).
+`conformal_q`는 `0.87`.
 
 payload에 환자 정보는 없다. 워커는 `job_id`만 알고, 환자 연결은 결과 조회 시
 backend가 조인한다.
