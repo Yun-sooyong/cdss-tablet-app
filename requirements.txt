@@ -10,6 +10,7 @@ python-decouple
 dj-database-url
 gunicorn
 whitenoise
+django-encrypted-model-fields
 
 # task queue (backend + worker 공통)
 celery[redis]
