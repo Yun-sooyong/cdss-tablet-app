@@ -1,0 +1,21 @@
+# repo root 기준 (docker build -f backend/Dockerfile . 로 빌드하므로 컨텍스트는 루트)
+.git
+.venv
+venv/
+**/__pycache__
+**/*.pyc
+**/*.sqlite3
+
+# secrets
+.env
+.env.*
+!.env.example
+
+# backend 이미지에 필요 없는 모듈
+mobile/
+tablet/
+react/
+shared/
+worker/
+docs/
+node_modules/
