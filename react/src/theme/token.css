@@ -1,0 +1,38 @@
+/* segmentation 색상 */
+:root {
+  --seg-tumor: #ff0055;
+  --seg-stroma: #00d2ff;
+  --seg-tils: #ffe600;
+  --seg-abstain: #f59e0b;
+}
+
+/* 2. 뷰어 영역 — 라이트 모드에서도 어둡게 */
+:root {
+  --viewer-bg: oklch(0.16 0 0);
+  --viewer-chrome: oklch(0.24 0 0);
+  --viewer-foreground: oklch(0.92 0 0);
+  --viewer-border: oklch(1 0 0 / 12%);
+}
+
+/* 3. 판정 결과 (result.decision) */
+:root {
+  --decision-low: #64748b;
+  --decision-high: #8b5cf6;
+  --decision-abstain: var(--seg-abstain);
+}
+
+.dark {
+  --decision-low: #94a3b8;
+  --decision-high: #a78bfa;
+}
+
+/*  4. shadcn에 없는 상태색 */
+:root {
+  --success: #059669;
+  --warning: #d97706;
+}
+
+.dark {
+  --success: #34d399;
+  --warning: #fbbf24;
+}
