@@ -19,6 +19,17 @@ class PatientSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at", "updated_at"]
 
 
+class PatientSummarySerializer(serializers.ModelSerializer):
+    """batch/job 응답에 끼워 넣는 최소 정보 — "이 분석은 누구 것인지"
+    판독 맥락용. 주소/전화번호처럼 더 민감한 필드는 넣지 않는다
+    (최일운 요청, 2026-08-04)."""
+
+    class Meta:
+        model = Patient
+        fields = ["id", "name", "birth_date", "sex"]
+        read_only_fields = fields
+
+
 class PatientRegisterSerializer(serializers.Serializer):
     """이메일/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
 
