@@ -5,7 +5,6 @@ import {
     Inbox,
     LayoutDashboard,
     List,
-    Loader,
     MessageSquare,
     Search,
     Share2,
@@ -34,7 +33,6 @@ export const NAV_GROUPS : NavGroup[] = [
         items: [
             { to: '/', label: '대시보드', icon: LayoutDashboard },
             { to: '/upload', label: '업로드', icon: Upload },
-            { to: '/processing', label: '처리 중', icon: Loader },
             { to: '/cases', label: '케이스 목록', icon: List },
         ],
     },
