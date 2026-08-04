@@ -6,10 +6,16 @@ from apps.staff.models import Staff
 
 
 class ModelVersion(BaseModel):
+    """model/model_version 분리(설계문서 6.7절)는 보류 — name이 이미 검모님
+    model_registry.py 조회 키로 확정돼서 건드리지 않는다. weight_key/
+    trained_at만 이 테이블에 추가."""
+
     name = models.CharField(max_length=100)
     version = models.CharField(max_length=50)
     conformal_q = models.FloatField()
     is_active = models.BooleanField(default=True)
+    weight_key = models.CharField(max_length=255, blank=True)  # 가중치 파일 스토리지 키
+    trained_at = models.DateField(null=True, blank=True)
 
     class Meta:
         db_table = "model_version"

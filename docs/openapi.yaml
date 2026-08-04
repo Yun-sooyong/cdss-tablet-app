@@ -1481,6 +1481,14 @@ components:
         is_active:
           type: boolean
           readOnly: true
+        weight_key:
+          type: string
+          readOnly: true
+        trained_at:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1491,7 +1499,9 @@ components:
       - id
       - is_active
       - name
+      - trained_at
       - version
+      - weight_key
     Notification:
       type: object
       properties:
