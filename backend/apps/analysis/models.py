@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.common.models import BaseModel
+from apps.patients.models import Patient
 from apps.staff.models import Staff
 
 
@@ -27,6 +28,11 @@ class Batch(BaseModel):
 
     created_by = models.ForeignKey(
         Staff, on_delete=models.PROTECT, related_name="batches"
+    )
+    # 설계문서 2.6/3.2-j — batch에 환자 FK 연결. 기존(이 필드 추가 전) 테스트
+    # batch가 이미 있어서 null=True로 둔다 — API 생성 시엔 필수로 강제한다.
+    patient = models.ForeignKey(
+        Patient, on_delete=models.PROTECT, null=True, blank=True, related_name="batches"
     )
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING

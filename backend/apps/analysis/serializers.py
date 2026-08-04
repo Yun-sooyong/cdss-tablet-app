@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.patients.models import Patient
 from apps.staff.models import Staff
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion
@@ -15,8 +16,14 @@ class ModelVersionSerializer(serializers.ModelSerializer):
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
-        fields = ["id", "status", "created_by", "created_at", "updated_at"]
+        fields = ["id", "patient", "status", "created_by", "created_at", "updated_at"]
         read_only_fields = fields
+
+
+class BatchCreateSerializer(serializers.Serializer):
+    patient_id = serializers.PrimaryKeyRelatedField(
+        source="patient", queryset=Patient.objects.all()
+    )
 
 
 class ImageSerializer(serializers.ModelSerializer):
