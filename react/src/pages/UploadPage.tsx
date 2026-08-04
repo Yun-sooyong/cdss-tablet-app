@@ -1,4 +1,7 @@
+// 분석 등록 >> 환자 · 슬라이드 · 모델
 import { useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Search, UploadCloud, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -8,6 +11,8 @@ import {
     requestUploadUrl,
     searchPatients,
 } from '@/api';
+import { qk } from '@/api/keys';
+import { FIELD_INPUT, FIELD_SUBMIT, ICON_BUTTON } from '@/components/form';
 import type { PatientSummary } from '@/api/types';
 import { useUploads } from '@/components/upload/context';
 import { patientBrief, patientFull } from '@/lib/patient';
@@ -19,19 +24,35 @@ const formatSize = (bytes : number) : string => {
 };
 
 export default function UploadPage() {
+    const navigate = useNavigate();
+    const queryClient = useQueryClient();
     const { enqueue } = useUploads();
-    const models = getActiveModelVersions();
+
+    const { data: models } = useQuery({
+        queryKey: qk.modelVersions,
+        queryFn: getActiveModelVersions,
+    });
 
     const [query, setQuery] = useState('');
     const [patient, setPatient] = useState<PatientSummary | null>(null);
     const [files, setFiles] = useState<File[]>([]);
-    const [modelId, setModelId] = useState(models[0]?.id ?? '');
+    // '' >> 미선택. 목록이 오면 첫 번째가 기본
+    const [modelId, setModelId] = useState('');
     const [dragOver, setDragOver] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    const results = query.trim() ? searchPatients({ chartNumber: query.trim() }) : [];
+    const chartNumber = query.trim();
+    const search = useQuery({
+        queryKey: qk.patientSearch(chartNumber),
+        queryFn: () => searchPatients({ chartNumber }),
+        enabled: !!chartNumber,
+    });
+
     const totalSize = files.reduce((sum, f) => sum + f.size, 0);
-    const canStart = !!patient && files.length > 0;
+
+    const pickedModel = modelId || models?.[0]?.id || '';
+    // 모델이 없으면 분석을 걸 수 없다
+    const canStart = !!patient && files.length > 0 && !!pickedModel;
 
     function addFiles(list : FileList | null) {
         if (!list) return;
@@ -42,31 +63,43 @@ export default function UploadPage() {
         });
     }
 
-    function start() {
-        if (!patient || files.length === 0) return;
+    // 배치 생성 → 파일별 서명 URL → 업로드 큐
+    const start = useMutation({
+        mutationFn: async () => {
+            const batch = await createBatch(patient!.id);
 
-        const batch = createBatch(patient.id);
-        const queued = files.map((file) => {
-            const image = requestUploadUrl(batch.id, file.name);
-            return { file, uploadUrl: image.upload_url, filename: file.name };
-        });
+            const queued = await Promise.all(
+                files.map(async (file) => {
+                    const image = await requestUploadUrl(batch.id, file.name);
+                    return { file, uploadUrl: image.upload_url, filename: file.name };
+                }),
+            );
 
-        enqueue(batch.id, modelId || undefined, queued);
+            return { batch, queued, count: files.length, name: patient!.name };
+        },
+        onSuccess: ({ batch, queued, count, name }) => {
+            enqueue(batch.id, pickedModel || undefined, queued);
+            void queryClient.invalidateQueries({ queryKey: qk.batches });
 
-        toast('업로드를 시작했습니다', {
-            description: `${patient.name} · 슬라이드 ${files.length}장 · 헤더에서 진행 상황을 볼 수 있습니다`,
-        });
+            toast('업로드를 시작했습니다', {
+                description: `${name} · 슬라이드 ${count}장 · 헤더에서 진행 상황을 볼 수 있습니다`,
+                action: {
+                    label: '진행 보기',
+                    onClick: () => navigate(`/batches/${batch.id}`),
+                },
+            });
 
-        // 폼만 비우고 화면에 남는다. 다음 환자 걸 바로 올릴 수 있다
-        setPatient(null);
-        setQuery('');
-        setFiles([]);
-    }
+            // 폼만 비우고 화면은 유지
+            setPatient(null);
+            setQuery('');
+            setFiles([]);
+        },
+        onError: (error : Error) =>
+            toast('업로드를 시작하지 못했습니다', { description: error.message }),
+    });
 
     return (
         <div className="mx-auto max-w-5xl">
-            <h1 className="mb-6 text-xl font-semibold">분석 등록</h1>
-
             <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:items-start">
                 <div>
                     <Section step={1} title="환자" done={!!patient}>
@@ -76,7 +109,7 @@ export default function UploadPage() {
                                 <button
                                     type="button"
                                     onClick={() => setPatient(null)}
-                                    className="shrink-0 text-sm text-ink-muted transition-colors hover:text-ink"
+                                    className={`shrink-0 text-sm ${ICON_BUTTON}`}
                                 >
                                     변경
                                 </button>
@@ -93,22 +126,28 @@ export default function UploadPage() {
                                         onChange={(e) => setQuery(e.target.value)}
                                         placeholder="차트번호"
                                         aria-label="차트번호로 환자 검색"
-                                        className="h-10 w-full rounded-md border border-border bg-surface pl-9 pr-3 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+                                        className={`${FIELD_INPUT} pl-9`}
                                     />
                                 </div>
-                                <p className="mt-2 text-xs text-ink-faint">
-                                    이름과 생년월일은 암호화 저장이라 검색할 수 없습니다. 차트번호로
-                                    찾아주세요.
-                                </p>
-
                                 {query.trim() && (
                                     <div className="mt-3 divide-y divide-border rounded-md border border-border">
-                                        {results.length === 0 ? (
+                                        {search.isError ? (
+                                            <p
+                                                role="alert"
+                                                className="px-4 py-6 text-center text-sm text-danger"
+                                            >
+                                                검색하지 못했습니다.
+                                            </p>
+                                        ) : search.isPending ? (
                                             <p className="px-4 py-6 text-center text-sm text-ink-faint">
-                                                일치하는 환자가 없습니다.
+                                                검색 중
+                                            </p>
+                                        ) : search.data.length === 0 ? (
+                                            <p className="px-4 py-6 text-center text-sm text-ink-faint">
+                                                일치하는 환자가 없습니다
                                             </p>
                                         ) : (
-                                            results.map((p) => (
+                                            search.data.map((p) => (
                                                 <button
                                                     key={p.id}
                                                     type="button"
@@ -193,16 +232,15 @@ export default function UploadPage() {
                     </Section>
                 </div>
 
-                {/* 파일이 많아도 시작 버튼이 화면에 남아 있어야 한다 */}
                 <div className="lg:sticky lg:top-6">
                     <Section step={3} title="모델" disabled={!canStart}>
                         <select
-                            value={modelId}
+                            value={pickedModel}
                             onChange={(e) => setModelId(e.target.value)}
                             aria-label="분석 모델"
-                            className="h-10 w-full rounded-md border border-border bg-surface px-3 text-[15px] text-ink focus:border-brand focus:outline-none"
+                            className={FIELD_INPUT}
                         >
-                            {models.map((m) => (
+                            {(models ?? []).map((m) => (
                                 <option key={m.id} value={m.id}>
                                     {m.name} ({m.version})
                                 </option>
@@ -220,9 +258,9 @@ export default function UploadPage() {
 
                         <button
                             type="button"
-                            onClick={start}
-                            disabled={!canStart}
-                            className="mt-5 h-10 w-full rounded-md bg-brand text-[15px] font-medium text-on-brand transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => start.mutate()}
+                            disabled={!canStart || start.isPending}
+                            className={`mt-5 ${FIELD_SUBMIT}`}
                         >
                             분석 시작
                         </button>
