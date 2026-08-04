@@ -20,6 +20,11 @@ urlpatterns = [
         name="batch-image-upload",
     ),
     path(
+        "batches/<uuid:batch_id>/start/",
+        views.BatchStartView.as_view(),
+        name="batch-start",
+    ),
+    path(
         "batches/<uuid:batch_id>/shares/",
         views.BatchShareListCreateView.as_view(),
         name="batch-share-list-create",
@@ -39,5 +44,10 @@ urlpatterns = [
         "jobs/<uuid:job_id>/callback/",
         views.JobCallbackView.as_view(),
         name="job-callback",
+    ),
+    path(
+        "internal/workers/heartbeat/",
+        views.WorkerHeartbeatView.as_view(),
+        name="worker-heartbeat",
     ),
 ]

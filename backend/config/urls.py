@@ -3,7 +3,14 @@ from django.urls import include, path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.accounts.views import InvitationIssueView, InvitationRedeemView
+from apps.accounts.views import (
+    DeviceTokenRegisterView,
+    InvitationIssueView,
+    InvitationRedeemView,
+    NotificationListView,
+    QRVerifyView,
+)
+from apps.analysis.views import UploadSignedUrlView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -22,6 +29,22 @@ urlpatterns = [
         "api/v1/staff/invitations/",
         InvitationIssueView.as_view(),
         name="invitation-issue",
+    ),
+    path("api/v1/qr/verify/", QRVerifyView.as_view(), name="qr-verify"),
+    path(
+        "api/v1/devices/tokens/",
+        DeviceTokenRegisterView.as_view(),
+        name="device-token-register",
+    ),
+    path(
+        "api/v1/notifications/",
+        NotificationListView.as_view(),
+        name="notification-list",
+    ),
+    path(
+        "api/v1/uploads/signed-url/",
+        UploadSignedUrlView.as_view(),
+        name="upload-signed-url",
     ),
     path("api/v1/analysis/", include("apps.analysis.urls")),
     path("api/v1/patients/", include("apps.patients.urls")),

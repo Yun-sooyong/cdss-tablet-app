@@ -1,5 +1,3 @@
-import uuid
-
 from django.conf import settings
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
@@ -12,12 +10,13 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import get_staff_or_403
 
-from .models import AnalysisShare, Batch, Image, Job, ModelVersion
+from .models import AnalysisShare, Batch, Image, Job, ModelVersion, WorkerHeartbeat
 from .serializers import (
     AnalysisShareCreateSerializer,
     AnalysisShareSerializer,
     BatchCreateSerializer,
     BatchSerializer,
+    BatchStartSerializer,
     ImageSerializer,
     ImageUploadRequestSerializer,
     ImageUploadResponseSerializer,
@@ -25,8 +24,14 @@ from .serializers import (
     JobCreateSerializer,
     JobSerializer,
     ModelVersionSerializer,
+    UploadSignedUrlRequestSerializer,
+    WorkerHeartbeatSerializer,
 )
-from .services import apply_job_result, build_upload_url, dispatch_job
+from .services import (
+    apply_job_result,
+    create_image_with_upload_url,
+    dispatch_job,
+)
 
 
 def active_shares_for(staff):
@@ -112,6 +117,10 @@ class BatchDetailView(APIView):
 
 
 class BatchImageUploadView(APIView):
+    """POST /batches/{id}/images/. UploadSignedUrlView와 동일 로직 —
+    저희가 먼저 만든 nested 경로, 설계문서엔 독립 경로(/uploads/signed-url)로
+    돼 있어서 그것도 별도로 만들어뒀다. 둘 다 남겨둠(하위호환)."""
+
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(
@@ -125,13 +134,95 @@ class BatchImageUploadView(APIView):
         serializer.is_valid(raise_exception=True)
         filename = serializer.validated_data["original_filename"]
 
-        storage_key = f"uploads/{batch.id}/{uuid.uuid4()}_{filename}"
-        image = Image.objects.create(
-            batch=batch, storage_key=storage_key, original_filename=filename
+        image, upload_url = create_image_with_upload_url(batch, filename)
+        data = ImageSerializer(image).data
+        data["upload_url"] = upload_url
+        return Response(data, status=status.HTTP_201_CREATED)
+
+
+class UploadSignedUrlView(APIView):
+    """설계문서 7.4절 — POST /uploads/signed-url. 독립 엔드포인트 버전."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(
+        request=UploadSignedUrlRequestSerializer, responses=ImageUploadResponseSerializer
+    )
+    def post(self, request):
+        staff = get_staff_or_403(request.user)
+        serializer = UploadSignedUrlRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        batch = serializer.validated_data["batch"]
+        if batch.created_by_id != staff.id:
+            raise PermissionDenied("본인 batch에만 이미지를 추가할 수 있습니다.")
+
+        image, upload_url = create_image_with_upload_url(
+            batch, serializer.validated_data["original_filename"]
         )
         data = ImageSerializer(image).data
-        data["upload_url"] = build_upload_url(storage_key)
+        data["upload_url"] = upload_url
         return Response(data, status=status.HTTP_201_CREATED)
+
+
+class BatchStartView(APIView):
+    """설계문서 7.4절 — POST /batches/{id}/start. 분석 시작.
+
+    batch에 등록된 이미지 중 아직 job이 없는 것들에 대해 한 번에 job을
+    만들어 큐에 등록한다 (기존 POST /images/{id}/jobs/는 이미지 하나씩
+    개별 등록하는 하위 경로로 계속 남겨둠)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=BatchStartSerializer, responses=BatchSerializer)
+    def post(self, request, batch_id):
+        staff = get_staff_or_403(request.user)
+        batch = get_object_or_404(
+            Batch, id=batch_id, created_by=staff, deleted_at__isnull=True
+        )
+
+        serializer = BatchStartSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        model_version_id = serializer.validated_data.get("model_version_id")
+
+        if model_version_id:
+            model_version = get_object_or_404(
+                ModelVersion, id=model_version_id, is_active=True
+            )
+        else:
+            model_version = (
+                ModelVersion.objects.filter(is_active=True)
+                .order_by("-created_at")
+                .first()
+            )
+            if model_version is None:
+                return Response(
+                    {"detail": "사용 가능한 모델 버전이 없습니다."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        images_without_job = list(Image.objects.filter(batch=batch, jobs__isnull=True))
+        if not images_without_job:
+            return Response(
+                {"detail": "새로 시작할 이미지가 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # job을 전부 먼저 만든 뒤에 디스패치한다 — mock 모드는 동기 처리라,
+        # 하나씩 만들면서 바로 처리하면 아직 안 만들어진 나머지 이미지를
+        # "이미 다 끝남"으로 착각해 배치를 조기 완료 처리하는 버그가 생긴다.
+        jobs = [
+            Job.objects.create(image=image, model_version=model_version)
+            for image in images_without_job
+        ]
+
+        batch.status = Batch.Status.PROCESSING
+        batch.save(update_fields=["status", "updated_at"])
+
+        for job in jobs:
+            dispatch_job(job)
+
+        batch.refresh_from_db()
+        return Response(BatchSerializer(batch).data)
 
 
 class ImageJobCreateView(APIView):
@@ -252,3 +343,28 @@ class JobCallbackView(APIView):
         serializer.is_valid(raise_exception=True)
         apply_job_result(job, **serializer.validated_data)
         return Response(JobSerializer(job).data)
+
+
+class WorkerHeartbeatView(APIView):
+    """설계문서 7.5절/2.5절 — POST /internal/workers/heartbeat. 워커 생존 신고."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=WorkerHeartbeatSerializer, responses=None)
+    def post(self, request):
+        token = request.headers.get("X-Internal-Token", "")
+        if not settings.INTERNAL_API_TOKEN or token != settings.INTERNAL_API_TOKEN:
+            return Response(
+                {"detail": "unauthorized"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        serializer = WorkerHeartbeatSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        WorkerHeartbeat.objects.update_or_create(
+            worker_name=data["worker_name"],
+            defaults={"version": data.get("version", "")},
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -99,3 +99,15 @@ class AnalysisShare(BaseModel):
 
     class Meta:
         db_table = "analysis_share"
+
+
+class WorkerHeartbeat(models.Model):
+    """워커 생존 관리. 설계문서 6.9절/2.5절 — N분 이상 끊기면 알림 (모니터링은
+    별도 과제, 여기서는 최신 생존 시각만 기록)."""
+
+    worker_name = models.CharField(max_length=50, primary_key=True)
+    last_seen_at = models.DateTimeField(auto_now=True)
+    version = models.CharField(max_length=20, blank=True)
+
+    class Meta:
+        db_table = "worker_heartbeat"

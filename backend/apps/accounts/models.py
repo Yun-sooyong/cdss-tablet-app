@@ -58,3 +58,115 @@ class Invitation(models.Model):
 
     def is_valid(self) -> bool:
         return not self.is_used and self.expires_at > timezone.now()
+
+
+def generate_qr_token() -> str:
+    return secrets.token_hex(32)  # 64자
+
+
+class QRToken(models.Model):
+    """환자 QR 발급/태블릿 검증. 설계문서 6.2절 — 일회성·단기 만료·재사용 차단
+    없으면 화면 캡처만으로 타인이 환자 정보에 접근하게 된다."""
+
+    token = models.CharField(max_length=64, primary_key=True, default=generate_qr_token)
+    patient = models.ForeignKey(
+        "patients.Patient", on_delete=models.CASCADE, related_name="qr_tokens"
+    )
+    issued_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(
+        "staff.Staff",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="qr_verifications",
+    )
+
+    class Meta:
+        db_table = "qr_token"
+
+    def is_valid(self) -> bool:
+        return not self.is_used and self.expires_at > timezone.now()
+
+
+class DeviceToken(models.Model):
+    """FCM 푸시용 디바이스 토큰. 설계문서 6.9절."""
+
+    class Platform(models.TextChoices):
+        IOS = "ios", "iOS"
+        ANDROID = "android", "Android"
+        WEB = "web", "Web"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="device_tokens"
+    )
+    fcm_token = models.CharField(max_length=255)
+    platform = models.CharField(max_length=10, choices=Platform.choices)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "device_token"
+        unique_together = ("user", "fcm_token")
+
+
+class Notification(models.Model):
+    """알림. 설계문서 6.9절 — 분석 완료 등 이벤트 시 생성, 실제 FCM 발송
+    여부와 무관하게 기록은 항상 남긴다."""
+
+    class Type(models.TextChoices):
+        ANALYSIS_DONE = "analysis_done", "분석 완료"
+        SHARE = "share", "공유"
+        CHAT = "chat", "채팅"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    type = models.CharField(max_length=20, choices=Type.choices)
+    body = models.CharField(max_length=255)
+    target_type = models.CharField(max_length=50, blank=True)
+    target_id = models.UUIDField(null=True, blank=True)
+    is_read = models.BooleanField(default=False)
+    sent_result = models.CharField(max_length=50, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "notification"
+        ordering = ["-created_at"]
+
+
+class AuditLog(models.Model):
+    """접근 로그. 설계문서 6.9절/12장 — 의료 시스템은 조회 이력까지 남겨야
+    유출 시 범위 파악이 가능하다 (법적 요구사항에 가까움)."""
+
+    class Action(models.TextChoices):
+        READ = "READ", "조회"
+        CREATE = "CREATE", "생성"
+        UPDATE = "UPDATE", "수정"
+        DELETE = "DELETE", "삭제"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    actor_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="audit_logs",
+    )
+    action = models.CharField(max_length=10, choices=Action.choices)
+    target_table = models.CharField(max_length=50)
+    target_id = models.UUIDField(null=True, blank=True)
+    patient = models.ForeignKey(
+        "patients.Patient",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_logs",
+    )
+    ip = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "audit_log"
