@@ -2,7 +2,8 @@ from rest_framework import serializers
 
 from apps.staff.models import Department
 
-from .models import Diagnosis, Disease, Reservation, Visit
+from .models import Diagnosis, Disease, DoseLog, Drug, Prescription, PrescriptionDrug, Reservation, Visit
+from .services import build_file_url
 
 
 class ReservationSerializer(serializers.ModelSerializer):
@@ -71,4 +72,52 @@ class VisitSerializer(serializers.ModelSerializer):
             "diagnoses",
             "created_at",
         ]
+        read_only_fields = fields
+
+
+class DrugSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Drug
+        fields = ["code", "product_name", "ingredient", "unit"]
+        read_only_fields = fields
+
+
+class PrescriptionDrugSerializer(serializers.ModelSerializer):
+    drug = DrugSerializer(read_only=True)
+
+    class Meta:
+        model = PrescriptionDrug
+        fields = ["id", "drug", "dose_per_take", "times_per_day", "total_days"]
+        read_only_fields = fields
+
+
+class PrescriptionSerializer(serializers.ModelSerializer):
+    drugs = PrescriptionDrugSerializer(many=True, read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Prescription
+        fields = [
+            "id",
+            "visit",
+            "staff",
+            "prescribed_at",
+            "file_url",
+            "drugs",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_file_url(self, obj) -> str | None:
+        return build_file_url(obj.file_key) if obj.file_key else None
+
+
+class MedicationLogCreateSerializer(serializers.Serializer):
+    schedule_id = serializers.UUIDField()
+
+
+class DoseLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DoseLog
+        fields = ["id", "schedule", "is_taken", "taken_at"]
         read_only_fields = fields

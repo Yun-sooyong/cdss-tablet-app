@@ -1,26 +1,53 @@
 from rest_framework import serializers
 
-from .models import Batch, Image, Job, ModelVersion
+from apps.patients.models import Patient
+from apps.staff.models import Staff
+
+from .models import AnalysisShare, Batch, Image, Job, ModelVersion
 
 
 class ModelVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModelVersion
-        fields = ["id", "name", "version", "conformal_q", "is_active", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "version",
+            "conformal_q",
+            "is_active",
+            "weight_key",
+            "trained_at",
+            "created_at",
+        ]
         read_only_fields = fields
 
 
 class BatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Batch
-        fields = ["id", "status", "created_by", "created_at", "updated_at"]
+        fields = ["id", "patient", "status", "created_by", "created_at", "updated_at"]
         read_only_fields = fields
+
+
+class BatchCreateSerializer(serializers.Serializer):
+    patient_id = serializers.PrimaryKeyRelatedField(
+        source="patient", queryset=Patient.objects.all()
+    )
 
 
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
-        fields = ["id", "batch", "storage_key", "original_filename", "created_at"]
+        fields = [
+            "id",
+            "batch",
+            "storage_key",
+            "original_filename",
+            "captured_at",
+            "width",
+            "height",
+            "created_at",
+        ]
         read_only_fields = fields
 
 
@@ -61,3 +88,43 @@ class JobCallbackSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=["stil_done", "succeeded", "failed"])
     result = serializers.JSONField(required=False)
     error_message = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AnalysisShareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnalysisShare
+        fields = [
+            "id",
+            "batch",
+            "shared_by",
+            "shared_to",
+            "permission",
+            "expires_at",
+            "revoked_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class AnalysisShareCreateSerializer(serializers.Serializer):
+    shared_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.all())
+    permission = serializers.ChoiceField(
+        choices=AnalysisShare.Permission.choices, default=AnalysisShare.Permission.READ
+    )
+    expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+
+
+class UploadSignedUrlRequestSerializer(serializers.Serializer):
+    batch_id = serializers.PrimaryKeyRelatedField(
+        source="batch", queryset=Batch.objects.filter(deleted_at__isnull=True)
+    )
+    original_filename = serializers.CharField(max_length=255)
+
+
+class BatchStartSerializer(serializers.Serializer):
+    model_version_id = serializers.UUIDField(required=False)
+
+
+class WorkerHeartbeatSerializer(serializers.Serializer):
+    worker_name = serializers.CharField(max_length=50)
+    version = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")

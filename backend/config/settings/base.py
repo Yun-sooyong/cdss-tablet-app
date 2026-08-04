@@ -12,6 +12,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "drf_spectacular",
     "encrypted_model_fields",
     # local apps
@@ -50,6 +51,10 @@ INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN", "")
 
 # backend는 워커에게 작업을 등록(send_task)만 한다 — 큐를 소비하지 않는다 (config/celery.py).
 CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", "")
+
+# 이미지 업로드용 GCS 버킷. 비어있으면(로컬 등) build_upload_url이 자동으로
+# mock URL을 돌려준다 — 실제 서명 URL 발급은 이 값이 있을 때만 시도한다.
+GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
 
 # 최초 migrate 이전에 반드시 설정되어 있어야 한다. 자세한 내용은 README 참조.
 AUTH_USER_MODEL = "accounts.User"
