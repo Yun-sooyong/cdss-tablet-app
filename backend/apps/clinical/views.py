@@ -6,11 +6,12 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import get_patient_or_404
 
-from .models import Reservation, ReservationHistory
+from .models import Reservation, ReservationHistory, Visit
 from .serializers import (
     ReservationCreateSerializer,
     ReservationRescheduleSerializer,
     ReservationSerializer,
+    VisitSerializer,
 )
 
 
@@ -103,3 +104,36 @@ class ReservationDetailView(APIView):
         reservation.status = Reservation.Status.CANCELED
         reservation.save(update_fields=["status", "updated_at"])
         return Response(ReservationSerializer(reservation).data)
+
+
+class PatientVisitListView(APIView):
+    """설계문서 7.3절 — GET /patients/me/visits. 진단명 포함."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=VisitSerializer(many=True))
+    def get(self, request):
+        patient = get_patient_or_404(request.user)
+        qs = (
+            Visit.objects.filter(patient=patient, deleted_at__isnull=True)
+            .prefetch_related("diagnoses__disease")
+            .order_by("-visited_at")
+        )
+        return Response(VisitSerializer(qs, many=True).data)
+
+
+class VisitDetailView(APIView):
+    """설계문서 7.3절 — GET /visits/{id}. 본인 진료만 접근 가능."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=VisitSerializer)
+    def get(self, request, visit_id):
+        patient = get_patient_or_404(request.user)
+        visit = get_object_or_404(
+            Visit.objects.prefetch_related("diagnoses__disease"),
+            id=visit_id,
+            patient=patient,
+            deleted_at__isnull=True,
+        )
+        return Response(VisitSerializer(visit).data)
