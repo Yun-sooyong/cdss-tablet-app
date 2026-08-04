@@ -1,3 +1,4 @@
+export * from './patients';
 export * from './modelVersions';
 export * from './batches';
 export * from './images';

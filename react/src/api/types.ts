@@ -1,6 +1,17 @@
 export type JobStatus = 'queued' | 'running' | 'stil_done' | 'succeeded' | 'failed';
 export type BatchStatus = 'pending' | 'processing' | 'done' | 'failed';
 export type Decision = 'LOW' | 'HIGH' | 'ABSTAIN';
+export type Sex = 'M' | 'F' | 'O' | 'U';
+
+// PatientSummary >> batch/job 응답에 끼워 넣는 판독 맥락용 최소 정보.
+// 주소 전화번호처럼 민감한 필드는 들어오지 않는다.
+export interface PatientSummary {
+    id : string;
+    chart_number : string;
+    name : string;
+    birth_date : string;
+    sex : Sex;
+}
 
 export type ClassComposition = {
     tumor : number; stroma : number; immune : number;
@@ -28,6 +39,8 @@ export interface JobResult {
 
 export interface Batch {
     id : string;
+    patient : string | null;
+    patient_summary : PatientSummary | null;
     status : BatchStatus;
     created_by : string;
     created_at : string;
@@ -49,6 +62,7 @@ export interface Job {
     model_version : string;
     status : JobStatus;
     result : JobResult | null;
+    patient_summary : PatientSummary | null;
     error_message : string;
     started_at : string | null;
     finished_at : string | null;
