@@ -24,7 +24,7 @@ export default function ResultDetailPage() {
 
     if (!job) {
         return (
-            <div className="p-6">
+            <div>
                 <BackLink />
                 <div className="py-16 text-center text-sm text-ink-faint">
                     해당 분석 결과를 찾을 수 없습니다.
@@ -37,7 +37,7 @@ export default function ResultDetailPage() {
     const result = job.result;
 
     return (
-        <div className="p-6">
+        <div>
             <BackLink />
 
             <div className="mb-6 flex items-start justify-between gap-4">

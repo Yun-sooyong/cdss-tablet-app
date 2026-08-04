@@ -27,10 +27,8 @@ export default function ResultSummaryPage() {
 
     if (!batch) {
         return (
-            <div className="p-6">
-                <div className="py-16 text-center text-sm text-ink-faint">
-                    해당 배치를 찾을 수 없습니다.
-                </div>
+            <div className="py-16 text-center text-sm text-ink-faint">
+                해당 배치를 찾을 수 없습니다.
             </div>
         );
     }
@@ -51,7 +49,7 @@ export default function ResultSummaryPage() {
         getModelVersions().find((m) => m.id === rows[0]?.job.model_version)?.name ?? '-';
 
     return (
-        <div className="p-6">
+        <div>
             <div className="mb-6">
                 <div className="flex items-baseline gap-3">
                     <h1 className="text-xl font-semibold">
