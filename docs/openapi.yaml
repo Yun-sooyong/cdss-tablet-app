@@ -50,7 +50,9 @@ paths:
   /api/v1/analysis/batches/{batch_id}/:
     get:
       operationId: v1_analysis_batches_retrieve
-      description: 설계문서 7.4절 — 배치 상세 (job 목록 포함). 본인 + 공유받은 batch만.
+      description: |-
+        설계문서 7.4절 — 배치 상세 (job 목록 포함) / 삭제. 본인 + 공유받은 batch만 조회,
+        삭제는 본인 것만.
       parameters:
       - in: path
         name: batch_id
@@ -69,6 +71,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Batch'
           description: ''
+    delete:
+      operationId: v1_analysis_batches_destroy
+      description: 리스트에서 삭제 — 설계문서 3.2-i. 물리 삭제 아니라 soft delete.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/analysis/batches/{batch_id}/images/:
     post:
       operationId: v1_analysis_batches_images_create
@@ -631,6 +650,41 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/staff/:
+    get:
+      operationId: v1_staff_list
+      description: 설계문서 7.4절 — GET /staff. 채팅 상대·공유 대상 선택용.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Staff'
+          description: ''
+  /api/v1/staff/{staff_id}/:
+    delete:
+      operationId: v1_staff_destroy
+      description: 설계문서 7.4절 — DELETE /staff/{id}. 관리자 권한만.
+      parameters:
+      - in: path
+        name: staff_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/staff/invitations/:
     post:
       operationId: v1_staff_invitations_create
@@ -657,6 +711,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Invitation'
+          description: ''
+  /api/v1/staff/me/:
+    get:
+      operationId: v1_staff_me_retrieve
+      description: 설계문서 7.4절 — GET/PATCH /staff/me. 3.2-a.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+    patch:
+      operationId: v1_staff_me_partial_update
+      description: 설계문서 7.4절 — GET/PATCH /staff/me. 3.2-a.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
           description: ''
   /api/v1/visits/{visit_id}/:
     get:
@@ -877,6 +971,16 @@ components:
       - ingredient
       - product_name
       - unit
+    EmploymentStatusEnum:
+      enum:
+      - active
+      - leave
+      - resigned
+      type: string
+      description: |-
+        * `active` - 재직
+        * `leave` - 휴직
+        * `resigned` - 퇴사
     ImageUploadRequest:
       type: object
       properties:
@@ -1151,6 +1255,13 @@ components:
           type: string
           default: ''
           maxLength: 200
+    PatchedStaffMeUpdate:
+      type: object
+      description: 본인 정보 수정 — role은 권한 상승 위험이 있어 본인이 못 바꾸게 department만 허용.
+      properties:
+        department:
+          type: string
+          maxLength: 100
     Patient:
       type: object
       properties:
@@ -1356,6 +1467,49 @@ components:
         * `F` - 여성
         * `O` - 기타
         * `U` - 미상
+    Staff:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        employment_status:
+          allOf:
+          - $ref: '#/components/schemas/EmploymentStatusEnum'
+          readOnly: true
+        resigned_at:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - department
+      - email
+      - employment_status
+      - id
+      - resigned_at
+      - role
+      - username
     TokenObtainPair:
       type: object
       properties:
