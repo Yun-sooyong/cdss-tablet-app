@@ -12,6 +12,7 @@ from . import views
 
 urlpatterns = [
     path("register/", views.PatientRegisterView.as_view(), name="patient-register"),
+    path("search/", views.PatientSearchView.as_view(), name="patient-search"),
     path("me/", views.PatientMeView.as_view(), name="patient-me"),
     path(
         "me/reservations/",

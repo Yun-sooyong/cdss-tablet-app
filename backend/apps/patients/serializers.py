@@ -8,6 +8,7 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             "id",
+            "chart_number",
             "name",
             "birth_date",
             "sex",
@@ -16,7 +17,30 @@ class PatientSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "chart_number", "created_at", "updated_at"]
+
+
+class PatientSummarySerializer(serializers.ModelSerializer):
+    """batch/job 응답에 끼워 넣는 최소 정보 — "이 분석은 누구 것인지"
+    판독 맥락용. 주소/전화번호처럼 더 민감한 필드는 넣지 않는다
+    (최일운 요청, 2026-08-04)."""
+
+    class Meta:
+        model = Patient
+        fields = ["id", "chart_number", "name", "birth_date", "sex"]
+        read_only_fields = fields
+
+
+class PatientSearchQuerySerializer(serializers.Serializer):
+    chart_number = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get("chart_number") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                "chart_number 또는 phone 중 하나는 필요합니다."
+            )
+        return attrs
 
 
 class PatientRegisterSerializer(serializers.Serializer):

@@ -99,6 +99,19 @@ class BatchDetailView(APIView):
     def get(self, request, batch_id):
         staff = get_staff_or_403(request.user)
         batch = get_accessible_batch_or_404(staff, batch_id)
+
+        if batch.patient_id:
+            from apps.accounts.models import AuditLog
+            from apps.common.audit import log_access
+
+            log_access(
+                request,
+                AuditLog.Action.READ,
+                target_table="patient",
+                target_id=batch.patient_id,
+                patient=batch.patient,
+            )
+
         data = BatchSerializer(batch).data
         jobs = Job.objects.filter(image__batch=batch).order_by("-created_at")
         data["jobs"] = JobSerializer(jobs, many=True).data
