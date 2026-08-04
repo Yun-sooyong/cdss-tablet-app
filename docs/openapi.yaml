@@ -704,6 +704,35 @@ paths:
                 items:
                   $ref: '#/components/schemas/Visit'
           description: ''
+  /api/v1/patients/register/:
+    post:
+      operationId: v1_patients_register_create
+      description: |-
+        설계문서 3.1-a — 아이디/비밀번호 방식 환자 회원가입.
+        카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
   /api/v1/prescriptions/{prescription_id}/:
     get:
       operationId: v1_prescriptions_retrieve
@@ -1582,6 +1611,44 @@ components:
       - name
       - phone
       - updated_at
+    PatientRegister:
+      type: object
+      description: 아이디/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
+      properties:
+        username:
+          type: string
+          maxLength: 150
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          allOf:
+          - $ref: '#/components/schemas/SexEnum'
+          default: U
+        phone:
+          type: string
+          maxLength: 30
+        address:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - birth_date
+      - email
+      - name
+      - password
+      - phone
+      - username
     PermissionEnum:
       enum:
       - read
