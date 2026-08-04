@@ -9,6 +9,7 @@ from apps.accounts.views import (
     InvitationRedeemView,
     LogoutView,
     NotificationListView,
+    PasswordChangeView,
     QRVerifyView,
 )
 from apps.analysis.views import UploadSignedUrlView
@@ -23,6 +24,11 @@ urlpatterns = [
         name="token_refresh",
     ),
     path("api/v1/auth/logout/", LogoutView.as_view(), name="logout"),
+    path(
+        "api/v1/auth/password/change/",
+        PasswordChangeView.as_view(),
+        name="password-change",
+    ),
     path(
         "api/v1/auth/invitations/redeem/",
         InvitationRedeemView.as_view(),
