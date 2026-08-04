@@ -1,9 +1,13 @@
+// 대시보드
 import { Link } from 'react-router-dom';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 
-import { getBatches, getImage, getJobs, getJobsByBatch } from '@/api';
+import { getBatches, getImages, getJobsByBatch, getLatestJobs } from '@/api';
+import { qk } from '@/api/keys';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { IntervalBar } from '@/components/IntervalBar';
+import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge, DecisionBadge } from '@/components/StatusBadge';
 import { CUTOFF, needsReview, toIntervalView } from '@/lib/decision';
 import { patientBrief } from '@/lib/patient';
@@ -12,25 +16,40 @@ import { cn } from '@/lib/utils';
 const PREVIEW_COUNT = 5;
 
 export default function DashboardPage() {
-    const jobs = getJobs();
-    const batches = getBatches();
+    const batches = useQuery({ queryKey: qk.batches, queryFn: getBatches });
+    const jobs = useQuery({ queryKey: qk.latestJobs, queryFn: getLatestJobs });
+    const { data: images } = useQuery({ queryKey: qk.images, queryFn: getImages });
 
-    const review = jobs.filter((j) => needsReview(j.result));
-
-    // 배치 기준
-    const processing = batches.filter((b) => b.status === 'processing').length;
-    const done = batches.filter((b) => b.status === 'done').length;
-    const failed = batches.filter((b) => b.status === 'failed').length;
-
-    const recent = batches
+    const recent = (batches.data ?? [])
         .slice()
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PREVIEW_COUNT);
 
+    // 슬라이드 수 >> 배치 목록 응답에 없어 미리보기 행만 따로 조회
+    const slideQueries = useQueries({
+        queries: recent.map((batch) => ({
+            queryKey: qk.jobsByBatch(batch.id),
+            queryFn: () => getJobsByBatch(batch.id),
+        })),
+    });
+
+    if (batches.isPending) return <Pending />;
+    if (batches.isError) {
+        return <Failed error={batches.error} onRetry={() => void batches.refetch()} />;
+    }
+
+    const review = (jobs.data ?? []).filter((j) => needsReview(j.result));
+
+    // 배치 기준
+    const processing = batches.data.filter((b) => b.status === 'processing').length;
+    const done = batches.data.filter((b) => b.status === 'done').length;
+    const failed = batches.data.filter((b) => b.status === 'failed').length;
+
+    const filenameOf = (imageId : string) =>
+        images?.find((i) => i.id === imageId)?.original_filename;
+
     return (
         <div>
-            <h1 className="mb-4 text-xl font-semibold">대시보드</h1>
-
             <div className="mb-8 flex flex-wrap items-center gap-x-1 text-sm">
                 <StatLink to="/cases?status=processing" label="진행 중" value={processing} />
                 <Dot />
@@ -78,8 +97,7 @@ export default function DashboardPage() {
                                                     : '환자 미연결'}
                                             </span>
                                             <span className="block truncate text-[13px] text-ink-faint">
-                                                {getImage(job.image)?.original_filename ??
-                                                    job.id.slice(0, 8)}
+                                                {filenameOf(job.image) ?? job.id.slice(0, 8)}
                                             </span>
                                         </span>
 
@@ -106,15 +124,15 @@ export default function DashboardPage() {
             )}
 
             <section>
-                <SectionHeader title="최근 케이스" to="/cases" />
+                <SectionHeader title="최근 판독" to="/cases" />
 
                 {recent.length === 0 ? (
                     <div className="py-10 text-center text-sm text-ink-faint">
-                        아직 등록된 케이스가 없습니다.
+                        등록된 케이스가 없습니다
                     </div>
                 ) : (
                     <div className="divide-y divide-border">
-                        {recent.map((batch) => (
+                        {recent.map((batch, at) => (
                             <Link
                                 key={batch.id}
                                 to={`/batches/${batch.id}`}
@@ -126,7 +144,7 @@ export default function DashboardPage() {
                                         : '환자 미연결'}
                                 </span>
                                 <span className="font-mono text-sm tabular-nums text-ink-muted">
-                                    슬라이드 {getJobsByBatch(batch.id).length}
+                                    슬라이드 {slideQueries[at]?.data?.length ?? '-'}
                                 </span>
                                 <BatchStatusBadge status={batch.status} />
                                 <span className="w-24 text-right text-sm text-ink-muted">

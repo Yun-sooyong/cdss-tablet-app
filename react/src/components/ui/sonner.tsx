@@ -1,32 +1,13 @@
-import { useEffect, useState } from "react"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
+import { useTheme } from "next-themes"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
 
-// 테마 토글이 html의 dark 클래스를 바꾸므로 그걸 관찰한다.
-// sonner가 라이트로 고정되면 description이 자기 기본색을 써서 어두운 배경에 묻힌다.
-function useIsDark() {
-  const [isDark, setIsDark] = useState(
-    () => document.documentElement.classList.contains("dark"),
-  )
-
-  useEffect(() => {
-    const target = document.documentElement
-    const observer = new MutationObserver(() =>
-      setIsDark(target.classList.contains("dark")),
-    )
-    observer.observe(target, { attributes: true, attributeFilter: ["class"] })
-    return () => observer.disconnect()
-  }, [])
-
-  return isDark
-}
-
 const Toaster = ({ ...props }: ToasterProps) => {
-  const isDark = useIsDark()
+  const { resolvedTheme } = useTheme()
 
   return (
     <Sonner
-      theme={isDark ? "dark" : "light"}
+      theme={resolvedTheme === "dark" ? "dark" : "light"}
       className="toaster group"
       icons={{
         success: (
