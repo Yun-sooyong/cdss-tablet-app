@@ -247,6 +247,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/medications/logs/:
+    post:
+      operationId: v1_medications_logs_create
+      description: 설계문서 7.3절 — POST /medications/logs. 복용 체크(dose_log 생성).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseLog'
+          description: ''
   /api/v1/patients/me/:
     get:
       operationId: v1_patients_me_retrieve
@@ -299,6 +326,38 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/patients/me/medications/schedule/:
+    get:
+      operationId: v1_patients_me_medications_schedule_retrieve
+      description: |-
+        설계문서 7.3절 — GET /patients/me/medications/schedule. 3.1-d, 3.1-e.
+
+        복약 캘린더(스케줄 목록) + 처방약 단위 잔량 %.
+        잔량 % = (처방 총량 - 복용 기록) / 처방 총량 (설계문서 6.6절).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/patients/me/prescriptions/:
+    get:
+      operationId: v1_patients_me_prescriptions_list
+      description: 설계문서 7.3절 — GET /patients/me/prescriptions. 3.1-c.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prescription'
+          description: ''
   /api/v1/patients/me/reservations/:
     get:
       operationId: v1_patients_me_reservations_list
@@ -366,6 +425,28 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Visit'
+          description: ''
+  /api/v1/prescriptions/{prescription_id}/:
+    get:
+      operationId: v1_prescriptions_retrieve
+      description: 설계문서 7.3절 — GET /prescriptions/{id}. 처방전 상세 + 파일 서명 URL.
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
           description: ''
   /api/v1/reservations/{reservation_id}/:
     get:
@@ -564,6 +645,50 @@ components:
       - code
       - name_en
       - name_ko
+    DoseLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        schedule:
+          type: string
+          format: uuid
+          readOnly: true
+        is_taken:
+          type: boolean
+          readOnly: true
+        taken_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - id
+      - is_taken
+      - schedule
+      - taken_at
+    Drug:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        ingredient:
+          type: string
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+      required:
+      - code
+      - ingredient
+      - product_name
+      - unit
     ImageUploadRequest:
       type: object
       properties:
@@ -760,6 +885,14 @@ components:
         * `stil_done` - sTIL 완료 (리포트 대기)
         * `succeeded` - 성공
         * `failed` - 실패
+    MedicationLogCreate:
+      type: object
+      properties:
+        schedule_id:
+          type: string
+          format: uuid
+      required:
+      - schedule_id
     ModelVersion:
       type: object
       properties:
@@ -866,6 +999,75 @@ components:
       - name
       - phone
       - updated_at
+    Prescription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        visit:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        prescribed_at:
+          type: string
+          format: date
+          readOnly: true
+        file_url:
+          type: string
+          nullable: true
+          readOnly: true
+        drugs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionDrug'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - drugs
+      - file_url
+      - id
+      - prescribed_at
+      - staff
+      - visit
+    PrescriptionDrug:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        drug:
+          allOf:
+          - $ref: '#/components/schemas/Drug'
+          readOnly: true
+        dose_per_take:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+        times_per_day:
+          type: integer
+          readOnly: true
+        total_days:
+          type: integer
+          readOnly: true
+      required:
+      - dose_per_take
+      - drug
+      - id
+      - times_per_day
+      - total_days
     Reservation:
       type: object
       properties:
