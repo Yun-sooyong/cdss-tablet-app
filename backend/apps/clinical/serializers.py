@@ -67,6 +67,7 @@ class VisitSerializer(serializers.ModelSerializer):
             "id",
             "patient",
             "staff",
+            "department",
             "visited_at",
             "note",
             "diagnoses",

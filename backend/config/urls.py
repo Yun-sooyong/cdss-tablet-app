@@ -12,6 +12,7 @@ from apps.accounts.views import (
     QRVerifyView,
 )
 from apps.analysis.views import UploadSignedUrlView
+from apps.staff.views import DepartmentListView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -48,6 +49,7 @@ urlpatterns = [
         UploadSignedUrlView.as_view(),
         name="upload-signed-url",
     ),
+    path("api/v1/departments/", DepartmentListView.as_view(), name="department-list"),
     path("api/v1/analysis/", include("apps.analysis.urls")),
     path("api/v1/patients/", include("apps.patients.urls")),
     path("api/v1/staff/", include("apps.staff.urls")),
