@@ -20,9 +20,13 @@ class PatientSerializer(serializers.ModelSerializer):
 
 
 class PatientRegisterSerializer(serializers.Serializer):
-    """아이디/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후)."""
+    """이메일/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
 
-    username = serializers.CharField(max_length=150)
+    별도 아이디(username) 없이 email을 로그인 식별자로 쓴다 — User.username에
+    email 값을 그대로 저장(User 모델 자체는 안 바꿈, 로그인은 여전히
+    POST /auth/login/에 username 필드로 보내되 값이 email인 것뿐).
+    """
+
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
     name = serializers.CharField(max_length=100)
