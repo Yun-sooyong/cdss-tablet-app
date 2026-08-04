@@ -708,7 +708,7 @@ paths:
     post:
       operationId: v1_patients_register_create
       description: |-
-        설계문서 3.1-a — 아이디/비밀번호 방식 환자 회원가입.
+        설계문서 3.1-a — 이메일/비밀번호 방식 환자 회원가입.
         카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에.
       tags:
       - v1
@@ -1623,11 +1623,13 @@ components:
       - updated_at
     PatientRegister:
       type: object
-      description: 아이디/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
+      description: |-
+        이메일/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
+
+        별도 아이디(username) 없이 email을 로그인 식별자로 쓴다 — User.username에
+        email 값을 그대로 저장(User 모델 자체는 안 바꿈, 로그인은 여전히
+        POST /auth/login/에 username 필드로 보내되 값이 email인 것뿐).
       properties:
-        username:
-          type: string
-          maxLength: 150
         email:
           type: string
           format: email
@@ -1658,7 +1660,6 @@ components:
       - name
       - password
       - phone
-      - username
     PermissionEnum:
       enum:
       - read

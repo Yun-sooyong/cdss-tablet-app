@@ -13,7 +13,7 @@ from .serializers import PatientRegisterSerializer, PatientSerializer
 
 
 class PatientRegisterView(APIView):
-    """설계문서 3.1-a — 아이디/비밀번호 방식 환자 회원가입.
+    """설계문서 3.1-a — 이메일/비밀번호 방식 환자 회원가입.
     카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에."""
 
     authentication_classes = []
@@ -27,11 +27,13 @@ class PatientRegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        if User.objects.filter(username=data["username"]).exists():
-            raise ValidationError("이미 사용 중인 아이디입니다.")
+        if User.objects.filter(email=data["email"]).exists():
+            raise ValidationError("이미 가입된 이메일입니다.")
 
+        # User.username에 email을 그대로 넣는다 — 로그인은 여전히
+        # POST /auth/login/ + username 필드지만, 값은 email이 된다.
         user = User.objects.create_user(
-            username=data["username"],
+            username=data["email"],
             email=data["email"],
             password=data["password"],
         )
