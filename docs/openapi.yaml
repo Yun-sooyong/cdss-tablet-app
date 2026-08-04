@@ -466,6 +466,25 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/departments/:
+    get:
+      operationId: v1_departments_list
+      description: |-
+        설계문서 6.4절 — 부서 코드 목록. 예약 신청 드롭다운 등에서 사용
+        (서정은 요청, 2026-08-04).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+          description: ''
   /api/v1/devices/tokens/:
     post:
       operationId: v1_devices_tokens_create
@@ -1159,6 +1178,22 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    Department:
+      type: object
+      properties:
+        dept_code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        extension:
+          type: string
+          readOnly: true
+      required:
+      - dept_code
+      - extension
+      - name
     DeviceToken:
       type: object
       properties:
@@ -2060,6 +2095,10 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        department:
+          type: string
+          readOnly: true
+          nullable: true
         visited_at:
           type: string
           format: date-time
@@ -2078,6 +2117,7 @@ components:
           readOnly: true
       required:
       - created_at
+      - department
       - diagnoses
       - id
       - note

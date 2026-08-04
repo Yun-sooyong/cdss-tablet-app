@@ -87,6 +87,16 @@ class Visit(BaseModel):
     staff = models.ForeignKey(
         Staff, on_delete=models.SET_NULL, null=True, related_name="visits"
     )
+    # 설계문서 원안엔 없던 필드 — 진료내역 화면에 "무슨 과 진료였는지"가
+    # 안 보인다는 지적(서정은, 2026-08-04)으로 추가. reservation처럼
+    # 필수로 강제하진 않는다 — 예약 없이 바로 접수되는 진료도 있어서.
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="visits",
+    )
     visited_at = models.DateTimeField()
     note = models.TextField(blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
