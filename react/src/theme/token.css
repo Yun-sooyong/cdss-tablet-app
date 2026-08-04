@@ -19,9 +19,9 @@
   --warning: #8A6D1F;
   --danger: #B3261E;
 
-  --decision-low: #0B5D4E;
-  --decision-high: #185FA5;
-  --decision-abstain: #8A6D1F;
+  --decision-low: #0F8A6E;
+  --decision-high: #1E6FD9;
+  --decision-abstain: #D18700;
 }
 
 .dark {
@@ -43,9 +43,9 @@
   --warning: #D6A93C;
   --danger: #E8695F;
 
-  --decision-low: #3FA88F;
-  --decision-high: #6BA8E8;
-  --decision-abstain: #D6A93C;
+  --decision-low: #2FD3A9;
+  --decision-high: #5CA8FF;
+  --decision-abstain: #F5B93B;
 }
 
 /* decisionHigh에 빨강을 쓰지 않는다 >> sTIL이 높다는 것은 면역 침윤이 활발하다는
