@@ -466,6 +466,25 @@ paths:
       responses:
         '200':
           description: No response body
+  /api/v1/departments/:
+    get:
+      operationId: v1_departments_list
+      description: |-
+        설계문서 6.4절 — 부서 코드 목록. 예약 신청 드롭다운 등에서 사용
+        (서정은 요청, 2026-08-04).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Department'
+          description: ''
   /api/v1/devices/tokens/:
     post:
       operationId: v1_devices_tokens_create
@@ -732,6 +751,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/v1/patients/search/:
+    get:
+      operationId: v1_patients_search_list
+      description: |-
+        의료진용 환자 검색 — 최일운 요청, 2026-08-04.
+
+        name/birth_date/phone은 암호화 컬럼이라 서버가 DB 레벨에서 LIKE·범위
+        검색을 할 수 없다(모든 행을 복호화해야 해서 성능·보안 둘 다 안 좋음).
+        그래서 검색 키는 두 개로 한정한다:
+        - chart_number: 평문 인덱스 컬럼, 부분일치 가능
+        - phone: phone_hash(SHA-256)로 정확히 일치하는 것만 (부분검색 불가)
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PatientSummary'
           description: ''
   /api/v1/prescriptions/{prescription_id}/:
     get:
@@ -1066,6 +1109,11 @@ components:
       - shared_to
     Batch:
       type: object
+      description: |-
+        patient는 UUID FK 그대로 두고, patient_summary에 판독용 최소 정보
+        (이름/생년월일/성별)를 같이 내려준다 — 최일운 요청, 2026-08-04.
+        이 batch에 접근 가능한 staff한테만 내려가므로(view의 권한 체크가
+        이미 됨) 별도 권한 분기는 필요 없다.
       properties:
         id:
           type: string
@@ -1076,6 +1124,10 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        patient_summary:
+          allOf:
+          - $ref: '#/components/schemas/PatientSummary'
+          readOnly: true
         status:
           allOf:
           - $ref: '#/components/schemas/BatchStatusEnum'
@@ -1097,6 +1149,7 @@ components:
       - created_by
       - id
       - patient
+      - patient_summary
       - status
       - updated_at
     BatchCreate:
@@ -1125,6 +1178,22 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    Department:
+      type: object
+      properties:
+        dept_code:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        extension:
+          type: string
+          readOnly: true
+      required:
+      - dept_code
+      - extension
+      - name
     DeviceToken:
       type: object
       properties:
@@ -1358,6 +1427,10 @@ components:
       - username
     Job:
       type: object
+      description: |-
+        job은 patient FK가 없어 image.batch.patient를 타고 올라가 요약을
+        붙인다 — 최일운 요청, 2026-08-04. 파일명만 보이던 07·08·09 화면에
+        환자 맥락이 붙는다.
       properties:
         id:
           type: string
@@ -1381,6 +1454,11 @@ components:
         error_message:
           type: string
           readOnly: true
+        patient_summary:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          readOnly: true
         started_at:
           type: string
           format: date-time
@@ -1402,6 +1480,7 @@ components:
       - id
       - image
       - model_version
+      - patient_summary
       - result
       - started_at
       - status
@@ -1546,6 +1625,9 @@ components:
           type: string
           format: uuid
           readOnly: true
+        chart_number:
+          type: string
+          readOnly: true
         name:
           type: string
           maxLength: 100
@@ -1592,6 +1674,9 @@ components:
           type: string
           format: uuid
           readOnly: true
+        chart_number:
+          type: string
+          readOnly: true
         name:
           type: string
           maxLength: 100
@@ -1616,6 +1701,7 @@ components:
           readOnly: true
       required:
       - birth_date
+      - chart_number
       - created_at
       - id
       - name
@@ -1660,6 +1746,37 @@ components:
       - name
       - password
       - phone
+    PatientSummary:
+      type: object
+      description: |-
+        batch/job 응답에 끼워 넣는 최소 정보 — "이 분석은 누구 것인지"
+        판독 맥락용. 주소/전화번호처럼 더 민감한 필드는 넣지 않는다
+        (최일운 요청, 2026-08-04).
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        chart_number:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        birth_date:
+          type: string
+          format: date
+          readOnly: true
+        sex:
+          allOf:
+          - $ref: '#/components/schemas/SexEnum'
+          readOnly: true
+      required:
+      - birth_date
+      - chart_number
+      - id
+      - name
+      - sex
     PermissionEnum:
       enum:
       - read
@@ -1978,6 +2095,10 @@ components:
           format: uuid
           readOnly: true
           nullable: true
+        department:
+          type: string
+          readOnly: true
+          nullable: true
         visited_at:
           type: string
           format: date-time
@@ -1996,6 +2117,7 @@ components:
           readOnly: true
       required:
       - created_at
+      - department
       - diagnoses
       - id
       - note

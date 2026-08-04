@@ -8,8 +8,20 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import get_staff_or_403
 
-from .models import Staff
-from .serializers import StaffMeUpdateSerializer, StaffSerializer
+from .models import Department, Staff
+from .serializers import DepartmentSerializer, StaffMeUpdateSerializer, StaffSerializer
+
+
+class DepartmentListView(APIView):
+    """설계문서 6.4절 — 부서 코드 목록. 예약 신청 드롭다운 등에서 사용
+    (서정은 요청, 2026-08-04)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=DepartmentSerializer(many=True))
+    def get(self, request):
+        departments = Department.objects.order_by("name")
+        return Response(DepartmentSerializer(departments, many=True).data)
 
 
 class StaffMeView(APIView):

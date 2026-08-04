@@ -1,10 +1,15 @@
 import hashlib
+import secrets
 
 from django.conf import settings
 from django.db import models
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField
 
 from apps.common.models import BaseModel
+
+
+def generate_chart_number() -> str:
+    return "P" + secrets.token_hex(4).upper()  # 예: PA1B2C3D4
 
 
 class Patient(BaseModel):
@@ -24,6 +29,13 @@ class Patient(BaseModel):
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="patient"
+    )
+    # 차트번호 — 최일운 요청(2026-08-04): name/birth_date/phone은 전부
+    # 암호화 컬럼이라 LIKE/범위 검색이 안 돼서, 검색 가능한 평문 식별자가
+    # 따로 필요했다. 그 자체로는 이름·생년월일 같은 개인정보를 담지 않는
+    # 내부 참조 코드라 암호화 대상이 아니다.
+    chart_number = models.CharField(
+        max_length=20, unique=True, db_index=True, default=generate_chart_number, editable=False
     )
     name = EncryptedCharField(max_length=100)
     birth_date = EncryptedDateField()  # 나이가 아닌 생년월일로 저장

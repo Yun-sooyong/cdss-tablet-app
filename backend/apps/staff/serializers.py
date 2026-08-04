@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
-from .models import Staff
+from .models import Department, Staff
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Department
+        fields = ["dept_code", "name", "extension"]
+        read_only_fields = fields
 
 
 class StaffSerializer(serializers.ModelSerializer):
