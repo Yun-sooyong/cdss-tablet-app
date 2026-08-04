@@ -6,10 +6,9 @@ import {cn} from '@/lib/utils';
 
 
 const DECISION_STYLE : Record<Decision, string> = {
-    LOW: 'border-border text-decision-low',
-    HIGH: 'border-border text-decision-high',
-    ABSTAIN:
-        'border-decision-abstain/40 bg-decision-abstain/10 text-decision-abstain font-semibold',
+    LOW: 'border-decision-low/50 bg-decision-low/12 text-decision-low',
+    HIGH: 'border-decision-high/50 bg-decision-high/12 text-decision-high',
+    ABSTAIN: 'border-decision-abstain/60 bg-decision-abstain/18 text-decision-abstain',
 };
 
 // DecisionBadge >> Label 
@@ -21,7 +20,14 @@ export function DecisionBadge({
     className? : string;
 }) {
     return (
-        <Badge variant="outline" className={cn(DECISION_STYLE[decision], className)}>
+        <Badge
+            variant="outline"
+            className={cn(
+                'px-2.5 py-1 text-sm font-medium',
+                DECISION_STYLE[decision],
+                className,
+            )}
+        >
             {DECISION_LABEL[decision]}
         </Badge>
     );

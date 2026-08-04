@@ -32,7 +32,7 @@ export default function AppRoutes() {
                 <Route path="/cases" element={<CaseListPage />} />
                 <Route path="/review" element={<AbstainReviewPage />} />
                 <Route path="/errors" element={<ErrorListPage />} />
-                <Route path="/results" element={<ResultSummaryPage />} />
+                <Route path="/batches/:batchId" element={<ResultSummaryPage />} />
                 <Route path="/results/:jobId" element={<ResultDetailPage />} />
                 <Route path="/sharing" element={<SharingPage />} />
                 <Route path="/shared" element={<SharedWithMePage />} />
