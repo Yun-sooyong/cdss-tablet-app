@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Bell, LogOut } from 'lucide-react';
@@ -11,12 +12,15 @@ import Breadcrumb from './Breadcrumb';
 import { CONTAINER } from './container';
 
 // base >> 링크 접두사. 관리 콘솔은 '/admin'
+// nav >> 좁은 화면용 메뉴 서랍. 셸이 자기 항목을 넘긴다
 export default function Header({
     base = '',
     tone = 'brand',
+    nav,
 } : {
     base? : string;
     tone? : 'brand' | 'admin';
+    nav? : ReactNode;
 }) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
@@ -42,8 +46,11 @@ export default function Header({
                 tone === 'admin' ? 'bg-admin-soft' : 'bg-surface',
             )}
         >
-            <div className={`${CONTAINER} flex h-full items-center justify-between gap-4 px-6`}>
-                <Breadcrumb />
+            <div className={`${CONTAINER} flex h-full items-center justify-between gap-3 px-6`}>
+                <div className="flex min-w-0 items-center gap-3">
+                    {nav}
+                    <Breadcrumb />
+                </div>
 
                 <div className="flex shrink-0 items-center gap-3">
                     <UploadIndicator />

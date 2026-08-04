@@ -18,7 +18,11 @@ export function UploadIndicator() {
 
     return (
         <Popover>
-            <PopoverTrigger className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink">
+            {/* 진행·실패를 화면에 안 띄워도 읽어 줘야 한다 */}
+            <PopoverTrigger
+                aria-live="polite"
+                className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+            >
                 <CloudUpload size={15} className={cn(failed && 'text-danger')} />
                 업로드 {done}/{items.length}
                 <span className="font-mono tabular-nums">{overall}%</span>

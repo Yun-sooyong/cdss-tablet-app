@@ -10,6 +10,7 @@ import { IntervalBar } from '@/components/IntervalBar';
 import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge, DecisionBadge } from '@/components/StatusBadge';
 import { CUTOFF, needsReview, toIntervalView } from '@/lib/decision';
+import { formatShort } from '@/lib/format';
 import { patientBrief } from '@/lib/patient';
 import { cn } from '@/lib/utils';
 
@@ -148,12 +149,7 @@ export default function DashboardPage() {
                                 </span>
                                 <BatchStatusBadge status={batch.status} />
                                 <span className="w-24 text-right text-sm text-ink-muted">
-                                    {new Date(batch.created_at).toLocaleString('ko-KR', {
-                                        month: '2-digit',
-                                        day: '2-digit',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                    })}
+                                    {formatShort(batch.created_at)}
                                 </span>
                             </Link>
                         ))}

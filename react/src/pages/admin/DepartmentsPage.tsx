@@ -7,7 +7,7 @@ import { ListCount } from '@/components/ListCount';
 import { Failed, Pending } from '@/components/QueryState';
 import { cn } from '@/lib/utils';
 
-const GRID = 'grid grid-cols-[5rem_minmax(7rem,1fr)_5rem_4rem] items-center gap-x-5';
+const GRID = 'grid min-w-[28rem] grid-cols-[5rem_minmax(7rem,1fr)_5rem_4rem] items-center gap-x-5';
 
 export default function AdminDepartmentsPage() {
     const departments = useQuery({ queryKey: qk.departments, queryFn: getDepartments });

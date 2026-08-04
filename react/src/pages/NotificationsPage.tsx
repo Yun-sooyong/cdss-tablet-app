@@ -18,11 +18,11 @@ const TYPE_ICON : Record<NotificationType, LucideIcon> = {
     chat: MessageSquare,
 };
 
-// target_type >> 서버 문자열 → 경로
+// target_type >> 서버 문자열 → 경로.
+// chat은 화면이 아직 없어 보내지 않는다. 읽음만 처리된다
 const targetPath = (n : AppNotification) : string | null => {
     if (n.target_type === 'batch' && n.target_id) return `/batches/${n.target_id}`;
     if (n.target_type === 'share') return '/shared';
-    if (n.target_type === 'chat') return '/chat';
     return null;
 };
 
