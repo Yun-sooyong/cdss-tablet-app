@@ -6,6 +6,7 @@ import '../services/visit_service.dart';
 import '../theme/app_colors.dart';
 import '../models/visit.dart';
 import '../utils/top_banner.dart';
+import '../widgets/loading_spinner.dart';
 
 class ReservationScreen extends StatefulWidget {
   final ReservationService reservationService;
@@ -126,7 +127,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LoadingSpinner());
     }
 
     return RefreshIndicator(
@@ -482,10 +483,7 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
               child: ElevatedButton(
                 onPressed: (_canSubmit && !_isSubmitting) ? _submit : null,
                 child: _isSubmitting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const LoadingSpinner(size: 20)
                     : const Text('예약하기'),
               ),
             ),

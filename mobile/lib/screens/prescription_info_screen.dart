@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/prescription.dart';
 import '../services/medication_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/loading_spinner.dart';
 
 class PrescriptionInfoScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -39,7 +40,7 @@ class _PrescriptionInfoScreenState extends State<PrescriptionInfoScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('처방 내역')),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: LoadingSpinner())
           : _prescriptions.isEmpty
               ? const Center(child: Text('처방 내역이 없어', style: TextStyle(color: Colors.grey)))
               : ListView.builder(

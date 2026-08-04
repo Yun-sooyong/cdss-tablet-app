@@ -15,7 +15,8 @@ class Visit {
   final String id;
   final DateTime date;
   final String department;
-  final String memo;
+  final String memo; // 목록 화면 검색·표시용 (진단명 우선, 없으면 note)
+  final String note; // 의료진이 남긴 원본 메모 — 상세화면에서 항상 이걸 보여줌
   final String? doctorName;
   final List<Diagnosis> diagnoses;
 
@@ -24,6 +25,7 @@ class Visit {
     required this.date,
     required this.department,
     required this.memo,
+    required this.note,
     this.doctorName,
     this.diagnoses = const [],
   });
@@ -42,6 +44,7 @@ class Visit {
       date: DateTime.parse(json['visited_at'] as String),
       department: json['department'] as String? ?? '',
       memo: memo,
+      note: note,
       diagnoses: diagnoses,
     );
   }

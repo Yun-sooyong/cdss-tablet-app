@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/visit.dart';
 import '../services/visit_service.dart';
+import 'visit_detail_screen.dart';
+import '../widgets/loading_spinner.dart';
 
 class VisitHistoryScreen extends StatefulWidget {
   final VisitService visitService;
@@ -116,7 +118,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
           ),
         ),
         if (_isLoading)
-          const Expanded(child: Center(child: CircularProgressIndicator()))
+          const Expanded(child: Center(child: LoadingSpinner()))
         else if (_visits.isEmpty)
           const Expanded(
               child: Center(
@@ -138,6 +140,9 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                     trailing: Text(
                       '${v.date.year}.${v.date.month.toString().padLeft(2, '0')}.${v.date.day.toString().padLeft(2, '0')}',
                       style: const TextStyle(color: Colors.grey),
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => VisitDetailScreen(visit: v)),
                     ),
                   ),
                 );

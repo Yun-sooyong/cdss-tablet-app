@@ -6,6 +6,7 @@ import '../theme/app_colors.dart';
 import 'settings_screen.dart';
 import 'prescription_info_screen.dart';
 import '../services/notification_service.dart';
+import '../widgets/loading_spinner.dart';
 
 class MyPageScreen extends StatefulWidget {
   final AuthService authService;
@@ -65,7 +66,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     return SafeArea(
       child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: LoadingSpinner())
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
