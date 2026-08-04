@@ -26,6 +26,18 @@ paths:
       description: 설계문서 3.2-b — 본인 batch + 공유받은 batch.
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+        required: true
       security:
       - jwtAuth: []
       responses:
@@ -739,6 +751,11 @@ components:
           type: string
           format: uuid
           readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         status:
           allOf:
           - $ref: '#/components/schemas/BatchStatusEnum'
@@ -759,8 +776,17 @@ components:
       - created_at
       - created_by
       - id
+      - patient
       - status
       - updated_at
+    BatchCreate:
+      type: object
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+      required:
+      - patient_id
     BatchStatusEnum:
       enum:
       - pending

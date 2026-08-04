@@ -16,6 +16,7 @@ from .models import AnalysisShare, Batch, Image, Job, ModelVersion
 from .serializers import (
     AnalysisShareCreateSerializer,
     AnalysisShareSerializer,
+    BatchCreateSerializer,
     BatchSerializer,
     ImageSerializer,
     ImageUploadRequestSerializer,
@@ -69,10 +70,14 @@ class BatchListCreateView(APIView):
         ).distinct().order_by("-created_at")
         return Response(BatchSerializer(batches, many=True).data)
 
-    @extend_schema(request=None, responses=BatchSerializer)
+    @extend_schema(request=BatchCreateSerializer, responses=BatchSerializer)
     def post(self, request):
         staff = get_staff_or_403(request.user)
-        batch = Batch.objects.create(created_by=staff)
+        serializer = BatchCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        batch = Batch.objects.create(
+            created_by=staff, patient=serializer.validated_data["patient"]
+        )
         return Response(BatchSerializer(batch).data, status=status.HTTP_201_CREATED)
 
 
