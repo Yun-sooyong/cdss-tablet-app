@@ -63,6 +63,10 @@ class PatientReservationListCreateView(APIView):
             department=serializer.validated_data["department"],
             scheduled_at=serializer.validated_data["scheduled_at"],
             status=Reservation.Status.REQUESTED,
+            reason=serializer.validated_data.get("reason", ""),
+            document_type=serializer.validated_data.get(
+                "document_type", Reservation.DocumentType.NONE
+            ),
         )
         return Response(
             ReservationSerializer(reservation).data, status=status.HTTP_201_CREATED

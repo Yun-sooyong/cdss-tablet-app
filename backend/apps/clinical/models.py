@@ -31,11 +31,23 @@ class Reservation(BaseModel):
     department = models.ForeignKey(
         Department, on_delete=models.PROTECT, related_name="reservations"
     )
+    class DocumentType(models.TextChoices):
+        NONE = "NONE", "해당 없음"
+        MEDICAL_CERTIFICATE = "MEDICAL_CERTIFICATE", "진단서"
+        OPINION = "OPINION", "소견서"
+        VISIT_CONFIRMATION = "VISIT_CONFIRMATION", "진료확인서"
+        PRESCRIPTION_REISSUE = "PRESCRIPTION_REISSUE", "처방전 재발급"
+
     scheduled_at = models.DateTimeField()
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.REQUESTED
     )
     change_reason = models.CharField(max_length=200, blank=True)
+    # 예약 신청 화면의 증상 입력 + 서류 종류 선택 (서정은 요청, 2026-08-04).
+    reason = models.CharField(max_length=500, blank=True)
+    document_type = models.CharField(
+        max_length=30, choices=DocumentType.choices, default=DocumentType.NONE, blank=True
+    )
 
     class Meta:
         db_table = "reservation"
