@@ -41,7 +41,10 @@ def get_accessible_batch_or_404(staff, batch_id):
     """본인 batch + 공유받은 batch. 설계문서 6.7절/3.2-b."""
     shared_batch_ids = active_shares_for(staff).values_list("batch_id", flat=True)
     return get_object_or_404(
-        Batch, Q(created_by=staff) | Q(id__in=shared_batch_ids), id=batch_id
+        Batch,
+        Q(created_by=staff) | Q(id__in=shared_batch_ids),
+        id=batch_id,
+        deleted_at__isnull=True,
     )
 
 
@@ -66,7 +69,7 @@ class BatchListCreateView(APIView):
         staff = get_staff_or_403(request.user)
         shared_batch_ids = active_shares_for(staff).values_list("batch_id", flat=True)
         batches = Batch.objects.filter(
-            Q(created_by=staff) | Q(id__in=shared_batch_ids)
+            Q(created_by=staff) | Q(id__in=shared_batch_ids), deleted_at__isnull=True
         ).distinct().order_by("-created_at")
         return Response(BatchSerializer(batches, many=True).data)
 
@@ -82,7 +85,8 @@ class BatchListCreateView(APIView):
 
 
 class BatchDetailView(APIView):
-    """설계문서 7.4절 — 배치 상세 (job 목록 포함). 본인 + 공유받은 batch만."""
+    """설계문서 7.4절 — 배치 상세 (job 목록 포함) / 삭제. 본인 + 공유받은 batch만 조회,
+    삭제는 본인 것만."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -94,6 +98,17 @@ class BatchDetailView(APIView):
         jobs = Job.objects.filter(image__batch=batch).order_by("-created_at")
         data["jobs"] = JobSerializer(jobs, many=True).data
         return Response(data)
+
+    @extend_schema(request=None, responses=None)
+    def delete(self, request, batch_id):
+        """리스트에서 삭제 — 설계문서 3.2-i. 물리 삭제 아니라 soft delete."""
+        staff = get_staff_or_403(request.user)
+        batch = get_object_or_404(
+            Batch, id=batch_id, created_by=staff, deleted_at__isnull=True
+        )
+        batch.deleted_at = timezone.now()
+        batch.save(update_fields=["deleted_at", "updated_at"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class BatchImageUploadView(APIView):

@@ -37,6 +37,7 @@ class Batch(BaseModel):
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
+    deleted_at = models.DateTimeField(null=True, blank=True)  # soft delete, 3.2-i
 
     class Meta:
         db_table = "batch"
