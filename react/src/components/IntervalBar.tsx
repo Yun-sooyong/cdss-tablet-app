@@ -1,5 +1,5 @@
 // 좌표계산 X
-// 한 줄만 그린다. 축 라벨과 컷오프 선은 IntervalAxis가 한 번만 그린다.
+
 
 import type { Decision } from '@/api/types';
 import type { IntervalView } from '@/lib/decision';
