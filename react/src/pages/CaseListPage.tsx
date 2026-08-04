@@ -10,13 +10,14 @@ import { FIELD_INPUT } from '@/components/form';
 import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge } from '@/components/StatusBadge';
 import { needsReview } from '@/lib/decision';
+import { formatShort } from '@/lib/format';
 import { BATCH_STATUS_LABEL } from '@/lib/jobStatus';
 import { patientBrief } from '@/lib/patient';
 import { cn } from '@/lib/utils';
 
 // 환자 · 슬라이드 · 확인 필요 · 상태 · 등록
 const GRID =
-    'grid grid-cols-[minmax(9rem,20rem)_5.5rem_5.5rem_6rem_minmax(0,1fr)] items-center gap-x-5';
+    'grid min-w-[44rem] grid-cols-[minmax(9rem,20rem)_5.5rem_5.5rem_6rem_minmax(0,1fr)] items-center gap-x-5';
 
 const STATUS_FILTERS : { value : BatchStatus | 'all'; label : string }[] = [
     { value: 'all', label: '전체' },
@@ -182,12 +183,7 @@ export default function CaseListPage() {
                             </span>
 
                             <span className="text-right text-sm text-ink-muted">
-                                {new Date(row.batch.created_at).toLocaleString('ko-KR', {
-                                    month: '2-digit',
-                                    day: '2-digit',
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                })}
+                                {formatShort(row.batch.created_at)}
                             </span>
                         </Link>
                     ))}

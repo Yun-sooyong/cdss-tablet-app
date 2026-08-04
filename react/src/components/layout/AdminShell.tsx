@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { getMe } from '@/api';
 import { qk } from '@/api/keys';
+import { Pending } from '@/components/QueryState';
 import Header from './Header';
-import Sidebar from './Sidebar';
+import Sidebar, { NavDrawer } from './Sidebar';
 import { CONTAINER } from './container';
 import { ADMIN_NAV_GROUPS } from './nav';
 
@@ -12,8 +13,14 @@ import { ADMIN_NAV_GROUPS } from './nav';
 export default function AdminShell() {
     const { data: me, isPending } = useQuery({ queryKey: qk.me, queryFn: getMe });
 
-    // 역할 판정 전에는 그리지 않는다
-    if (isPending) return null;
+    if (isPending) {
+        return (
+            <div className="flex min-h-dvh items-center justify-center bg-admin-bg">
+                <Pending />
+            </div>
+        );
+    }
+
     if (me?.role !== 'admin') return <Navigate to="/" replace />;
 
     return (
@@ -21,7 +28,13 @@ export default function AdminShell() {
             <Sidebar groups={ADMIN_NAV_GROUPS} tone="admin" subtitle="관리" />
 
             <div className="flex min-h-dvh flex-1 flex-col">
-                <Header base="/admin" tone="admin" />
+                <Header
+                    base="/admin"
+                    tone="admin"
+                    nav={
+                        <NavDrawer groups={ADMIN_NAV_GROUPS} tone="admin" subtitle="관리" />
+                    }
+                />
                 <main className="flex-1 overflow-auto">
                     <div className={CONTAINER + ' p-6'}>
                         <Outlet />
