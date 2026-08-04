@@ -73,3 +73,38 @@ def call_segmentation(image_key: str, model_version_id: str, job_id: str = "") -
     )
     resp.raise_for_status()
     return _unpack_masks(resp.content)
+
+
+def call_medgemma(image, system_prompt: str, user_text: str, job_id: str = "",
+                   max_new_tokens: int = 500) -> str:
+    """같은 Mosec 서버의 /medgemma 라우트를 호출해 MedGemma 생성 텍스트를 받는다.
+
+    ⚠️ 프롬프트는 여기서 만들지 않는다 — 호출자(pipeline/medgemma_report.py)가
+       완성해서 넘긴다. 할루시네이션 방지 제약이 그 프롬프트에 들어있다.
+
+        요청  msgpack{job_id, system, text, image(PNG bytes), max_new_tokens}
+        응답  msgpack{job_id, generated_text}
+    """
+    import requests
+
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
+
+    body = msgpack.packb(
+        {
+            "job_id": job_id,
+            "system": system_prompt,
+            "text": user_text,
+            "image": buf.getvalue(),
+            "max_new_tokens": max_new_tokens,
+        },
+        use_bin_type=True,
+    )
+    resp = requests.post(
+        f"{MOSEC_URL}/medgemma",
+        data=body,
+        headers={"Content-Type": "application/msgpack"},
+        timeout=REQUEST_TIMEOUT,
+    )
+    resp.raise_for_status()
+    return msgpack.unpackb(resp.content, raw=False)["generated_text"]

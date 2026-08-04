@@ -8,7 +8,7 @@ from celery_app import app
 from clients.mosec import call_segmentation
 from clients.backend_api import report_stil_done, report_result, report_error, send_heartbeat
 from pipeline.til_conformal import compute_stil_and_conformal
-from pipeline.medgemma_mock import generate_report
+from pipeline.medgemma_genkit import generate_report
 
 WORKER_NAME = os.environ.get("WORKER_NAME", "local-test")
 
@@ -43,7 +43,7 @@ def run_job(self, job_id, image_key, conformal_q, model_version_id=None, model_n
 
         report_stil_done(job_id, stats)  # 중간 보고 — MedGemma는 아직 시작 전
 
-        report = generate_report(stats)
+        report = generate_report(stats, mc_stack, job_id=job_id)
         print(f"[run_job] 판독 보고서: {report}")
 
         report_result(job_id, stats, report)
