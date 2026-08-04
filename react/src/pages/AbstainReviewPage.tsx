@@ -64,7 +64,7 @@ export default function AbstainReviewPage() {
     }
 
     return (
-        <div className="p-6">
+        <div>
             <div className="mb-6 flex items-baseline justify-between">
                 <h1 className="text-xl font-semibold">판정 유보 검증함</h1>
                 <div className="text-[15px] text-ink-muted">
