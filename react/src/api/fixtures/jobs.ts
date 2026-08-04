@@ -1,4 +1,5 @@
 import type { Job } from '@/api/types';
+import { PATIENT_1, PATIENT_2, PATIENT_3 } from './patients';
 
 const MV1 = 'd94e2b17-6f80-4a3c-9e51-8c0b5d7e0001';
 const MV2 = 'd94e2b17-6f80-4a3c-9e51-8c0b5d7e0002';
@@ -18,6 +19,7 @@ export const mockJobs: Job[] = [
         model_version: MV1,
         status: 'queued',
         result: null,
+        patient_summary: PATIENT_1,
         error_message: '',
         started_at: null,
         finished_at: null,
@@ -30,6 +32,7 @@ export const mockJobs: Job[] = [
         model_version: MV1,
         status: 'running',
         result: null,
+        patient_summary: PATIENT_2,
         error_message: '',
         started_at: '2026-08-03T10:05:02.771000+09:00',
         finished_at: null,
@@ -54,6 +57,7 @@ export const mockJobs: Job[] = [
                 tumor: 47.2, stroma: 24.8, immune: 12.5, necrosis: 9.8, other: 5.7,
             },
         },
+        patient_summary: PATIENT_2,
         error_message: '',
         started_at: '2026-08-03T10:05:03.442000+09:00',
         finished_at: null,
@@ -85,6 +89,7 @@ export const mockJobs: Job[] = [
                 generation_failed: false,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:33:12.008000+09:00',
         finished_at: '2026-08-02T14:41:55.331000+09:00',
@@ -114,6 +119,7 @@ export const mockJobs: Job[] = [
                 generation_failed: false,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:34:20.517000+09:00',
         finished_at: '2026-08-02T14:43:07.995000+09:00',
@@ -143,6 +149,7 @@ export const mockJobs: Job[] = [
                 generation_failed: false,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:35:41.229000+09:00',
         finished_at: '2026-08-02T14:44:18.663000+09:00',
@@ -172,6 +179,7 @@ export const mockJobs: Job[] = [
                 generation_failed: false,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:36:55.842000+09:00',
         finished_at: '2026-08-02T14:46:02.117000+09:00',
@@ -200,6 +208,7 @@ export const mockJobs: Job[] = [
                 generation_failed: true,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:38:10.334000+09:00',
         finished_at: '2026-08-02T14:47:29.750000+09:00',
@@ -229,6 +238,7 @@ export const mockJobs: Job[] = [
                 generation_failed: false,
             },
         },
+        patient_summary: PATIENT_3,
         error_message: '',
         started_at: '2026-08-02T14:39:33.618000+09:00',
         finished_at: '2026-08-02T14:49:11.204000+09:00',
@@ -242,6 +252,7 @@ export const mockJobs: Job[] = [
         model_version: MV3,
         status: 'failed',
         result: null,
+        patient_summary: null,
         error_message:
             'Mosec 추론 서버 응답 없음 (타임아웃 600초). 타일 34/128에서 중단됨.',
         started_at: '2026-08-01T16:48:04.559000+09:00',

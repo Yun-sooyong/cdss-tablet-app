@@ -16,6 +16,13 @@ export const DECISION_LABEL : Record<Decision, string> = {
 export const needsReview = (result : JobResult | null) : boolean =>
     result?.decision === 'ABSTAIN';
 
+// classifyAt >> 컷오프를 옮겼을 때의 분류를 클라이언트에서 계산한다.
+// 백엔드 decision은 서버 컷오프 기준이라 슬라이더를 움직이면 더 이상 맞지 않는다.
+export const classifyAt = (result : JobResult, cutoff : number) : Decision => {
+    if (result.lower <= cutoff && cutoff <= result.upper) return 'ABSTAIN';
+    return result.stil_value < cutoff ? 'LOW' : 'HIGH';
+};
+
 
 /* Interval */
 export interface IntervalView {
@@ -35,8 +42,11 @@ export interface IntervalView {
 const clamp = (n : number) : number => Math.min(100, Math.max(0, n));
 
 // toIntervalView >> 클리핑을 여기서 흡수
-export const toIntervalView = (result : JobResult) : IntervalView => {
-    const cutoff = result.cutoff ?? CUTOFF;
+export const toIntervalView = (
+    result : JobResult,
+    cutoffOverride? : number,
+) : IntervalView => {
+    const cutoff = cutoffOverride ?? result.cutoff ?? CUTOFF;
     const left = clamp(result.lower);
     const right = clamp(result.upper);
 

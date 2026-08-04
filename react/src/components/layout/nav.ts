@@ -2,7 +2,6 @@ import type { LucideIcon } from 'lucide-react';
 import {
     Bell,
     CircleAlert,
-    FileText,
     Inbox,
     LayoutDashboard,
     List,
@@ -43,7 +42,6 @@ export const NAV_GROUPS : NavGroup[] = [
         title: '판독',
         items: [
             { to: '/review', label: '판정 유보 검증함', icon: Search, badge: 'review' },
-            { to: '/results', label: '결과 요약', icon: FileText },
             { to: '/errors', label: '오류 목록', icon: CircleAlert },
         ],
     },
