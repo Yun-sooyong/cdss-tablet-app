@@ -1,8 +1,10 @@
+import AppRoutes from '@/routes';
+
+// 블록 D에서 AppRoutes를 AppShell(사이드바 + 헤더)로
 function App() {
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <h1 className="text-2xl font-semibold">CDSS</h1>
-      <p className="text-muted-foreground mt-2">부트스트랩 확인용 화면</p>
+    <div className="min-h-screen bg-background text-foreground">
+      <AppRoutes />
     </div>
   );
 }
