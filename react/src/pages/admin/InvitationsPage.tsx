@@ -16,7 +16,7 @@ import { INVITATION_STATE_LABEL, ROLE_LABEL, invitationState } from '@/lib/staff
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid grid-cols-[7rem_4rem_minmax(5rem,1fr)_5.5rem_5rem_2rem] items-center gap-x-4';
+    'grid min-w-[36rem] grid-cols-[7rem_4rem_minmax(5rem,1fr)_5.5rem_5rem_2rem] items-center gap-x-4';
 
 const ROLE_OPTIONS : Role[] = ['doctor', 'nurse', 'admin'];
 
@@ -177,7 +177,7 @@ export default function AdminInvitationsPage() {
                                     {invitation.department || '미지정'}
                                 </span>
 
-                                <span className="text-right text-sm text-ink-muted">
+                                <span className="truncate text-right text-sm text-ink-muted">
                                     {formatDate(invitation.expires_at)}
                                 </span>
 

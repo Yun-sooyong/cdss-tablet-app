@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { ReactNode } from 'react';
 
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -49,11 +50,24 @@ export function Field({
     hint? : string;
     children : ReactNode;
 }) {
+    const hintId = useId();
+
     return (
         <label className="block">
             <span className="mb-1.5 block text-sm text-ink-muted">{label}</span>
-            {children}
-            {hint && <span className="mt-1.5 block text-xs text-ink-faint">{hint}</span>}
+
+            {/* 힌트를 입력에 묶어 준다. 안 그러면 읽어 주지 않는다 */}
+            {hint ? (
+                <span aria-describedby={hintId}>{children}</span>
+            ) : (
+                children
+            )}
+
+            {hint && (
+                <span id={hintId} className="mt-1.5 block text-xs text-ink-faint">
+                    {hint}
+                </span>
+            )}
         </label>
     );
 }

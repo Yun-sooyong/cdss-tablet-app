@@ -3,8 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 
 import { getMe } from '@/api';
 import { qk } from '@/api/keys';
+import { Pending } from '@/components/QueryState';
 import Header from './Header';
-import Sidebar from './Sidebar';
+import Sidebar, { NavDrawer } from './Sidebar';
 import { CONTAINER } from './container';
 import { NAV_GROUPS } from './nav';
 
@@ -12,7 +13,15 @@ import { NAV_GROUPS } from './nav';
 export default function AppShell() {
     const { data: me, isPending } = useQuery({ queryKey: qk.me, queryFn: getMe });
 
-    if (isPending) return null;
+    // 역할을 알기 전에 셸을 그리면 관리자에게 판독 사이드바가 깜빡인다
+    if (isPending) {
+        return (
+            <div className="flex min-h-dvh items-center justify-center bg-background">
+                <Pending />
+            </div>
+        );
+    }
+
     if (me?.role === 'admin') return <Navigate to="/admin" replace />;
 
     return (
@@ -20,7 +29,7 @@ export default function AppShell() {
             <Sidebar groups={NAV_GROUPS} />
 
             <div className="flex min-h-dvh flex-1 flex-col">
-                <Header />
+                <Header nav={<NavDrawer groups={NAV_GROUPS} />} />
                 <main className="flex-1 overflow-auto">
                     <div className={CONTAINER + ' p-6'}>
                         <Outlet />

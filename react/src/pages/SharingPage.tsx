@@ -24,7 +24,7 @@ import { staffBrief } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid grid-cols-[minmax(9rem,1.6fr)_minmax(7rem,1fr)_4rem_5rem_6rem_3.5rem] items-center gap-x-5';
+    'grid min-w-[46rem] grid-cols-[minmax(9rem,1.6fr)_minmax(7rem,1fr)_4rem_5rem_6rem_3.5rem] items-center gap-x-5';
 
 const PERMISSION_OPTIONS : SharePermission[] = ['read', 'comment'];
 

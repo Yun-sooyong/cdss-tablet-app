@@ -128,7 +128,16 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
+    }
+
+  /* 키보드로 옮길 때 지금 어디 있는지 항상 보여야 한다.
+     outline-ring/50 만 있던 자리 >> outline-style이 없어 아무것도 안 그려졌다.
+     :focus-visible 이라 마우스 클릭에는 안 뜬다 */
+  *:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
     }
   body {
     @apply bg-background text-foreground;
