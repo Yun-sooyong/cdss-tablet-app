@@ -8,7 +8,6 @@ import ErrorListPage from '@/pages/ErrorListPage';
 import LoginPage from '@/pages/LoginPage';
 import NotFoundPage from '@/pages/NotFoundPage';
 import NotificationsPage from '@/pages/NotificationsPage';
-import ProcessingPage from '@/pages/ProcessingPage';
 import ProfilePage from '@/pages/ProfilePage';
 import ResultDetailPage from '@/pages/ResultDetailPage';
 import ResultSummaryPage from '@/pages/ResultSummaryPage';
@@ -28,7 +27,6 @@ export default function AppRoutes() {
             <Route element = {<AppShell/>}>
                 <Route path="/" element={<DashboardPage />} />   
                 <Route path="/upload" element={<UploadPage />} />
-                <Route path="/processing" element={<ProcessingPage />} />
                 <Route path="/cases" element={<CaseListPage />} />
                 <Route path="/review" element={<AbstainReviewPage />} />
                 <Route path="/errors" element={<ErrorListPage />} />

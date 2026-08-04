@@ -70,7 +70,7 @@ export default function CaseListPage() {
     });
 
     return (
-        <div className="p-6">
+        <div>
             <div className="mb-6 flex items-baseline justify-between">
                 <h1 className="text-xl font-semibold">케이스 목록</h1>
                 <span className="text-[15px] text-ink-muted">{rows.length}건</span>
