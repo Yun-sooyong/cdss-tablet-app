@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
@@ -6,8 +7,20 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import get_patient_or_404
 
-from .models import Reservation, ReservationHistory, Visit
+from .models import (
+    DoseLog,
+    DoseSchedule,
+    Prescription,
+    PrescriptionDrug,
+    Reservation,
+    ReservationHistory,
+    Visit,
+)
 from .serializers import (
+    DoseLogSerializer,
+    DrugSerializer,
+    MedicationLogCreateSerializer,
+    PrescriptionSerializer,
     ReservationCreateSerializer,
     ReservationRescheduleSerializer,
     ReservationSerializer,
@@ -137,3 +150,120 @@ class VisitDetailView(APIView):
             deleted_at__isnull=True,
         )
         return Response(VisitSerializer(visit).data)
+
+
+class PatientPrescriptionListView(APIView):
+    """설계문서 7.3절 — GET /patients/me/prescriptions. 3.1-c."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=PrescriptionSerializer(many=True))
+    def get(self, request):
+        patient = get_patient_or_404(request.user)
+        qs = (
+            Prescription.objects.filter(visit__patient=patient)
+            .prefetch_related("drugs__drug")
+            .order_by("-prescribed_at")
+        )
+        return Response(PrescriptionSerializer(qs, many=True).data)
+
+
+class PrescriptionDetailView(APIView):
+    """설계문서 7.3절 — GET /prescriptions/{id}. 처방전 상세 + 파일 서명 URL."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=PrescriptionSerializer)
+    def get(self, request, prescription_id):
+        patient = get_patient_or_404(request.user)
+        prescription = get_object_or_404(
+            Prescription.objects.prefetch_related("drugs__drug"),
+            id=prescription_id,
+            visit__patient=patient,
+        )
+        return Response(PrescriptionSerializer(prescription).data)
+
+
+class PatientMedicationScheduleView(APIView):
+    """설계문서 7.3절 — GET /patients/me/medications/schedule. 3.1-d, 3.1-e.
+
+    복약 캘린더(스케줄 목록) + 처방약 단위 잔량 %.
+    잔량 % = (처방 총량 - 복용 기록) / 처방 총량 (설계문서 6.6절).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=None)
+    def get(self, request):
+        patient = get_patient_or_404(request.user)
+        prescription_drugs = PrescriptionDrug.objects.filter(
+            prescription__visit__patient=patient
+        ).select_related("drug")
+
+        from_param = request.query_params.get("from")
+        to_param = request.query_params.get("to")
+
+        result = []
+        for pd in prescription_drugs:
+            all_schedules = pd.schedules.all()
+            total = all_schedules.count()
+            taken = DoseLog.objects.filter(
+                schedule__prescription_drug=pd, is_taken=True
+            ).count()
+            remaining_percent = (
+                round((1 - taken / total) * 100, 1) if total else None
+            )
+
+            visible_schedules = all_schedules
+            if from_param:
+                visible_schedules = visible_schedules.filter(
+                    scheduled_at__gte=from_param
+                )
+            if to_param:
+                visible_schedules = visible_schedules.filter(
+                    scheduled_at__lte=to_param
+                )
+            visible_schedules = visible_schedules.select_related("log")
+
+            result.append(
+                {
+                    "prescription_drug_id": str(pd.id),
+                    "drug": DrugSerializer(pd.drug).data,
+                    "remaining_percent": remaining_percent,
+                    "schedules": [
+                        {
+                            "id": str(s.id),
+                            "scheduled_at": s.scheduled_at,
+                            "is_taken": hasattr(s, "log") and s.log.is_taken,
+                            "taken_at": (
+                                s.log.taken_at if hasattr(s, "log") else None
+                            ),
+                        }
+                        for s in visible_schedules
+                    ],
+                }
+            )
+        return Response(result)
+
+
+class MedicationLogCreateView(APIView):
+    """설계문서 7.3절 — POST /medications/logs. 복용 체크(dose_log 생성)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=MedicationLogCreateSerializer, responses=DoseLogSerializer)
+    def post(self, request):
+        patient = get_patient_or_404(request.user)
+        serializer = MedicationLogCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        schedule = get_object_or_404(
+            DoseSchedule,
+            id=serializer.validated_data["schedule_id"],
+            prescription_drug__prescription__visit__patient=patient,
+        )
+        log, _ = DoseLog.objects.update_or_create(
+            schedule=schedule,
+            defaults={"is_taken": True, "taken_at": timezone.now()},
+        )
+        return Response(DoseLogSerializer(log).data, status=status.HTTP_201_CREATED)

@@ -1,6 +1,11 @@
 from django.urls import path
 
-from apps.clinical.views import PatientReservationListCreateView, PatientVisitListView
+from apps.clinical.views import (
+    PatientMedicationScheduleView,
+    PatientPrescriptionListView,
+    PatientReservationListCreateView,
+    PatientVisitListView,
+)
 
 from . import views
 
@@ -15,5 +20,15 @@ urlpatterns = [
         "me/visits/",
         PatientVisitListView.as_view(),
         name="patient-visit-list",
+    ),
+    path(
+        "me/prescriptions/",
+        PatientPrescriptionListView.as_view(),
+        name="patient-prescription-list",
+    ),
+    path(
+        "me/medications/schedule/",
+        PatientMedicationScheduleView.as_view(),
+        name="patient-medication-schedule",
     ),
 ]

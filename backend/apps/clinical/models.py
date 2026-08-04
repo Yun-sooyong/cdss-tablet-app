@@ -111,3 +111,82 @@ class Diagnosis(models.Model):
 
     class Meta:
         db_table = "diagnosis"
+
+
+class Drug(models.Model):
+    """약품 코드 테이블. 설계문서 6.6절 — KD코드/ATC 표준코드 권장."""
+
+    code = models.CharField(max_length=20, primary_key=True)
+    product_name = models.CharField(max_length=100)
+    ingredient = models.CharField(max_length=100, blank=True)
+    unit = models.CharField(max_length=20)
+
+    class Meta:
+        db_table = "drug"
+
+    def __str__(self):
+        return self.product_name
+
+
+class Prescription(BaseModel):
+    """처방. 설계문서 6.6절."""
+
+    visit = models.ForeignKey(
+        Visit, on_delete=models.CASCADE, related_name="prescriptions"
+    )
+    staff = models.ForeignKey(
+        Staff, on_delete=models.SET_NULL, null=True, related_name="prescriptions"
+    )
+    prescribed_at = models.DateField()
+    file_key = models.CharField(max_length=255, blank=True)  # 처방전 파일 스토리지 키
+
+    class Meta:
+        db_table = "prescription"
+
+
+class PrescriptionDrug(models.Model):
+    """처방약. 설계문서 6.6절."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    prescription = models.ForeignKey(
+        Prescription, on_delete=models.CASCADE, related_name="drugs"
+    )
+    drug = models.ForeignKey(
+        Drug, on_delete=models.PROTECT, related_name="prescription_drugs"
+    )
+    dose_per_take = models.DecimalField(max_digits=6, decimal_places=2)
+    times_per_day = models.PositiveSmallIntegerField()
+    total_days = models.PositiveSmallIntegerField()
+
+    class Meta:
+        db_table = "prescription_drug"
+
+
+class DoseSchedule(models.Model):
+    """복약 스케줄 — 「약 먹는 시간 알림」의 근거. 설계문서 6.6절."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    prescription_drug = models.ForeignKey(
+        PrescriptionDrug, on_delete=models.CASCADE, related_name="schedules"
+    )
+    scheduled_at = models.DateTimeField()
+
+    class Meta:
+        db_table = "dose_schedule"
+        ordering = ["scheduled_at"]
+
+
+class DoseLog(models.Model):
+    """복약 기록. 설계문서 6.6절 — 복약률(%)/잔량은 dose_schedule 대비
+    dose_log로 계산한다. schedule당 로그는 하나뿐이라고 보고
+    OneToOneField로 뒀다(설계문서의 FK 관계와 동일, unique만 추가됨)."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    schedule = models.OneToOneField(
+        DoseSchedule, on_delete=models.CASCADE, related_name="log"
+    )
+    is_taken = models.BooleanField(default=False)
+    taken_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "dose_log"

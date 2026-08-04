@@ -13,4 +13,14 @@ urlpatterns = [
         views.VisitDetailView.as_view(),
         name="visit-detail",
     ),
+    path(
+        "prescriptions/<uuid:prescription_id>/",
+        views.PrescriptionDetailView.as_view(),
+        name="prescription-detail",
+    ),
+    path(
+        "medications/logs/",
+        views.MedicationLogCreateView.as_view(),
+        name="medication-log-create",
+    ),
 ]
