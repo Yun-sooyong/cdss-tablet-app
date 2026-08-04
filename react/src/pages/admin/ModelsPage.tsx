@@ -9,7 +9,7 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid grid-cols-[minmax(9rem,1.6fr)_4rem_7rem_6rem] items-center gap-x-5';
+    'grid min-w-[32rem] grid-cols-[minmax(9rem,1.6fr)_4rem_7rem_6rem] items-center gap-x-5';
 
 export default function AdminModelsPage() {
     const { data, isPending, isError, error, refetch } = useQuery({
@@ -58,7 +58,7 @@ export default function AdminModelsPage() {
                                 {model.conformal_q.toFixed(3)}
                             </span>
 
-                            <span className="text-right text-sm text-ink-muted">
+                            <span className="truncate text-right text-sm text-ink-muted">
                                 {formatDate(model.created_at)}
                             </span>
                         </div>

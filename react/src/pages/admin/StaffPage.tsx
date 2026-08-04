@@ -13,7 +13,7 @@ import { ROLE_LABEL } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid grid-cols-[minmax(6rem,1fr)_minmax(9rem,1.5fr)_4rem_minmax(5rem,1fr)_5.5rem_2rem] items-center gap-x-4';
+    'grid min-w-[42rem] grid-cols-[minmax(6rem,1fr)_minmax(9rem,1.5fr)_4rem_minmax(5rem,1fr)_5.5rem_2rem] items-center gap-x-4';
 
 export default function AdminStaffPage() {
     const queryClient = useQueryClient();
@@ -86,7 +86,7 @@ export default function AdminStaffPage() {
                                 {member.department || '미지정'}
                             </span>
 
-                            <span className="text-right text-sm text-ink-muted">
+                            <span className="truncate text-right text-sm text-ink-muted">
                                 {formatDate(member.created_at)}
                             </span>
 
