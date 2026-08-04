@@ -11,6 +11,7 @@ from apps.clinical.views import (
 from . import views
 
 urlpatterns = [
+    path("register/", views.PatientRegisterView.as_view(), name="patient-register"),
     path("me/", views.PatientMeView.as_view(), name="patient-me"),
     path(
         "me/reservations/",

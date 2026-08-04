@@ -1,13 +1,49 @@
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.audit import log_access
 from apps.common.permissions import get_patient_or_404
 
-from .serializers import PatientSerializer
+from .models import Patient
+from .serializers import PatientRegisterSerializer, PatientSerializer
+
+
+class PatientRegisterView(APIView):
+    """설계문서 3.1-a — 아이디/비밀번호 방식 환자 회원가입.
+    카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=PatientRegisterSerializer, responses=PatientSerializer)
+    def post(self, request):
+        from apps.accounts.models import User
+
+        serializer = PatientRegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if User.objects.filter(username=data["username"]).exists():
+            raise ValidationError("이미 사용 중인 아이디입니다.")
+
+        user = User.objects.create_user(
+            username=data["username"],
+            email=data["email"],
+            password=data["password"],
+        )
+        patient = Patient.objects.create(
+            user=user,
+            name=data["name"],
+            birth_date=data["birth_date"],
+            sex=data["sex"],
+            phone=data["phone"],
+            address=data.get("address", ""),
+        )
+        return Response(PatientSerializer(patient).data, status=status.HTTP_201_CREATED)
 
 
 class PatientMeView(APIView):
