@@ -1,3 +1,5 @@
+import hashlib
+
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -6,10 +8,15 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.audit import log_access
-from apps.common.permissions import get_patient_or_404
+from apps.common.permissions import get_patient_or_404, get_staff_or_403
 
 from .models import Patient
-from .serializers import PatientRegisterSerializer, PatientSerializer
+from .serializers import (
+    PatientRegisterSerializer,
+    PatientSearchQuerySerializer,
+    PatientSerializer,
+    PatientSummarySerializer,
+)
 
 
 class PatientRegisterView(APIView):
@@ -92,3 +99,37 @@ class PatientMeView(APIView):
         patient.save()
 
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class PatientSearchView(APIView):
+    """의료진용 환자 검색 — 최일운 요청, 2026-08-04.
+
+    name/birth_date/phone은 암호화 컬럼이라 서버가 DB 레벨에서 LIKE·범위
+    검색을 할 수 없다(모든 행을 복호화해야 해서 성능·보안 둘 다 안 좋음).
+    그래서 검색 키는 두 개로 한정한다:
+    - chart_number: 평문 인덱스 컬럼, 부분일치 가능
+    - phone: phone_hash(SHA-256)로 정확히 일치하는 것만 (부분검색 불가)
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=PatientSummarySerializer(many=True))
+    def get(self, request):
+        get_staff_or_403(request.user)
+
+        serializer = PatientSearchQuerySerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        qs = Patient.objects.filter(deleted_at__isnull=True)
+        chart_number = data.get("chart_number")
+        phone = data.get("phone")
+
+        if chart_number:
+            qs = qs.filter(chart_number__icontains=chart_number)
+        else:
+            phone_hash = hashlib.sha256(phone.encode()).hexdigest()
+            qs = qs.filter(phone_hash=phone_hash)
+
+        results = qs.order_by("chart_number")[:20]
+        return Response(PatientSummarySerializer(results, many=True).data)
