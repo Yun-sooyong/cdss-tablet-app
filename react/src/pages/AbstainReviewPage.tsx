@@ -24,7 +24,7 @@ interface Row {
     filename : string;
 }
 
-// 결과가 나온 것만
+// 결과가 나온 것만 보여지기
 function buildRows(cutoff : number) : Row[] {
     return getJobs()
         .filter((j) => j.status === 'succeeded' || j.status === 'stil_done')
@@ -37,7 +37,7 @@ function buildRows(cutoff : number) : Row[] {
                 filename: getImage(job.image)?.original_filename ?? job.id.slice(0, 8),
             }];
         })
-        // ABSTAIN 먼저, 그다음 구간 넓은 순
+        // ABSTAIN 먼저보여지기
         .sort((a, b) => {
             const aRank = a.view.crossesCutoff ? 0 : 1;
             const bRank = b.view.crossesCutoff ? 0 : 1;
@@ -153,7 +153,6 @@ export function SlideRows({
     );
 }
 
-// 3건 이하는 축 하나에 막대가 한둘만 놓여 빈약하다
 function CardLayout({
     rows,
     cutoff,

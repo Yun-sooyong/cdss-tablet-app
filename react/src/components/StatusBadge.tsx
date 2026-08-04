@@ -1,9 +1,8 @@
-import type {Decision, JobStatus} from '@/api/types';
+import type {Decision, JobStatus, BatchStatus} from '@/api/types';
 import {Badge} from '@/components/ui/badge';
 import {DECISION_LABEL} from '@/lib/decision'
-import {JOB_STATUS_LABEL} from '@/lib/jobStatus'
+import {BATCH_STATUS_LABEL, JOB_STATUS_LABEL} from '@/lib/jobStatus'
 import {cn} from '@/lib/utils';
-
 
 const DECISION_STYLE : Record<Decision, string> = {
     LOW: 'border-decision-low/50 bg-decision-low/12 text-decision-low',
@@ -53,6 +52,25 @@ export function JobStatusBadge({
     return (
         <Badge variant="outline" className={cn(JOB_STATUS_STYLE[status], className)}>
             {JOB_STATUS_LABEL[status]}
+        </Badge>
+    );
+}
+
+// Batch는 Job과 종료값 이름이 달라 배지를 따로 둔다
+const BATCH_STATUS_STYLE : Record<BatchStatus, string> = {
+    pending: 'border-border text-ink-faint',
+    processing: 'border-border text-ink-muted',
+    done: 'border-border text-ink-muted',
+    failed: 'border-danger/50 bg-danger/12 text-danger',
+};
+
+export function BatchStatusBadge({ status } : { status : BatchStatus }) {
+    return (
+        <Badge
+            variant="outline"
+            className={cn('px-2.5 py-1 text-sm font-medium', BATCH_STATUS_STYLE[status])}
+        >
+            {BATCH_STATUS_LABEL[status]}
         </Badge>
     );
 }
