@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.patients.models import Patient
+from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Staff
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion
@@ -23,9 +24,24 @@ class ModelVersionSerializer(serializers.ModelSerializer):
 
 
 class BatchSerializer(serializers.ModelSerializer):
+    """patient는 UUID FK 그대로 두고, patient_summary에 판독용 최소 정보
+    (이름/생년월일/성별)를 같이 내려준다 — 최일운 요청, 2026-08-04.
+    이 batch에 접근 가능한 staff한테만 내려가므로(view의 권한 체크가
+    이미 됨) 별도 권한 분기는 필요 없다."""
+
+    patient_summary = PatientSummarySerializer(source="patient", read_only=True)
+
     class Meta:
         model = Batch
-        fields = ["id", "patient", "status", "created_by", "created_at", "updated_at"]
+        fields = [
+            "id",
+            "patient",
+            "patient_summary",
+            "status",
+            "created_by",
+            "created_at",
+            "updated_at",
+        ]
         read_only_fields = fields
 
 
@@ -64,6 +80,12 @@ class ImageUploadResponseSerializer(ImageSerializer):
 
 
 class JobSerializer(serializers.ModelSerializer):
+    """job은 patient FK가 없어 image.batch.patient를 타고 올라가 요약을
+    붙인다 — 최일운 요청, 2026-08-04. 파일명만 보이던 07·08·09 화면에
+    환자 맥락이 붙는다."""
+
+    patient_summary = serializers.SerializerMethodField()
+
     class Meta:
         model = Job
         fields = [
@@ -73,11 +95,18 @@ class JobSerializer(serializers.ModelSerializer):
             "status",
             "result",
             "error_message",
+            "patient_summary",
             "started_at",
             "finished_at",
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_patient_summary(self, obj) -> dict | None:
+        patient = obj.image.batch.patient
+        if patient is None:
+            return None
+        return PatientSummarySerializer(patient).data
 
 
 class JobCreateSerializer(serializers.Serializer):
