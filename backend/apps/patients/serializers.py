@@ -8,6 +8,7 @@ class PatientSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             "id",
+            "chart_number",
             "name",
             "birth_date",
             "sex",
@@ -16,7 +17,7 @@ class PatientSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "chart_number", "created_at", "updated_at"]
 
 
 class PatientSummarySerializer(serializers.ModelSerializer):
@@ -26,8 +27,20 @@ class PatientSummarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Patient
-        fields = ["id", "name", "birth_date", "sex"]
+        fields = ["id", "chart_number", "name", "birth_date", "sex"]
         read_only_fields = fields
+
+
+class PatientSearchQuerySerializer(serializers.Serializer):
+    chart_number = serializers.CharField(required=False, allow_blank=True)
+    phone = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, attrs):
+        if not attrs.get("chart_number") and not attrs.get("phone"):
+            raise serializers.ValidationError(
+                "chart_number 또는 phone 중 하나는 필요합니다."
+            )
+        return attrs
 
 
 class PatientRegisterSerializer(serializers.Serializer):
