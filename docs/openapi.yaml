@@ -350,6 +350,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Reservation'
           description: ''
+  /api/v1/patients/me/visits/:
+    get:
+      operationId: v1_patients_me_visits_list
+      description: 설계문서 7.3절 — GET /patients/me/visits. 진단명 포함.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visit'
+          description: ''
   /api/v1/reservations/{reservation_id}/:
     get:
       operationId: v1_reservations_retrieve
@@ -448,6 +465,28 @@ paths:
               schema:
                 $ref: '#/components/schemas/Invitation'
           description: ''
+  /api/v1/visits/{visit_id}/:
+    get:
+      operationId: v1_visits_retrieve
+      description: 설계문서 7.3절 — GET /visits/{id}. 본인 진료만 접근 가능.
+      parameters:
+      - in: path
+        name: visit_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
+          description: ''
 components:
   schemas:
     Batch:
@@ -491,6 +530,40 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    Diagnosis:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        disease:
+          allOf:
+          - $ref: '#/components/schemas/Disease'
+          readOnly: true
+        is_primary:
+          type: boolean
+          readOnly: true
+      required:
+      - disease
+      - id
+      - is_primary
+    Disease:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        name_ko:
+          type: string
+          readOnly: true
+        name_en:
+          type: string
+          readOnly: true
+      required:
+      - code
+      - name_en
+      - name_ko
     ImageUploadRequest:
       type: object
       properties:
@@ -917,6 +990,46 @@ components:
       required:
       - access
       - refresh
+    Visit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        visited_at:
+          type: string
+          format: date-time
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        diagnoses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Diagnosis'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - diagnoses
+      - id
+      - note
+      - patient
+      - staff
+      - visited_at
   securitySchemes:
     jwtAuth:
       type: http
