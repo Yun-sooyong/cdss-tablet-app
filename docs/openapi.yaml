@@ -247,6 +247,197 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/patients/me/:
+    get:
+      operationId: v1_patients_me_retrieve
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    patch:
+      operationId: v1_patients_me_partial_update
+      description: 설계문서 7.3절 — 환자 본인 데이터로만 제한.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPatient'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+    delete:
+      operationId: v1_patients_me_destroy
+      description: |-
+        회원탈퇴 — 설계문서 12장: is_active=false + 식별정보 가명처리,
+        진료기록 본체는 보존(soft delete).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/patients/me/reservations/:
+    get:
+      operationId: v1_patients_me_reservations_list
+      description: |-
+        설계문서 7.3절 — GET /patients/me/reservations. 3.1-b.
+
+        POST는 설계문서 API 표에는 없지만(예약 신청 경로가 없으면 예약을
+        아무도 못 만든다는 설계 공백), 예약 요청 흐름상 필요해서 추가했다.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+          description: ''
+    post:
+      operationId: v1_patients_me_reservations_create
+      description: |-
+        설계문서 7.3절 — GET /patients/me/reservations. 3.1-b.
+
+        POST는 설계문서 API 표에는 없지만(예약 신청 경로가 없으면 예약을
+        아무도 못 만든다는 설계 공백), 예약 요청 흐름상 필요해서 추가했다.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ReservationCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+  /api/v1/patients/me/visits/:
+    get:
+      operationId: v1_patients_me_visits_list
+      description: 설계문서 7.3절 — GET /patients/me/visits. 진단명 포함.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Visit'
+          description: ''
+  /api/v1/reservations/{reservation_id}/:
+    get:
+      operationId: v1_reservations_retrieve
+      description: 설계문서 7.3절 — 예약 상세/변경/취소. 본인 예약만 접근 가능.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+    patch:
+      operationId: v1_reservations_partial_update
+      description: 예약일 변경 — reservation_history 자동 기록.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedReservationReschedule'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+          description: ''
+    delete:
+      operationId: v1_reservations_destroy
+      description: 예약 취소 — 물리 삭제가 아니라 status=CANCELED로 처리.
+      parameters:
+      - in: path
+        name: reservation_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/staff/invitations/:
     post:
       operationId: v1_staff_invitations_create
@@ -273,6 +464,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Invitation'
+          description: ''
+  /api/v1/visits/{visit_id}/:
+    get:
+      operationId: v1_visits_retrieve
+      description: 설계문서 7.3절 — GET /visits/{id}. 본인 진료만 접근 가능.
+      parameters:
+      - in: path
+        name: visit_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Visit'
           description: ''
 components:
   schemas:
@@ -317,6 +530,40 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    Diagnosis:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        disease:
+          allOf:
+          - $ref: '#/components/schemas/Disease'
+          readOnly: true
+        is_primary:
+          type: boolean
+          readOnly: true
+      required:
+      - disease
+      - id
+      - is_primary
+    Disease:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        name_ko:
+          type: string
+          readOnly: true
+        name_en:
+          type: string
+          readOnly: true
+      required:
+      - code
+      - name_en
+      - name_ko
     ImageUploadRequest:
       type: object
       properties:
@@ -544,6 +791,151 @@ components:
       - is_active
       - name
       - version
+    PatchedPatient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    PatchedReservationReschedule:
+      type: object
+      properties:
+        scheduled_at:
+          type: string
+          format: date-time
+        change_reason:
+          type: string
+          default: ''
+          maxLength: 200
+    Patient:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          $ref: '#/components/schemas/SexEnum'
+        address:
+          type: string
+          maxLength: 255
+        phone:
+          type: string
+          maxLength: 30
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - birth_date
+      - created_at
+      - id
+      - name
+      - phone
+      - updated_at
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        department:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ReservationStatusEnum'
+          readOnly: true
+        change_reason:
+          type: string
+          maxLength: 200
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - department
+      - id
+      - patient
+      - scheduled_at
+      - staff
+      - status
+      - updated_at
+    ReservationCreate:
+      type: object
+      properties:
+        department:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+      required:
+      - department
+      - scheduled_at
+    ReservationStatusEnum:
+      enum:
+      - REQUESTED
+      - CONFIRMED
+      - CHANGED
+      - CANCELED
+      - NO_SHOW
+      type: string
+      description: |-
+        * `REQUESTED` - 요청됨
+        * `CONFIRMED` - 확정
+        * `CHANGED` - 변경됨
+        * `CANCELED` - 취소됨
+        * `NO_SHOW` - 미방문
     RoleEnum:
       enum:
       - doctor
@@ -554,6 +946,18 @@ components:
         * `doctor` - 의사
         * `nurse` - 간호사
         * `admin` - 관리자
+    SexEnum:
+      enum:
+      - M
+      - F
+      - O
+      - U
+      type: string
+      description: |-
+        * `M` - 남성
+        * `F` - 여성
+        * `O` - 기타
+        * `U` - 미상
     TokenObtainPair:
       type: object
       properties:
@@ -586,6 +990,46 @@ components:
       required:
       - access
       - refresh
+    Visit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        visited_at:
+          type: string
+          format: date-time
+          readOnly: true
+        note:
+          type: string
+          readOnly: true
+        diagnoses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Diagnosis'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - diagnoses
+      - id
+      - note
+      - patient
+      - staff
+      - visited_at
   securitySchemes:
     jwtAuth:
       type: http
