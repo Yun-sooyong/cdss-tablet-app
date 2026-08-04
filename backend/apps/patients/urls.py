@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.accounts.views import PatientQRIssueView
 from apps.clinical.views import (
     PatientMedicationScheduleView,
     PatientPrescriptionListView,
@@ -30,5 +31,10 @@ urlpatterns = [
         "me/medications/schedule/",
         PatientMedicationScheduleView.as_view(),
         name="patient-medication-schedule",
+    ),
+    path(
+        "me/qr/",
+        PatientQRIssueView.as_view(),
+        name="patient-qr-issue",
     ),
 ]

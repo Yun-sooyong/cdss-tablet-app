@@ -94,3 +94,19 @@ class AnalysisShareCreateSerializer(serializers.Serializer):
         choices=AnalysisShare.Permission.choices, default=AnalysisShare.Permission.READ
     )
     expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
+
+
+class UploadSignedUrlRequestSerializer(serializers.Serializer):
+    batch_id = serializers.PrimaryKeyRelatedField(
+        source="batch", queryset=Batch.objects.filter(deleted_at__isnull=True)
+    )
+    original_filename = serializers.CharField(max_length=255)
+
+
+class BatchStartSerializer(serializers.Serializer):
+    model_version_id = serializers.UUIDField(required=False)
+
+
+class WorkerHeartbeatSerializer(serializers.Serializer):
+    worker_name = serializers.CharField(max_length=50)
+    version = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")

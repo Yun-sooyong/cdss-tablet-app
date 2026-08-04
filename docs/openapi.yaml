@@ -91,6 +91,10 @@ paths:
   /api/v1/analysis/batches/{batch_id}/images/:
     post:
       operationId: v1_analysis_batches_images_create
+      description: |-
+        POST /batches/{id}/images/. UploadSignedUrlView와 동일 로직 —
+        저희가 먼저 만든 nested 경로, 설계문서엔 독립 경로(/uploads/signed-url)로
+        돼 있어서 그것도 별도로 만들어뒀다. 둘 다 남겨둠(하위호환).
       parameters:
       - in: path
         name: batch_id
@@ -178,6 +182,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnalysisShare'
           description: ''
+  /api/v1/analysis/batches/{batch_id}/start/:
+    post:
+      operationId: v1_analysis_batches_start_create
+      description: |-
+        설계문서 7.4절 — POST /batches/{id}/start. 분석 시작.
+
+        batch에 등록된 이미지 중 아직 job이 없는 것들에 대해 한 번에 job을
+        만들어 큐에 등록한다 (기존 POST /images/{id}/jobs/는 이미지 하나씩
+        개별 등록하는 하위 경로로 계속 남겨둠).
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+          description: ''
   /api/v1/analysis/images/{image_id}/jobs/:
     post:
       operationId: v1_analysis_images_jobs_create
@@ -210,6 +252,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/v1/analysis/internal/workers/heartbeat/:
+    post:
+      operationId: v1_analysis_internal_workers_heartbeat_create
+      description: 설계문서 7.5절/2.5절 — POST /internal/workers/heartbeat. 워커 생존 신고.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/analysis/jobs/{job_id}/:
     get:
       operationId: v1_analysis_jobs_retrieve
@@ -378,6 +443,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/devices/tokens/:
+    post:
+      operationId: v1_devices_tokens_create
+      description: 설계문서 7.4절/9장 — POST /devices/tokens. FCM 토큰 등록.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceToken'
+          description: ''
   /api/v1/medications/logs/:
     post:
       operationId: v1_medications_logs_create
@@ -404,6 +496,23 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DoseLog'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: v1_notifications_list
+      description: 설계문서 7.4절/3.2-f — GET /notifications. 본인 알림만.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
           description: ''
   /api/v1/patients/me/:
     get:
@@ -488,6 +597,21 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/patients/me/qr/:
+    post:
+      operationId: v1_patients_me_qr_create
+      description: 설계문서 7.3절/3.1-f — POST /patients/me/qr. 일회성·5분 만료.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRToken'
           description: ''
   /api/v1/patients/me/reservations/:
     get:
@@ -579,6 +703,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/Prescription'
           description: ''
+  /api/v1/qr/verify/:
+    post:
+      operationId: v1_qr_verify_create
+      description: 설계문서 7.4절 — POST /qr/verify. 태블릿 전용, 의료진 인증 필요.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/reservations/{reservation_id}/:
     get:
       operationId: v1_reservations_retrieve
@@ -752,6 +899,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/Staff'
           description: ''
+  /api/v1/uploads/signed-url/:
+    post:
+      operationId: v1_uploads_signed_url_create
+      description: 설계문서 7.4절 — POST /uploads/signed-url. 독립 엔드포인트 버전.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+          description: ''
   /api/v1/visits/{visit_id}/:
     get:
       operationId: v1_visits_retrieve
@@ -881,6 +1055,12 @@ components:
           format: uuid
       required:
       - patient_id
+    BatchStart:
+      type: object
+      properties:
+        model_version_id:
+          type: string
+          format: uuid
     BatchStatusEnum:
       enum:
       - pending
@@ -893,6 +1073,27 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    DeviceToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fcm_token:
+          type: string
+          maxLength: 255
+        platform:
+          $ref: '#/components/schemas/PlatformEnum'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - fcm_token
+      - id
+      - platform
+      - updated_at
     Diagnosis:
       type: object
       properties:
@@ -1216,6 +1417,43 @@ components:
       - is_active
       - name
       - version
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        target_type:
+          type: string
+          readOnly: true
+        target_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        is_read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - is_read
+      - target_id
+      - target_type
+      - type
     PatchedPatient:
       type: object
       properties:
@@ -1306,6 +1544,16 @@ components:
       description: |-
         * `read` - 읽기
         * `comment` - 댓글
+    PlatformEnum:
+      enum:
+      - ios
+      - android
+      - web
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+        * `web` - Web
     Prescription:
       type: object
       properties:
@@ -1375,6 +1623,32 @@ components:
       - id
       - times_per_day
       - total_days
+    QRToken:
+      type: object
+      properties:
+        token:
+          type: string
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - expires_at
+      - issued_at
+      - token
+    QRVerify:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 64
+      required:
+      - token
     Reservation:
       type: object
       properties:
@@ -1542,6 +1816,28 @@ components:
       required:
       - access
       - refresh
+    TypeEnum:
+      enum:
+      - analysis_done
+      - share
+      - chat
+      type: string
+      description: |-
+        * `analysis_done` - 분석 완료
+        * `share` - 공유
+        * `chat` - 채팅
+    UploadSignedUrlRequest:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+          maxLength: 255
+      required:
+      - batch_id
+      - original_filename
     Visit:
       type: object
       properties:
@@ -1582,6 +1878,18 @@ components:
       - patient
       - staff
       - visited_at
+    WorkerHeartbeat:
+      type: object
+      properties:
+        worker_name:
+          type: string
+          maxLength: 50
+        version:
+          type: string
+          default: ''
+          maxLength: 20
+      required:
+      - worker_name
   securitySchemes:
     jwtAuth:
       type: http

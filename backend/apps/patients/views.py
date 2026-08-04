@@ -4,6 +4,7 @@ from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common.audit import log_access
 from apps.common.permissions import get_patient_or_404
 
 from .serializers import PatientSerializer
@@ -17,6 +18,15 @@ class PatientMeView(APIView):
     @extend_schema(responses=PatientSerializer)
     def get(self, request):
         patient = get_patient_or_404(request.user)
+        from apps.accounts.models import AuditLog
+
+        log_access(
+            request,
+            AuditLog.Action.READ,
+            target_table="patient",
+            target_id=patient.id,
+            patient=patient,
+        )
         return Response(PatientSerializer(patient).data)
 
     @extend_schema(request=PatientSerializer, responses=PatientSerializer)
