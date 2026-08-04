@@ -76,7 +76,7 @@ export function UploadIndicator() {
                 </div>
 
                 <p className="border-t border-border px-4 py-2.5 text-xs text-ink-faint">
-                    창을 닫으면 업로드가 중단됩니다. 분석은 서버에서 이어집니다.
+                    창을 닫으면 업로드가 중단됩니다
                 </p>
             </PopoverContent>
         </Popover>

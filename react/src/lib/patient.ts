@@ -7,10 +7,10 @@ export const SEX_LABEL : Record<Sex, string> = {
     U: '미상',
 };
 
-// 목록용 >> 차트번호와 이름만. 생년월일까지 넣으면 행이 좁아진다
+// 목록용 >> 차트번호 · 이름
 export const patientBrief = (p : PatientSummary) : string =>
     `${p.chart_number} · ${p.name}`;
 
-// 상세용 >> 판독 맥락에 필요한 전부
+// 상세용 >> 차트번호 · 이름 · 생년월일 · 성별
 export const patientFull = (p : PatientSummary) : string =>
     `${p.chart_number} · ${p.name} · ${p.birth_date} (${SEX_LABEL[p.sex]})`;

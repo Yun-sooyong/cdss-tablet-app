@@ -1,11 +1,16 @@
-import { useState } from 'react';
+// 09 판정 유보 검증함
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 
-import { getImage, getJobs } from '@/api';
+import { getImages, getLatestJobs } from '@/api';
+import { qk } from '@/api/keys';
 import type { Job, JobResult } from '@/api/types';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
+import { ClinicalNotice } from '@/components/ClinicalNotice';
+import { CutoffControl } from '@/components/CutoffControl';
 import { IntervalBar } from '@/components/IntervalBar';
-import { DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
+import { Failed, Pending } from '@/components/QueryState';
+import { DecisionBadge } from '@/components/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     Sheet,
@@ -24,9 +29,13 @@ interface Row {
     filename : string;
 }
 
-// 결과가 나온 것만 보여지기
-function buildRows(cutoff : number) : Row[] {
-    return getJobs()
+// 결과가 나온 job만, σ 내림차순
+function buildRows(
+    jobs : Job[],
+    filenameOf : (imageId : string) => string | undefined,
+    cutoff : number,
+) : Row[] {
+    return jobs
         .filter((j) => j.status === 'succeeded' || j.status === 'stil_done')
         .flatMap((job) => {
             if (!job.result) return [];
@@ -34,27 +43,39 @@ function buildRows(cutoff : number) : Row[] {
                 job,
                 result: job.result,
                 view: toIntervalView(job.result, cutoff),
-                filename: getImage(job.image)?.original_filename ?? job.id.slice(0, 8),
+                filename: filenameOf(job.image) ?? job.id.slice(0, 8),
             }];
         })
-        // ABSTAIN 먼저보여지기
-        .sort((a, b) => {
-            const aRank = a.view.crossesCutoff ? 0 : 1;
-            const bRank = b.view.crossesCutoff ? 0 : 1;
-            if (aRank !== bRank) return aRank - bRank;
-            return b.view.width - a.view.width;
-        });
+        .sort((a, b) => b.result.sigma - a.result.sigma);
 }
+
+const clampCutoff = (n : number) : number => Math.min(100, Math.max(0, n));
 
 export default function AbstainReviewPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [cutoff, setCutoff] = useState(CUTOFF);
 
-    const rows = buildRows(cutoff);
-    const reviewCount = rows.filter((r) => r.view.crossesCutoff).length;
+    // cutoff >> URL 파라미터
+    const raw = Number(searchParams.get('cutoff'));
+    const cutoff = Number.isFinite(raw) && searchParams.has('cutoff')
+        ? clampCutoff(raw)
+        : CUTOFF;
+
+    function setCutoff(next : number) {
+        const params = new URLSearchParams(searchParams);
+        if (clampCutoff(next) === CUTOFF) params.delete('cutoff');
+        else params.set('cutoff', String(clampCutoff(next)));
+
+        setSearchParams(params, { replace: true });
+    }
+
+    const jobs = useQuery({ queryKey: qk.latestJobs, queryFn: getLatestJobs });
+
+    // filename >> job에는 image UUID만 있어 따로 짝지운다
+    const { data: images } = useQuery({ queryKey: qk.images, queryFn: getImages });
+    const filenameOf = (imageId : string) =>
+        images?.find((i) => i.id === imageId)?.original_filename;
 
     const selectedId = searchParams.get('job');
-    const selected = rows.find((r) => r.job.id === selectedId) ?? null;
 
     function select(id : string | null) {
         const next = new URLSearchParams(searchParams);
@@ -63,28 +84,36 @@ export default function AbstainReviewPage() {
         setSearchParams(next, { replace: true });
     }
 
+    if (jobs.isPending) return <Pending />;
+    if (jobs.isError) return <Failed error={jobs.error} onRetry={() => void jobs.refetch()} />;
+
+    const rows = buildRows(jobs.data, filenameOf, cutoff);
+    const reviewCount = rows.filter((r) => r.view.crossesCutoff).length;
+    const selected = rows.find((r) => r.job.id === selectedId) ?? null;
+
     return (
         <div>
-            <div className="mb-6 flex items-baseline justify-between">
-                <h1 className="text-xl font-semibold">판정 유보 검증함</h1>
-                <div className="text-[15px] text-ink-muted">
-                    결과 {rows.length}건 중{' '}
-                    <span className="font-semibold text-decision-abstain">
-                        확인 필요 {reviewCount}건
-                    </span>
-                </div>
+            <div className="mb-2 text-[15px] text-ink-muted">
+                결과 {rows.length}건 중{' '}
+                <span className="font-semibold text-decision-abstain">
+                    확인 필요 {reviewCount}건
+                </span>
             </div>
+
+            <ClinicalNotice className="mb-6" />
+
+            {/* 컷오프는 표든 카드든 항상 조작할 수 있어야 한다 */}
+            {rows.length > 0 && <CutoffControl cutoff={cutoff} onChange={setCutoff} />}
 
             {rows.length === 0 ? (
                 <div className="py-16 text-center text-sm text-ink-faint">
-                    아직 결과가 없습니다.
+                    판독 결과가 없습니다
                 </div>
             ) : rows.length <= 3 ? (
                 <CardLayout rows={rows} cutoff={cutoff} onSelect={select} />
             ) : (
                 <IntervalAxis
                     cutoff={cutoff}
-                    onCutoffChange={setCutoff}
                     leading={<span>환자 · 슬라이드</span>}
                     trailing={
                         <>
@@ -103,7 +132,7 @@ export default function AbstainReviewPage() {
     );
 }
 
-export function SlideRows({
+function SlideRows({
     rows,
     cutoff,
     onSelect,
@@ -241,11 +270,9 @@ function DetailSheet({
                             </p>
                         </SheetHeader>
 
+                        {/* 값 · 구간 · 판정. 나머지는 08 결과 상세 */}
                         <div className="space-y-6 px-4 pb-6">
-                            <div className="flex gap-2">
-                                <DecisionBadge decision={classifyAt(row.result, cutoff)} />
-                                <JobStatusBadge status={row.job.status} />
-                            </div>
+                            <DecisionBadge decision={classifyAt(row.result, cutoff)} />
 
                             <div>
                                 <div className="font-mono text-4xl tabular-nums">
@@ -261,41 +288,12 @@ function DetailSheet({
                                         <IntervalBar view={row.view} decision={classifyAt(row.result, cutoff)} />
                                     </IntervalAxis>
                                 </div>
-                            </div>
-
-                            <dl className="grid grid-cols-2 gap-y-2 text-sm">
-                                <dt className="text-ink-muted">예측 구간</dt>
-                                <dd className="text-right font-mono tabular-nums">
-                                    {row.result.lower.toFixed(1)} ~ {row.result.upper.toFixed(1)}
-                                </dd>
-                                <dt className="text-ink-muted">σ</dt>
-                                <dd className="text-right font-mono tabular-nums">
-                                    {row.result.sigma.toFixed(1)}
-                                </dd>
-                                <dt className="text-ink-muted">cp_value</dt>
-                                <dd className="text-right font-mono tabular-nums">
-                                    {row.result.cp_value}
-                                </dd>
-                                <dt className="text-ink-muted">유효 타일</dt>
-                                <dd className="text-right font-mono tabular-nums">
-                                    {row.result.n_valid}
-                                </dd>
-                            </dl>
-
-                            {row.result.medgemma_report && (
-                                <div className="text-sm">
-                                    <div className="mb-1 text-ink-muted">판독 요약</div>
-                                    {row.result.medgemma_report.generation_failed ? (
-                                        <p className="text-ink-faint">
-                                            리포트 생성에 실패했습니다.
-                                        </p>
-                                    ) : (
-                                        <p className="leading-relaxed">
-                                            {row.result.medgemma_report.summary}
-                                        </p>
-                                    )}
+                                <div className="mt-2 flex justify-between font-mono text-xs tabular-nums text-ink-muted">
+                                    <span>{row.result.lower.toFixed(1)}</span>
+                                    <span>예측 구간 · σ {row.result.sigma.toFixed(1)}</span>
+                                    <span>{row.result.upper.toFixed(1)}</span>
                                 </div>
-                            )}
+                            </div>
 
                             <Link
                                 to={`/results/${row.job.id}`}

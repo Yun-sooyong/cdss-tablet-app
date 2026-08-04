@@ -1,16 +1,25 @@
-import { useState } from 'react';
+// 07 배치 요약
 import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 
-import { getBatch, getImage, getJobsByBatch, getModelVersions } from '@/api';
+import {
+    getBatchDetail,
+    getImages,
+    getModelVersions,
+    latestPerImage,
+    retryJob,
+} from '@/api';
+import { qk } from '@/api/keys';
 import type { Job, JobResult } from '@/api/types';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { IntervalBar } from '@/components/IntervalBar';
+import { Failed, Pending } from '@/components/QueryState';
 import { DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
-import { Card, CardContent } from '@/components/ui/card';
+import { CUTOFF, toIntervalView } from '@/lib/decision';
 import type { IntervalView } from '@/lib/decision';
-import { CUTOFF, classifyAt, toIntervalView } from '@/lib/decision';
-import { BATCH_STATUS_LABEL } from '@/lib/jobStatus';
-import { patientFull } from '@/lib/patient';
+import { BATCH_STATUS_LABEL, isBatchTerminal } from '@/lib/jobStatus';
 
 interface Row {
     job : Job;
@@ -21,68 +30,82 @@ interface Row {
 
 export default function ResultSummaryPage() {
     const { batchId } = useParams();
-    const [cutoff, setCutoff] = useState(CUTOFF);
+    const queryClient = useQueryClient();
 
-    const batch = batchId ? getBatch(batchId) : undefined;
+    const batch = useQuery({
+        queryKey: qk.batch(batchId ?? ''),
+        queryFn: () => getBatchDetail(batchId!),
+        enabled: !!batchId,
+        // 종료 전까지 폴링
+        refetchInterval: (query) =>
+            query.state.data && isBatchTerminal(query.state.data.status) ? false : 2000,
+    });
 
-    if (!batch) {
-        return (
-            <div className="py-16 text-center text-sm text-ink-faint">
-                해당 배치를 찾을 수 없습니다.
-            </div>
-        );
-    }
+    const { data: images } = useQuery({ queryKey: qk.images, queryFn: getImages });
+    const { data: models } = useQuery({
+        queryKey: qk.modelVersions,
+        queryFn: getModelVersions,
+    });
 
-    const rows : Row[] = getJobsByBatch(batch.id).map((job) => ({
+    const retry = useMutation({
+        mutationFn: (imageId : string) => retryJob(imageId),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: qk.batch(batchId ?? '') });
+            void queryClient.invalidateQueries({ queryKey: qk.batches });
+            void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
+            toast('다시 분석을 요청했습니다');
+        },
+        onError: (error : Error) =>
+            toast('다시 요청하지 못했습니다', { description: error.message }),
+    });
+
+    if (batch.isPending) return <Pending />;
+    if (batch.isError) return <Failed error={batch.error} onRetry={() => void batch.refetch()} />;
+
+    const rows : Row[] = latestPerImage(batch.data.jobs).map((job) => ({
         job,
         result: job.result,
-        view: job.result ? toIntervalView(job.result, cutoff) : null,
-        filename: getImage(job.image)?.original_filename ?? job.id.slice(0, 8),
+        view: job.result ? toIntervalView(job.result) : null,
+        filename:
+            images?.find((i) => i.id === job.image)?.original_filename ??
+            job.id.slice(0, 8),
     }));
 
-    const total = rows.length;
-    const failed = rows.filter((r) => r.job.status === 'failed').length;
-    const done = rows.filter((r) => r.job.status === 'succeeded').length;
-    const review = rows.filter((r) => r.view?.crossesCutoff).length;
+    // 배치 안에 모델이 섞일 수 있다
+    const modelNames = [...new Set(rows.map((r) => r.job.model_version))]
+        .map((id) => models?.find((m) => m.id === id)?.name)
+        .filter((name) : name is string => !!name);
 
-    const modelName =
-        getModelVersions().find((m) => m.id === rows[0]?.job.model_version)?.name ?? '-';
+    const modelLabel =
+        modelNames.length === 0
+            ? '-'
+            : modelNames.length === 1
+              ? modelNames[0]
+              : `${modelNames[0]} 외 ${modelNames.length - 1}`;
 
     return (
         <div>
-            <div className="mb-6">
-                <div className="flex items-baseline gap-3">
-                    <h1 className="text-xl font-semibold">
-                        {batch.patient_summary
-                            ? patientFull(batch.patient_summary)
-                            : '환자 미연결'}
-                    </h1>
-                    <span className="text-[15px] text-ink-muted">
-                        {BATCH_STATUS_LABEL[batch.status]}
-                    </span>
-                </div>
-                <p className="mt-1.5 font-mono text-sm text-ink-faint">
-                    {batch.id.slice(0, 8)} · {modelName} ·{' '}
-                    {new Date(batch.created_at).toLocaleString('ko-KR')}
-                </p>
+            <div className="mb-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="text-[15px] text-ink-muted">
+                    {BATCH_STATUS_LABEL[batch.data.status]}
+                </span>
+                <span
+                    className="font-mono text-sm text-ink-faint"
+                    title={modelNames.join(' · ')}
+                >
+                    {modelLabel} · {new Date(batch.data.created_at).toLocaleString('ko-KR')}
+                </span>
             </div>
 
-            <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
-                <SummaryCard label="전체" value={total} />
-                <SummaryCard label="확인 필요" value={review} accent />
-                <SummaryCard label="완료" value={done} />
-                <SummaryCard label="실패" value={failed} />
-            </div>
-
-            {total === 0 ? (
+            {rows.length === 0 ? (
                 <div className="py-16 text-center text-sm text-ink-faint">
-                    이 배치에는 분석이 없습니다.
+                    분석된 슬라이드가 없습니다
                 </div>
             ) : (
+                // 컷오프 고정. 슬라이더는 09 판정 유보 검증함
                 <IntervalAxis
-                    cutoff={cutoff}
-                    onCutoffChange={setCutoff}
-                    leading={<span>환자 · 슬라이드</span>}
+                    cutoff={CUTOFF}
+                    leading={<span>슬라이드</span>}
                     trailing={
                         <>
                             <span className="text-right">sTIL %</span>
@@ -93,7 +116,12 @@ export default function ResultSummaryPage() {
                     >
                     <div className="divide-y divide-border">
                         {rows.map((row) => (
-                            <SlideRow key={row.job.id} row={row} cutoff={cutoff} />
+                            <SlideRow
+                                key={row.job.id}
+                                row={row}
+                                onRetry={() => retry.mutate(row.job.image)}
+                                retrying={retry.isPending}
+                            />
                         ))}
                     </div>
                 </IntervalAxis>
@@ -102,35 +130,18 @@ export default function ResultSummaryPage() {
     );
 }
 
-function SummaryCard({
-    label,
-    value,
-    accent,
+// 결과 있으면 막대, 없으면 상태·실패 사유
+function SlideRow({
+    row,
+    onRetry,
+    retrying,
 } : {
-    label : string;
-    value : number;
-    accent? : boolean;
+    row : Row;
+    onRetry : () => void;
+    retrying : boolean;
 }) {
-    return (
-        <Card>
-            <CardContent className="py-4">
-                <div className="text-sm text-ink-muted">{label}</div>
-                <div
-                    className={`mt-1.5 font-mono text-3xl tabular-nums ${
-                        accent && value > 0 ? 'text-decision-abstain' : ''
-                    }`}
-                >
-                    {value}
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
-
-// 결과가 없는 job은 막대 대신 상태나 실패 사유를 보인다
-function SlideRow({ row, cutoff } : { row : Row; cutoff : number }) {
-    const body =
-        row.result && row.view ? (
+    if (row.result && row.view) {
+        return (
             <Link
                 to={`/results/${row.job.id}`}
                 className={`${AXIS_GRID} w-full py-4 transition-colors hover:bg-brand-soft/50`}
@@ -139,7 +150,7 @@ function SlideRow({ row, cutoff } : { row : Row; cutoff : number }) {
                     {row.filename}
                 </span>
 
-                <IntervalBar view={row.view} decision={classifyAt(row.result, cutoff)} />
+                <IntervalBar view={row.view} decision={row.result.decision} />
 
                 <span className="text-right font-mono text-base tabular-nums">
                     {row.result.stil_value.toFixed(1)}
@@ -149,29 +160,42 @@ function SlideRow({ row, cutoff } : { row : Row; cutoff : number }) {
                 </span>
 
                 <span className="flex justify-end">
-                    <DecisionBadge decision={classifyAt(row.result, cutoff)} />
+                    <DecisionBadge decision={row.result.decision} />
                 </span>
             </Link>
-        ) : (
-            <div className={`${AXIS_GRID} w-full py-4`}>
-                <span className="truncate text-[15px]" title={row.filename}>
-                    {row.filename}
-                </span>
-
-                <span className="truncate text-sm text-ink-faint">
-                    {row.job.status === 'failed'
-                        ? row.job.error_message || '분석에 실패했습니다.'
-                        : '분석 대기 중입니다.'}
-                </span>
-
-                <span />
-                <span />
-
-                <span className="flex justify-end">
-                    <JobStatusBadge status={row.job.status} />
-                </span>
-            </div>
         );
+    }
 
-    return body;
+    const failed = row.job.status === 'failed';
+
+    return (
+        <div className={`${AXIS_GRID} w-full py-4`}>
+            <span className="truncate text-[15px]" title={row.filename}>
+                {row.filename}
+            </span>
+
+            <span className="truncate text-sm text-ink-faint">
+                {failed ? row.job.error_message || '분석에 실패했습니다.' : '대기'}
+            </span>
+
+            <span />
+            <span />
+
+            <span className="flex items-center justify-end gap-2">
+                {failed && (
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        disabled={retrying}
+                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                        <RotateCcw size={12} />
+                        재실행
+                    </button>
+                )}
+
+                <JobStatusBadge status={row.job.status} />
+            </span>
+        </div>
+    );
 }

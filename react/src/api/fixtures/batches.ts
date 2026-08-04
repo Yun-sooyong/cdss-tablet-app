@@ -1,7 +1,8 @@
 import type {Batch} from "@/api/types";
 import { PATIENT_1, PATIENT_2, PATIENT_3 } from './patients';
+import { ME } from './staff';
 
-const STAFF_ID = 'e2c7a940-3b18-4d6f-a052-7f9c1e8b4a33';
+const STAFF_ID = ME.id;
 
 export const mockBatches: Batch[] = [
     {
@@ -32,7 +33,7 @@ export const mockBatches: Batch[] = [
         updated_at: '2026-08-02T15:08:52.418000+09:00',
     },
     {
-        // 환자 미연결 >> 실서버에도 patient null 인 배치가 있다
+        // 환자 미연결
         id: '3f8a1c20-9d4e-4b71-8a02-1e5c7d930004',
         patient: null,
         patient_summary: null,

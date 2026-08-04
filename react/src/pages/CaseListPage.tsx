@@ -1,16 +1,22 @@
+// 03 케이스 목록
 import { Link, useSearchParams } from 'react-router-dom';
+import { useQueries, useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 
 import { getBatches, getJobsByBatch } from '@/api';
-import type { Batch, BatchStatus } from '@/api/types';
+import { qk } from '@/api/keys';
+import type { BatchStatus } from '@/api/types';
+import { FIELD_INPUT } from '@/components/form';
+import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge } from '@/components/StatusBadge';
 import { needsReview } from '@/lib/decision';
 import { BATCH_STATUS_LABEL } from '@/lib/jobStatus';
 import { patientBrief } from '@/lib/patient';
 import { cn } from '@/lib/utils';
 
+// 환자 · 슬라이드 · 확인 필요 · 상태 · 등록
 const GRID =
-    'grid grid-cols-[minmax(9rem,16rem)_7rem_5.5rem_5.5rem_6rem_minmax(0,1fr)] items-center gap-x-5';
+    'grid grid-cols-[minmax(9rem,20rem)_5.5rem_5.5rem_6rem_minmax(0,1fr)] items-center gap-x-5';
 
 const STATUS_FILTERS : { value : BatchStatus | 'all'; label : string }[] = [
     { value: 'all', label: '전체' },
@@ -20,35 +26,21 @@ const STATUS_FILTERS : { value : BatchStatus | 'all'; label : string }[] = [
     { value: 'failed', label: BATCH_STATUS_LABEL.failed },
 ];
 
-interface Row {
-    batch : Batch;
-    slides : number;
-    review : number;
-}
-
-// 운영 관점이라 시간 축이다. 값 축은 07 09가 맡는다.
-function buildRows() : Row[] {
-    return getBatches()
-        .map((batch) => {
-            const jobs = getJobsByBatch(batch.id);
-            return {
-                batch,
-                slides: jobs.length,
-                review: jobs.filter((j) => needsReview(j.result)).length,
-            };
-        })
-        .sort(
-            (a, b) =>
-                new Date(b.batch.created_at).getTime() -
-                new Date(a.batch.created_at).getTime(),
-        );
-}
-
 export default function CaseListPage() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const query = searchParams.get('q') ?? '';
     const status = (searchParams.get('status') ?? 'all') as BatchStatus | 'all';
+
+    const batches = useQuery({ queryKey: qk.batches, queryFn: getBatches });
+
+    // 슬라이드 수 · 확인 필요 >> 배치 목록 응답에 없어 배치마다 따로 조회
+    const jobQueries = useQueries({
+        queries: (batches.data ?? []).map((batch) => ({
+            queryKey: qk.jobsByBatch(batch.id),
+            queryFn: () => getJobsByBatch(batch.id),
+        })),
+    });
 
     function setParam(key : string, value : string) {
         const next = new URLSearchParams(searchParams);
@@ -57,25 +49,35 @@ export default function CaseListPage() {
         setSearchParams(next, { replace: true });
     }
 
-    const rows = buildRows().filter((row) => {
-        if (status !== 'all' && row.batch.status !== status) return false;
-        if (!query) return true;
+    const rows = (batches.data ?? [])
+        .map((batch, at) => {
+            const jobs = jobQueries[at]?.data;
 
-        const p = row.batch.patient_summary;
-        if (!p) return false;
-        const q = query.toLowerCase();
-        return (
-            p.chart_number.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
-        );
-    });
+            return {
+                batch,
+                slides: jobs?.length,
+                review: jobs?.filter((j) => needsReview(j.result)).length,
+            };
+        })
+        .sort(
+            (a, b) =>
+                new Date(b.batch.created_at).getTime() -
+                new Date(a.batch.created_at).getTime(),
+        )
+        .filter((row) => {
+            if (status !== 'all' && row.batch.status !== status) return false;
+            if (!query) return true;
+
+            const p = row.batch.patient_summary;
+            if (!p) return false;
+            const q = query.toLowerCase();
+            return (
+                p.chart_number.toLowerCase().includes(q) || p.name.toLowerCase().includes(q)
+            );
+        });
 
     return (
         <div>
-            <div className="mb-6 flex items-baseline justify-between">
-                <h1 className="text-xl font-semibold">케이스 목록</h1>
-                <span className="text-[15px] text-ink-muted">{rows.length}건</span>
-            </div>
-
             <div className="mb-6 flex flex-wrap items-center gap-3">
                 <div className="relative">
                     <Search
@@ -87,7 +89,7 @@ export default function CaseListPage() {
                         onChange={(e) => setParam('q', e.target.value)}
                         placeholder="차트번호 또는 환자명"
                         aria-label="환자 검색"
-                        className="h-10 w-72 rounded-md border border-border bg-surface pl-9 pr-3 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none"
+                        className={`${FIELD_INPUT} w-72 pl-9`}
                     />
                 </div>
 
@@ -108,6 +110,10 @@ export default function CaseListPage() {
                         </button>
                     ))}
                 </div>
+
+                <span className="ml-auto text-[15px] text-ink-muted">
+                    {batches.isSuccess ? `${rows.length}건` : ''}
+                </span>
             </div>
 
             <div
@@ -117,16 +123,19 @@ export default function CaseListPage() {
                 )}
             >
                 <span>환자</span>
-                <span>배치</span>
                 <span className="text-right">슬라이드</span>
                 <span className="text-right">확인 필요</span>
                 <span>상태</span>
                 <span className="text-right">등록</span>
             </div>
 
-            {rows.length === 0 ? (
+            {batches.isPending ? (
+                <Pending />
+            ) : batches.isError ? (
+                <Failed error={batches.error} onRetry={() => void batches.refetch()} />
+            ) : rows.length === 0 ? (
                 <div className="py-16 text-center text-sm text-ink-faint">
-                    조건에 맞는 케이스가 없습니다.
+                    조건에 맞는 케이스가 없습니다
                 </div>
             ) : (
                 <div className="divide-y divide-border">
@@ -140,28 +149,32 @@ export default function CaseListPage() {
                             )}
                         >
                             <span className="truncate text-[15px]">
-                                {row.batch.patient_summary
-                                    ? patientBrief(row.batch.patient_summary)
-                                    : '환자 미연결'}
-                            </span>
-
-                            <span className="font-mono text-sm text-ink-muted">
-                                {row.batch.id.slice(0, 8)}
+                                {row.batch.patient_summary ? (
+                                    patientBrief(row.batch.patient_summary)
+                                ) : (
+                                    <>
+                                        환자 미연결{' '}
+                                        <span className="font-mono text-sm text-ink-faint">
+                                            {row.batch.id.slice(0, 8)}
+                                        </span>
+                                    </>
+                                )}
                             </span>
 
                             <span className="text-right font-mono text-[15px] tabular-nums">
-                                {row.slides}
+                                {row.slides ?? '-'}
                             </span>
 
+                            {/* 0은 흐리게, 1 이상은 눈에 걸리게. 모르면 '-' */}
                             <span
                                 className={cn(
                                     'text-right font-mono text-[15px] tabular-nums',
-                                    row.review > 0
+                                    row.review
                                         ? 'font-semibold text-decision-abstain'
                                         : 'text-ink-faint',
                                 )}
                             >
-                                {row.review > 0 ? row.review : '-'}
+                                {row.review ?? '-'}
                             </span>
 
                             <span>

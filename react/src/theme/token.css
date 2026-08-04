@@ -1,6 +1,10 @@
 /* 세이지 팔레트 >> 라이트는 윤수용 님 Flutter 원안, 다크는 제안값 (합의 전) */
 
 :root {
+  /* color-scheme >> 스크롤바·select 드롭다운·range 트랙 같은 네이티브 위젯이
+     OS 설정이 아니라 앱 테마를 따르게 한다 */
+  color-scheme: light;
+
   --brand: #0B5D4E;
   --brand-dark: #084438;
   --brand-soft: #E6EFEA;
@@ -25,6 +29,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   --brand: #3FA88F;
   --brand-dark: #2E8A74;
   --brand-soft: #12302A;
@@ -51,6 +57,22 @@
 /* decisionHigh에 빨강을 쓰지 않는다 >> sTIL이 높다는 것은 면역 침윤이 활발하다는
    뜻이고 유방암에서는 예후가 좋은 쪽이다. 빨강은 나쁨으로 읽혀 오해를 부른다.
    주목을 끄는 것은 decisionAbstain 하나뿐이다. */
+
+/* 관리 콘솔 크롬 >> 판독 콘솔과 한눈에 갈리라고 쓰는 색.
+   판정에도 세그멘테이션에도 쓰이지 않으므로 팔레트 합의 대상이 아니다.
+   세이지(브랜드)와 확실히 다른 계열이어야 두 콘솔을 헷갈리지 않는다. */
+:root {
+  --admin: #4C5A78;
+  --admin-soft: #E6E9F0;
+  /* admin-bg >> 본문 바탕. 판독 콘솔의 --bg(따뜻한 크림)와 계열이 갈려야 한다 */
+  --admin-bg: #EDEFF4;
+}
+
+.dark {
+  --admin: #93A4C6;
+  --admin-soft: #1E2430;
+  --admin-bg: #161A22;
+}
 
 /* 아래는 테마 무관 >> .dark 에서 재정의하지 않는다 */
 

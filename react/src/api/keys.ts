@@ -1,0 +1,23 @@
+/* TanStack Query 키 */
+export const qk = {
+    me: ['me'] as const,
+    staff: ['staff'] as const,
+    departments: ['departments'] as const,
+    invitations: ['invitations'] as const,
+    modelVersions: ['model-versions'] as const,
+
+    notifications: ['notifications'] as const,
+
+    batches: ['batches'] as const,
+    batch: (id : string) => ['batches', id] as const,
+    jobsByBatch: (id : string) => ['batches', id, 'jobs'] as const,
+    latestJobs: ['jobs', 'latest'] as const,
+    job: (id : string) => ['jobs', id] as const,
+    images: ['images'] as const,
+    image: (id : string) => ['images', id] as const,
+
+    sharesIn: ['shares', 'in'] as const,
+    sharesOut: ['shares', 'out'] as const,
+
+    patientSearch: (query : string) => ['patients', 'search', query] as const,
+};

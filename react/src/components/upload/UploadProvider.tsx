@@ -1,13 +1,18 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { startBatch, uploadToSignedUrl } from '@/api';
+import { qk } from '@/api/keys';
 import type { UploadContextValue, UploadItem } from './context';
 import { UploadContext } from './context';
 
-// 동시 3~4개가 적당하다. HTTP/1.1은 호스트당 연결이 6개라 그 이상 열면 대기만 늘고,
-// 병리 이미지가 크면 대역폭도 나눠 쓴다.
+/* 백그라운드 업로드 큐 >> 헤더 인디케이터가 이 상태를 그린다 */
+
 const CONCURRENCY = 3;
+
+// 전부 끝난 뒤 완료 항목을 접기까지
+const AUTO_CLEAR_MS = 4000;
 
 interface BatchTicket {
     batchId : string;
@@ -16,6 +21,7 @@ interface BatchTicket {
 }
 
 export function UploadProvider({ children } : { children : ReactNode }) {
+    const queryClient = useQueryClient();
     const [items, setItems] = useState<UploadItem[]>([]);
     const queue = useRef<UploadItem[]>([]);
     const running = useRef(0);
@@ -38,7 +44,7 @@ export function UploadProvider({ children } : { children : ReactNode }) {
                 .then(() => {
                     patch(item.id, { status: 'done', progress: 100 });
 
-                    // 배치의 파일이 전부 올라가면 분석을 자동으로 시작한다
+                    // 배치의 파일이 전부 올라가면 분석 시작
                     const ticket = tickets.current.get(item.batchId);
                     if (!ticket) return;
 
@@ -48,8 +54,15 @@ export function UploadProvider({ children } : { children : ReactNode }) {
                         return;
                     }
 
-                    startBatch(ticket.batchId, ticket.modelVersionId);
                     tickets.current.delete(item.batchId);
+
+                    void startBatch(ticket.batchId, ticket.modelVersionId).then(() => {
+                        void queryClient.invalidateQueries({ queryKey: qk.batches });
+                        void queryClient.invalidateQueries({
+                            queryKey: qk.batch(ticket.batchId),
+                        });
+                        void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
+                    });
                 })
                 .catch(() => patch(item.id, { status: 'failed' }))
                 .finally(() => {
@@ -57,7 +70,7 @@ export function UploadProvider({ children } : { children : ReactNode }) {
                     pump();
                 });
         }
-    }, [patch]);
+    }, [patch, queryClient]);
 
     const enqueue = useCallback<UploadContextValue['enqueue']>(
         (batchId, modelVersionId, files) => {
@@ -106,6 +119,21 @@ export function UploadProvider({ children } : { children : ReactNode }) {
     const clearFinished = useCallback(() => {
         setItems((prev) => prev.filter((it) => it.status !== 'done'));
     }, []);
+
+    // 완료 항목 자동 정리 >> 실패만 남는다
+    useEffect(() => {
+        const busy = items.some(
+            (it) => it.status === 'waiting' || it.status === 'uploading',
+        );
+        if (busy || !items.some((it) => it.status === 'done')) return;
+
+        const id = setTimeout(
+            () => setItems((prev) => prev.filter((it) => it.status !== 'done')),
+            AUTO_CLEAR_MS,
+        );
+
+        return () => clearTimeout(id);
+    }, [items]);
 
     return (
         <UploadContext.Provider value={{ items, enqueue, retry, clearFinished }}>
