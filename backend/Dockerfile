@@ -19,6 +19,7 @@ COPY backend/ .
 # collectstatic은 DB/시크릿 없이도 돌아가야 하므로 빌드 타임에 더미 값만 채워 실행
 RUN DJANGO_SECRET_KEY=build-time-placeholder \
     DATABASE_URL=postgresql://user:pass@/db?host=/tmp \
+    FIELD_ENCRYPTION_KEY=b8TrwSbTO-KUwvARiGZYipeT3MI_UOTpjKgR_XSB9xs= \
     python manage.py collectstatic --noinput
 
 EXPOSE 8080
