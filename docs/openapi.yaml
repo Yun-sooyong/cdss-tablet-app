@@ -7,6 +7,7 @@ paths:
   /api/v1/analysis/batches/:
     get:
       operationId: v1_analysis_batches_list
+      description: 설계문서 3.2-b — 본인 batch + 공유받은 batch.
       tags:
       - v1
       security:
@@ -22,6 +23,43 @@ paths:
           description: ''
     post:
       operationId: v1_analysis_batches_create
+      description: 설계문서 3.2-b — 본인 batch + 공유받은 batch.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
+          description: ''
+  /api/v1/analysis/batches/{batch_id}/:
+    get:
+      operationId: v1_analysis_batches_retrieve
+      description: |-
+        설계문서 7.4절 — 배치 상세 (job 목록 포함) / 삭제. 본인 + 공유받은 batch만 조회,
+        삭제는 본인 것만.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
       tags:
       - v1
       security:
@@ -33,9 +71,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Batch'
           description: ''
+    delete:
+      operationId: v1_analysis_batches_destroy
+      description: 리스트에서 삭제 — 설계문서 3.2-i. 물리 삭제 아니라 soft delete.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/analysis/batches/{batch_id}/images/:
     post:
       operationId: v1_analysis_batches_images_create
+      description: |-
+        POST /batches/{id}/images/. UploadSignedUrlView와 동일 로직 —
+        저희가 먼저 만든 nested 경로, 설계문서엔 독립 경로(/uploads/signed-url)로
+        돼 있어서 그것도 별도로 만들어뒀다. 둘 다 남겨둠(하위호환).
       parameters:
       - in: path
         name: batch_id
@@ -65,6 +124,101 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ImageUploadResponse'
+          description: ''
+  /api/v1/analysis/batches/{batch_id}/shares/:
+    get:
+      operationId: v1_analysis_batches_shares_list
+      description: 설계문서 7.4절 — 공유. 소유자만 공유를 만들거나 현황을 볼 수 있다.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnalysisShare'
+          description: ''
+    post:
+      operationId: v1_analysis_batches_shares_create
+      description: 설계문서 7.4절 — 공유. 소유자만 공유를 만들거나 현황을 볼 수 있다.
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalysisShareCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnalysisShareCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnalysisShareCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalysisShare'
+          description: ''
+  /api/v1/analysis/batches/{batch_id}/start/:
+    post:
+      operationId: v1_analysis_batches_start_create
+      description: |-
+        설계문서 7.4절 — POST /batches/{id}/start. 분석 시작.
+
+        batch에 등록된 이미지 중 아직 job이 없는 것들에 대해 한 번에 job을
+        만들어 큐에 등록한다 (기존 POST /images/{id}/jobs/는 이미지 하나씩
+        개별 등록하는 하위 경로로 계속 남겨둠).
+      parameters:
+      - in: path
+        name: batch_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BatchStart'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Batch'
           description: ''
   /api/v1/analysis/images/{image_id}/jobs/:
     post:
@@ -98,9 +252,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/Job'
           description: ''
+  /api/v1/analysis/internal/workers/heartbeat/:
+    post:
+      operationId: v1_analysis_internal_workers_heartbeat_create
+      description: 설계문서 7.5절/2.5절 — POST /internal/workers/heartbeat. 워커 생존 신고.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkerHeartbeat'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          description: No response body
   /api/v1/analysis/jobs/{job_id}/:
     get:
       operationId: v1_analysis_jobs_retrieve
+      description: 본인 batch + 공유받은 batch의 job만 조회 가능.
       parameters:
       - in: path
         name: job_id
@@ -170,6 +348,24 @@ paths:
                 items:
                   $ref: '#/components/schemas/ModelVersion'
           description: ''
+  /api/v1/analysis/shares/{share_id}/:
+    delete:
+      operationId: v1_analysis_shares_destroy
+      description: 설계문서 7.4절 — 공유 회수. revoked_at 기록(물리 삭제 아님).
+      parameters:
+      - in: path
+        name: share_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/auth/invitations/redeem/:
     post:
       operationId: v1_auth_invitations_redeem_create
@@ -247,6 +443,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      description: 설계문서 7.2절 — POST /auth/logout. refresh 토큰 폐기(blacklist).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/devices/tokens/:
+    post:
+      operationId: v1_devices_tokens_create
+      description: 설계문서 7.4절/9장 — POST /devices/tokens. FCM 토큰 등록.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DeviceToken'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceToken'
+          description: ''
+  /api/v1/medications/logs/:
+    post:
+      operationId: v1_medications_logs_create
+      description: 설계문서 7.3절 — POST /medications/logs. 복용 체크(dose_log 생성).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/MedicationLogCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoseLog'
+          description: ''
+  /api/v1/notifications/:
+    get:
+      operationId: v1_notifications_list
+      description: 설계문서 7.4절/3.2-f — GET /notifications. 본인 알림만.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Notification'
+          description: ''
   /api/v1/patients/me/:
     get:
       operationId: v1_patients_me_retrieve
@@ -299,6 +589,53 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/patients/me/medications/schedule/:
+    get:
+      operationId: v1_patients_me_medications_schedule_retrieve
+      description: |-
+        설계문서 7.3절 — GET /patients/me/medications/schedule. 3.1-d, 3.1-e.
+
+        복약 캘린더(스케줄 목록) + 처방약 단위 잔량 %.
+        잔량 % = (처방 총량 - 복용 기록) / 처방 총량 (설계문서 6.6절).
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/patients/me/prescriptions/:
+    get:
+      operationId: v1_patients_me_prescriptions_list
+      description: 설계문서 7.3절 — GET /patients/me/prescriptions. 3.1-c.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/patients/me/qr/:
+    post:
+      operationId: v1_patients_me_qr_create
+      description: 설계문서 7.3절/3.1-f — POST /patients/me/qr. 일회성·5분 만료.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QRToken'
+          description: ''
   /api/v1/patients/me/reservations/:
     get:
       operationId: v1_patients_me_reservations_list
@@ -367,6 +704,80 @@ paths:
                 items:
                   $ref: '#/components/schemas/Visit'
           description: ''
+  /api/v1/patients/register/:
+    post:
+      operationId: v1_patients_register_create
+      description: |-
+        설계문서 3.1-a — 이메일/비밀번호 방식 환자 회원가입.
+        카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatientRegister'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Patient'
+          description: ''
+  /api/v1/prescriptions/{prescription_id}/:
+    get:
+      operationId: v1_prescriptions_retrieve
+      description: 설계문서 7.3절 — GET /prescriptions/{id}. 처방전 상세 + 파일 서명 URL.
+      parameters:
+      - in: path
+        name: prescription_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prescription'
+          description: ''
+  /api/v1/qr/verify/:
+    post:
+      operationId: v1_qr_verify_create
+      description: 설계문서 7.4절 — POST /qr/verify. 태블릿 전용, 의료진 인증 필요.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QRVerify'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/reservations/{reservation_id}/:
     get:
       operationId: v1_reservations_retrieve
@@ -438,6 +849,41 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/staff/:
+    get:
+      operationId: v1_staff_list
+      description: 설계문서 7.4절 — GET /staff. 채팅 상대·공유 대상 선택용.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Staff'
+          description: ''
+  /api/v1/staff/{staff_id}/:
+    delete:
+      operationId: v1_staff_destroy
+      description: 설계문서 7.4절 — DELETE /staff/{id}. 관리자 권한만.
+      parameters:
+      - in: path
+        name: staff_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
   /api/v1/staff/invitations/:
     post:
       operationId: v1_staff_invitations_create
@@ -465,6 +911,73 @@ paths:
               schema:
                 $ref: '#/components/schemas/Invitation'
           description: ''
+  /api/v1/staff/me/:
+    get:
+      operationId: v1_staff_me_retrieve
+      description: 설계문서 7.4절 — GET/PATCH /staff/me. 3.2-a.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+    patch:
+      operationId: v1_staff_me_partial_update
+      description: 설계문서 7.4절 — GET/PATCH /staff/me. 3.2-a.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStaffMeUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+          description: ''
+  /api/v1/uploads/signed-url/:
+    post:
+      operationId: v1_uploads_signed_url_create
+      description: 설계문서 7.4절 — POST /uploads/signed-url. 독립 엔드포인트 버전.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadSignedUrlRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+          description: ''
   /api/v1/visits/{visit_id}/:
     get:
       operationId: v1_visits_retrieve
@@ -489,6 +1002,68 @@ paths:
           description: ''
 components:
   schemas:
+    AnalysisShare:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        batch:
+          type: string
+          format: uuid
+          readOnly: true
+        shared_by:
+          type: string
+          format: uuid
+          readOnly: true
+        shared_to:
+          type: string
+          format: uuid
+          readOnly: true
+        permission:
+          allOf:
+          - $ref: '#/components/schemas/PermissionEnum'
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        revoked_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - batch
+      - created_at
+      - expires_at
+      - id
+      - permission
+      - revoked_at
+      - shared_by
+      - shared_to
+    AnalysisShareCreate:
+      type: object
+      properties:
+        shared_to:
+          type: string
+          format: uuid
+        permission:
+          allOf:
+          - $ref: '#/components/schemas/PermissionEnum'
+          default: read
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - shared_to
     Batch:
       type: object
       properties:
@@ -496,6 +1071,11 @@ components:
           type: string
           format: uuid
           readOnly: true
+        patient:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
         status:
           allOf:
           - $ref: '#/components/schemas/BatchStatusEnum'
@@ -516,8 +1096,23 @@ components:
       - created_at
       - created_by
       - id
+      - patient
       - status
       - updated_at
+    BatchCreate:
+      type: object
+      properties:
+        patient_id:
+          type: string
+          format: uuid
+      required:
+      - patient_id
+    BatchStart:
+      type: object
+      properties:
+        model_version_id:
+          type: string
+          format: uuid
     BatchStatusEnum:
       enum:
       - pending
@@ -530,6 +1125,27 @@ components:
         * `processing` - 처리중
         * `done` - 완료
         * `failed` - 실패
+    DeviceToken:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        fcm_token:
+          type: string
+          maxLength: 255
+        platform:
+          $ref: '#/components/schemas/PlatformEnum'
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - fcm_token
+      - id
+      - platform
+      - updated_at
     Diagnosis:
       type: object
       properties:
@@ -564,6 +1180,60 @@ components:
       - code
       - name_en
       - name_ko
+    DoseLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        schedule:
+          type: string
+          format: uuid
+          readOnly: true
+        is_taken:
+          type: boolean
+          readOnly: true
+        taken_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+      required:
+      - id
+      - is_taken
+      - schedule
+      - taken_at
+    Drug:
+      type: object
+      properties:
+        code:
+          type: string
+          readOnly: true
+        product_name:
+          type: string
+          readOnly: true
+        ingredient:
+          type: string
+          readOnly: true
+        unit:
+          type: string
+          readOnly: true
+      required:
+      - code
+      - ingredient
+      - product_name
+      - unit
+    EmploymentStatusEnum:
+      enum:
+      - active
+      - leave
+      - resigned
+      type: string
+      description: |-
+        * `active` - 재직
+        * `leave` - 휴직
+        * `resigned` - 퇴사
     ImageUploadRequest:
       type: object
       properties:
@@ -589,6 +1259,19 @@ components:
         original_filename:
           type: string
           readOnly: true
+        captured_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        width:
+          type: integer
+          readOnly: true
+          nullable: true
+        height:
+          type: integer
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -598,11 +1281,14 @@ components:
           format: uri
       required:
       - batch
+      - captured_at
       - created_at
+      - height
       - id
       - original_filename
       - storage_key
       - upload_url
+      - width
     Invitation:
       type: object
       properties:
@@ -760,6 +1446,21 @@ components:
         * `stil_done` - sTIL 완료 (리포트 대기)
         * `succeeded` - 성공
         * `failed` - 실패
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
+    MedicationLogCreate:
+      type: object
+      properties:
+        schedule_id:
+          type: string
+          format: uuid
+      required:
+      - schedule_id
     ModelVersion:
       type: object
       properties:
@@ -780,6 +1481,14 @@ components:
         is_active:
           type: boolean
           readOnly: true
+        weight_key:
+          type: string
+          readOnly: true
+        trained_at:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -790,7 +1499,46 @@ components:
       - id
       - is_active
       - name
+      - trained_at
       - version
+      - weight_key
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          readOnly: true
+        body:
+          type: string
+          readOnly: true
+        target_type:
+          type: string
+          readOnly: true
+        target_id:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        is_read:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - body
+      - created_at
+      - id
+      - is_read
+      - target_id
+      - target_type
+      - type
     PatchedPatient:
       type: object
       properties:
@@ -830,6 +1578,13 @@ components:
           type: string
           default: ''
           maxLength: 200
+    PatchedStaffMeUpdate:
+      type: object
+      description: 본인 정보 수정 — role은 권한 상승 위험이 있어 본인이 못 바꾸게 department만 허용.
+      properties:
+        department:
+          type: string
+          maxLength: 100
     Patient:
       type: object
       properties:
@@ -866,6 +1621,158 @@ components:
       - name
       - phone
       - updated_at
+    PatientRegister:
+      type: object
+      description: |-
+        이메일/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
+
+        별도 아이디(username) 없이 email을 로그인 식별자로 쓴다 — User.username에
+        email 값을 그대로 저장(User 모델 자체는 안 바꿈, 로그인은 여전히
+        POST /auth/login/에 username 필드로 보내되 값이 email인 것뿐).
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+          minLength: 8
+        name:
+          type: string
+          maxLength: 100
+        birth_date:
+          type: string
+          format: date
+        sex:
+          allOf:
+          - $ref: '#/components/schemas/SexEnum'
+          default: U
+        phone:
+          type: string
+          maxLength: 30
+        address:
+          type: string
+          default: ''
+          maxLength: 255
+      required:
+      - birth_date
+      - email
+      - name
+      - password
+      - phone
+    PermissionEnum:
+      enum:
+      - read
+      - comment
+      type: string
+      description: |-
+        * `read` - 읽기
+        * `comment` - 댓글
+    PlatformEnum:
+      enum:
+      - ios
+      - android
+      - web
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+        * `web` - Web
+    Prescription:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        visit:
+          type: string
+          format: uuid
+          readOnly: true
+        staff:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+        prescribed_at:
+          type: string
+          format: date
+          readOnly: true
+        file_url:
+          type: string
+          nullable: true
+          readOnly: true
+        drugs:
+          type: array
+          items:
+            $ref: '#/components/schemas/PrescriptionDrug'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - drugs
+      - file_url
+      - id
+      - prescribed_at
+      - staff
+      - visit
+    PrescriptionDrug:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        drug:
+          allOf:
+          - $ref: '#/components/schemas/Drug'
+          readOnly: true
+        dose_per_take:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,4}(?:\.\d{0,2})?$
+          readOnly: true
+        times_per_day:
+          type: integer
+          readOnly: true
+        total_days:
+          type: integer
+          readOnly: true
+      required:
+      - dose_per_take
+      - drug
+      - id
+      - times_per_day
+      - total_days
+    QRToken:
+      type: object
+      properties:
+        token:
+          type: string
+          readOnly: true
+        issued_at:
+          type: string
+          format: date-time
+          readOnly: true
+        expires_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - expires_at
+      - issued_at
+      - token
+    QRVerify:
+      type: object
+      properties:
+        token:
+          type: string
+          maxLength: 64
+      required:
+      - token
     Reservation:
       type: object
       properties:
@@ -958,6 +1865,49 @@ components:
         * `F` - 여성
         * `O` - 기타
         * `U` - 미상
+    Staff:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          readOnly: true
+        department:
+          type: string
+          readOnly: true
+        employment_status:
+          allOf:
+          - $ref: '#/components/schemas/EmploymentStatusEnum'
+          readOnly: true
+        resigned_at:
+          type: string
+          format: date
+          readOnly: true
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created_at
+      - department
+      - email
+      - employment_status
+      - id
+      - resigned_at
+      - role
+      - username
     TokenObtainPair:
       type: object
       properties:
@@ -990,6 +1940,28 @@ components:
       required:
       - access
       - refresh
+    TypeEnum:
+      enum:
+      - analysis_done
+      - share
+      - chat
+      type: string
+      description: |-
+        * `analysis_done` - 분석 완료
+        * `share` - 공유
+        * `chat` - 채팅
+    UploadSignedUrlRequest:
+      type: object
+      properties:
+        batch_id:
+          type: string
+          format: uuid
+        original_filename:
+          type: string
+          maxLength: 255
+      required:
+      - batch_id
+      - original_filename
     Visit:
       type: object
       properties:
@@ -1030,6 +2002,18 @@ components:
       - patient
       - staff
       - visited_at
+    WorkerHeartbeat:
+      type: object
+      properties:
+        worker_name:
+          type: string
+          maxLength: 50
+        version:
+          type: string
+          default: ''
+          maxLength: 20
+      required:
+      - worker_name
   securitySchemes:
     jwtAuth:
       type: http

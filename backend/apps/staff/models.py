@@ -27,11 +27,20 @@ class Staff(BaseModel):
         NURSE = "nurse", "간호사"
         ADMIN = "admin", "관리자"
 
+    class EmploymentStatus(models.TextChoices):
+        ACTIVE = "active", "재직"
+        LEAVE = "leave", "휴직"
+        RESIGNED = "resigned", "퇴사"
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="staff"
     )
     role = models.CharField(max_length=20, choices=Role.choices)
     department = models.CharField(max_length=100, blank=True)
+    employment_status = models.CharField(
+        max_length=20, choices=EmploymentStatus.choices, default=EmploymentStatus.ACTIVE
+    )
+    resigned_at = models.DateField(null=True, blank=True)
 
     class Meta:
         db_table = "staff"
