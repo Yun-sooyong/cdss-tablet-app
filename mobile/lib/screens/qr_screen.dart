@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/qr_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/loading_spinner.dart';
 
 class QrScreen extends StatefulWidget {
   final QrService qrService;
@@ -65,7 +66,7 @@ class _QrScreenState extends State<QrScreen> {
       appBar: AppBar(title: const Text('환자 확인용 QR')),
       body: Center(
         child: _isLoading
-            ? const CircularProgressIndicator()
+            ? const LoadingSpinner()
             : Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(

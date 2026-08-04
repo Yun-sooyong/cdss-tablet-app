@@ -5,6 +5,7 @@ import '../theme/app_colors.dart';
 import 'weekly_medication_history_screen.dart';
 import '../services/notification_service.dart';
 import '../utils/top_banner.dart';
+import '../widgets/loading_spinner.dart';
 
 class MedicationScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -67,7 +68,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: LoadingSpinner());
     }
 
     final now = DateTime.now();
@@ -242,7 +243,7 @@ class _DoseTimeSettingsSheetState extends State<_DoseTimeSettingsSheet> {
       ),
       child: _isLoading
           ? const SizedBox(
-              height: 120, child: Center(child: CircularProgressIndicator()))
+              height: 120, child: Center(child: LoadingSpinner(size: 36)))
           : Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,

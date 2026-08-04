@@ -8,6 +8,8 @@ import '../models/dose.dart';
 class NotificationService {
   final _plugin = FlutterLocalNotificationsPlugin();
 
+  static const _enabledKey = 'notifications_enabled';
+
   // 사용자가 아직 한 번도 설정을 안 바꿨을 때만 쓰는 기본값.
   static const Map<DoseTime, TimeOfDay> _defaultTimes = {
     DoseTime.morning: TimeOfDay(hour: 7, minute: 0),
@@ -27,6 +29,22 @@ class NotificationService {
     final androidImpl = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidImpl?.requestNotificationsPermission();
     await androidImpl?.requestExactAlarmsPermission();
+  }
+
+  // 알림 전체 켜짐/꺼짐 — 기본값은 켜짐(true).
+  Future<bool> isEnabled() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_enabledKey) ?? true;
+  }
+
+  Future<void> setEnabled(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_enabledKey, value);
+    if (!value) {
+      // 꺼졌으면 이미 예약해둔 알림도 실제로 다 취소해야 해 —
+      // 안 그러면 설정에서 끄기 눌러도 예약된 알림이 그대로 울려.
+      await _plugin.cancelAll();
+    }
   }
 
   String _prefsKey(DoseTime time) => 'dose_time_${time.name}';
@@ -56,6 +74,14 @@ class NotificationService {
   // 오늘 복용 목록을 받아서 같은 시간대끼리 묶어 매일 반복 알림을 예약한다.
   // 시각은 항상 loadDoseTimes()로 저장된 값을 읽어와서 쓴다 — 하드코딩 안 함.
   Future<void> scheduleDailyDoseReminders(List<DoseItem> doses) async {
+    // 알림이 꺼져있으면 여기서 바로 멈춰 — medication_screen.dart는 화면 열릴 때마다
+    // 이 함수를 그냥 부르기만 하니까, 켜짐/꺼짐 판단은 이 함수 안에서 책임져야 해.
+    final enabled = await isEnabled();
+    if (!enabled) {
+      await _plugin.cancelAll();
+      return;
+    }
+
     final byTime = <DoseTime, List<String>>{};
     for (final dose in doses) {
       byTime.putIfAbsent(dose.time, () => []).add(dose.medicationName);

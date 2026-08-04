@@ -33,6 +33,7 @@ class AuthService {
     required String password,
     required String name,
     required DateTime birthDate,
+    required Sex sex,
     required String address,
     required String phone,
   }) async {
@@ -42,6 +43,7 @@ class AuthService {
       'name': name,
       'birth_date':
           '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
+      'sex': sex.code,
       'phone': phone,
       'address': address,
     };
