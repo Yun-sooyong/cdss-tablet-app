@@ -17,6 +17,8 @@ class ReservationSerializer(serializers.ModelSerializer):
             "scheduled_at",
             "status",
             "change_reason",
+            "reason",
+            "document_type",
             "created_at",
             "updated_at",
         ]
@@ -33,6 +35,14 @@ class ReservationSerializer(serializers.ModelSerializer):
 class ReservationCreateSerializer(serializers.Serializer):
     department = serializers.PrimaryKeyRelatedField(queryset=Department.objects.all())
     scheduled_at = serializers.DateTimeField()
+    reason = serializers.CharField(
+        max_length=500, required=False, allow_blank=True, default=""
+    )
+    document_type = serializers.ChoiceField(
+        choices=Reservation.DocumentType.choices,
+        required=False,
+        default=Reservation.DocumentType.NONE,
+    )
 
 
 class ReservationRescheduleSerializer(serializers.Serializer):

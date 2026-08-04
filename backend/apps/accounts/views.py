@@ -22,6 +22,7 @@ from .serializers import (
     InvitationSerializer,
     LogoutSerializer,
     NotificationSerializer,
+    PasswordChangeSerializer,
     QRTokenSerializer,
     QRVerifySerializer,
 )
@@ -179,3 +180,24 @@ class LogoutView(APIView):
             raise ValidationError("유효하지 않은 refresh 토큰입니다.") from exc
 
         return Response(status=status.HTTP_205_RESET_CONTENT)
+
+
+class PasswordChangeView(APIView):
+    """POST /auth/password/change. 본인 비밀번호 변경 — 환자/의료진 공용
+    (정은님 요청, 2026-08-04)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=PasswordChangeSerializer, responses=None)
+    def post(self, request):
+        serializer = PasswordChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if not request.user.check_password(data["old_password"]):
+            raise ValidationError("현재 비밀번호가 일치하지 않습니다.")
+
+        request.user.set_password(data["new_password"])
+        request.user.save(update_fields=["password"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
