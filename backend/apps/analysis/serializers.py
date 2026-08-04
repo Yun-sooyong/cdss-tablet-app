@@ -9,7 +9,16 @@ from .models import AnalysisShare, Batch, Image, Job, ModelVersion
 class ModelVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModelVersion
-        fields = ["id", "name", "version", "conformal_q", "is_active", "created_at"]
+        fields = [
+            "id",
+            "name",
+            "version",
+            "conformal_q",
+            "is_active",
+            "weight_key",
+            "trained_at",
+            "created_at",
+        ]
         read_only_fields = fields
 
 
