@@ -10,9 +10,24 @@ urlpatterns = [
     ),
     path("batches/", views.BatchListCreateView.as_view(), name="batch-list-create"),
     path(
+        "batches/<uuid:batch_id>/",
+        views.BatchDetailView.as_view(),
+        name="batch-detail",
+    ),
+    path(
         "batches/<uuid:batch_id>/images/",
         views.BatchImageUploadView.as_view(),
         name="batch-image-upload",
+    ),
+    path(
+        "batches/<uuid:batch_id>/shares/",
+        views.BatchShareListCreateView.as_view(),
+        name="batch-share-list-create",
+    ),
+    path(
+        "shares/<uuid:share_id>/",
+        views.ShareRevokeView.as_view(),
+        name="share-revoke",
     ),
     path(
         "images/<uuid:image_id>/jobs/",

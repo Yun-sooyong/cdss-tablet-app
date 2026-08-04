@@ -67,3 +67,28 @@ class Job(BaseModel):
 
     class Meta:
         db_table = "job"
+
+
+class AnalysisShare(BaseModel):
+    """분석 결과 공유. 설계문서 6.7절 — 「본인이 분석한 내용만 표시」와
+    「다른 유저도 확인할 수 있도록 공유」를 동시에 만족시키는 조회 권한 기준."""
+
+    class Permission(models.TextChoices):
+        READ = "read", "읽기"
+        COMMENT = "comment", "댓글"
+
+    batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name="shares")
+    shared_by = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, related_name="shares_given"
+    )
+    shared_to = models.ForeignKey(
+        Staff, on_delete=models.CASCADE, related_name="shares_received"
+    )
+    permission = models.CharField(
+        max_length=10, choices=Permission.choices, default=Permission.READ
+    )
+    expires_at = models.DateTimeField(null=True, blank=True)  # NULL이면 무기한
+    revoked_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "analysis_share"

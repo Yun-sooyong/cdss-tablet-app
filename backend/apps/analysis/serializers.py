@@ -1,6 +1,8 @@
 from rest_framework import serializers
 
-from .models import Batch, Image, Job, ModelVersion
+from apps.staff.models import Staff
+
+from .models import AnalysisShare, Batch, Image, Job, ModelVersion
 
 
 class ModelVersionSerializer(serializers.ModelSerializer):
@@ -61,3 +63,27 @@ class JobCallbackSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=["stil_done", "succeeded", "failed"])
     result = serializers.JSONField(required=False)
     error_message = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class AnalysisShareSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AnalysisShare
+        fields = [
+            "id",
+            "batch",
+            "shared_by",
+            "shared_to",
+            "permission",
+            "expires_at",
+            "revoked_at",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+class AnalysisShareCreateSerializer(serializers.Serializer):
+    shared_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.all())
+    permission = serializers.ChoiceField(
+        choices=AnalysisShare.Permission.choices, default=AnalysisShare.Permission.READ
+    )
+    expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
