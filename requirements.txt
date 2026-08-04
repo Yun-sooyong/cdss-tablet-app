@@ -17,6 +17,7 @@ celery[redis]
 
 # gcp
 google-cloud-storage
+firebase-admin
 
 # worker pipeline — 각자 환경에 맞게 설치
 # torch, torchvision
