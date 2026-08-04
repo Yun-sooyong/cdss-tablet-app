@@ -1230,6 +1230,19 @@ components:
         original_filename:
           type: string
           readOnly: true
+        captured_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        width:
+          type: integer
+          readOnly: true
+          nullable: true
+        height:
+          type: integer
+          readOnly: true
+          nullable: true
         created_at:
           type: string
           format: date-time
@@ -1239,11 +1252,14 @@ components:
           format: uri
       required:
       - batch
+      - captured_at
       - created_at
+      - height
       - id
       - original_filename
       - storage_key
       - upload_url
+      - width
     Invitation:
       type: object
       properties:

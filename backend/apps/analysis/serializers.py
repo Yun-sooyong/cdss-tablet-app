@@ -29,7 +29,16 @@ class BatchCreateSerializer(serializers.Serializer):
 class ImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Image
-        fields = ["id", "batch", "storage_key", "original_filename", "created_at"]
+        fields = [
+            "id",
+            "batch",
+            "storage_key",
+            "original_filename",
+            "captured_at",
+            "width",
+            "height",
+            "created_at",
+        ]
         read_only_fields = fields
 
 

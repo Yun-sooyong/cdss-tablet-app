@@ -47,6 +47,9 @@ class Image(BaseModel):
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name="images")
     storage_key = models.CharField(max_length=255)
     original_filename = models.CharField(max_length=255, blank=True)
+    captured_at = models.DateTimeField(null=True, blank=True)
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
 
     class Meta:
         db_table = "image"
