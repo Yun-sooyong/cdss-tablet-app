@@ -1,36 +1,47 @@
 import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
 import { getBatches, getJobsByBatch } from '@/api';
+import { qk } from '@/api/keys';
 import { needsReview } from '@/lib/decision';
 import { isBatchTerminal } from '@/lib/jobStatus';
 import { patientBrief } from '@/lib/patient';
 
 const POLL_MS = 5000;
 
-// 어느 화면에 있든 완료를 알리려면 폴링이 셸 안에 있어야 한다.
-// 07 안에서만 돌리면 그 화면을 떠난 순간 아무도 배치를 보지 않는다.
+/* 분석 완료 감시 >> 화면과 무관하게 세션 내내 돈다. 완료 시 토스트 */
 export function AnalysisWatcher() {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+
     const watching = useRef<Set<string>>(new Set());
     const started = useRef(false);
 
     useEffect(() => {
-        function tick() {
-            for (const batch of getBatches()) {
-                const terminal = isBatchTerminal(batch.status);
+        let alive = true;
 
-                if (!terminal) {
+        async function tick() {
+            const batches = await getBatches().catch(() => null);
+            if (!alive || !batches) return;
+
+            for (const batch of batches) {
+                if (!isBatchTerminal(batch.status)) {
                     watching.current.add(batch.id);
                     continue;
                 }
 
-                // 진행 중이던 것이 종료로 바뀐 순간에만 알린다
+                // 진행 중 → 종료로 바뀐 것만
                 if (!watching.current.delete(batch.id)) continue;
                 if (!started.current) continue;
 
-                const jobs = getJobsByBatch(batch.id);
+                void queryClient.invalidateQueries({ queryKey: qk.batches });
+                void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
+
+                const jobs = await getJobsByBatch(batch.id).catch(() => []);
+                if (!alive) return;
+
                 const review = jobs.filter((j) => needsReview(j.result)).length;
                 const who = batch.patient_summary
                     ? patientBrief(batch.patient_summary)
@@ -48,14 +59,18 @@ export function AnalysisWatcher() {
                 });
             }
 
-            // 첫 순회는 현재 상태를 기록만 한다. 앱을 켜자마자 옛 배치로 토스트가 쏟아지면 안 된다
+            // 첫 순회는 기록만
             started.current = true;
         }
 
-        tick();
-        const id = setInterval(tick, POLL_MS);
-        return () => clearInterval(id);
-    }, [navigate]);
+        void tick();
+        const id = setInterval(() => void tick(), POLL_MS);
+
+        return () => {
+            alive = false;
+            clearInterval(id);
+        };
+    }, [navigate, queryClient]);
 
     return null;
 }

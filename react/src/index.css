@@ -65,6 +65,10 @@
     --color-warning: var(--warning);
     --color-danger: var(--danger);
 
+    --color-admin: var(--admin);
+    --color-admin-soft: var(--admin-soft);
+    --color-admin-bg: var(--admin-bg);
+
     --color-decision-low: var(--decision-low);
     --color-decision-high: var(--decision-high);
     --color-decision-abstain: var(--decision-abstain);

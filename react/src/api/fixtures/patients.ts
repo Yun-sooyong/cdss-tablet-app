@@ -1,6 +1,6 @@
 import type { PatientSummary } from '@/api/types';
 
-// chart_number >> 평문 인덱스 컬럼. 부분검색이 가능한 유일한 키다.
+// chart_number >> 부분검색이 가능한 유일한 키
 export const mockPatients : PatientSummary[] = [
     {
         id: '247a0651-c7e4-4ec5-9bad-72b8e3d8f201',
