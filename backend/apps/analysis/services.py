@@ -5,14 +5,46 @@ from django.utils import timezone
 
 
 def build_upload_url(storage_key: str) -> str:
-    """이미지 업로드용 URL 발급.
+    """이미지 업로드용 서명 URL 발급.
 
-    TODO: 실제 GCS 서명 URL 발급으로 교체할 것. USE_MOCK_INFERENCE(추론/큐
-    모킹 여부)와는 별개 관심사라 그 플래그에 묶지 않는다 — 큐를 실제
-    Redis로 돌리기 시작해도 업로드 URL은 이 함수가 준비될 때까지 계속
-    mock으로 동작해야 한다.
+    settings.GCS_BUCKET이 비어있으면(로컬 등 GCS 미설정 환경) mock URL을
+    돌려준다. Cloud Run은 JSON 키 파일이 없으므로(조직 정책으로 서비스
+    계정 키 발급이 막혀있음 — worker/INTERFACE.md 2절과 동일한 이유),
+    IAM SignBlob API로 서명한다. 이 서비스 계정 자신에게
+    roles/iam.serviceAccountTokenCreator 권한이 있어야 동작한다.
     """
-    return f"https://mock-upload.local/{storage_key}"
+    if not settings.GCS_BUCKET:
+        return f"https://mock-upload.local/{storage_key}"
+
+    from datetime import timedelta  # noqa: PLC0415
+
+    import google.auth  # noqa: PLC0415
+    from google.auth import iam  # noqa: PLC0415
+    from google.auth.transport import requests as gauth_requests  # noqa: PLC0415
+    from google.cloud import storage  # noqa: PLC0415
+    from google.oauth2 import service_account  # noqa: PLC0415
+
+    credentials, _ = google.auth.default()
+    auth_request = gauth_requests.Request()
+    credentials.refresh(auth_request)
+
+    signer = iam.Signer(auth_request, credentials, credentials.service_account_email)
+    signing_credentials = service_account.Credentials(
+        signer,
+        credentials.service_account_email,
+        token_uri="https://oauth2.googleapis.com/token",
+    )
+
+    client = storage.Client(credentials=credentials)
+    blob = client.bucket(settings.GCS_BUCKET).blob(storage_key)
+
+    return blob.generate_signed_url(
+        version="v4",
+        expiration=timedelta(minutes=15),
+        method="PUT",
+        content_type="application/octet-stream",
+        credentials=signing_credentials,
+    )
 
 
 def create_image_with_upload_url(batch, filename: str):
