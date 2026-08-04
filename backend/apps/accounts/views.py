@@ -7,6 +7,8 @@ from rest_framework import permissions, status
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.common.audit import log_access
 from apps.common.permissions import get_patient_or_404, get_staff_or_403
@@ -18,6 +20,7 @@ from .serializers import (
     InvitationIssueSerializer,
     InvitationRedeemSerializer,
     InvitationSerializer,
+    LogoutSerializer,
     NotificationSerializer,
     QRTokenSerializer,
     QRVerifySerializer,
@@ -158,3 +161,21 @@ class NotificationListView(APIView):
     def get(self, request):
         notifications = Notification.objects.filter(user=request.user)
         return Response(NotificationSerializer(notifications, many=True).data)
+
+
+class LogoutView(APIView):
+    """설계문서 7.2절 — POST /auth/logout. refresh 토큰 폐기(blacklist)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=LogoutSerializer, responses=None)
+    def post(self, request):
+        serializer = LogoutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            token = RefreshToken(serializer.validated_data["refresh"])
+            token.blacklist()
+        except TokenError as exc:
+            raise ValidationError("유효하지 않은 refresh 토큰입니다.") from exc
+
+        return Response(status=status.HTTP_205_RESET_CONTENT)

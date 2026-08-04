@@ -7,6 +7,7 @@ from apps.accounts.views import (
     DeviceTokenRegisterView,
     InvitationIssueView,
     InvitationRedeemView,
+    LogoutView,
     NotificationListView,
     QRVerifyView,
 )
@@ -20,6 +21,7 @@ urlpatterns = [
         TokenRefreshView.as_view(),
         name="token_refresh",
     ),
+    path("api/v1/auth/logout/", LogoutView.as_view(), name="logout"),
     path(
         "api/v1/auth/invitations/redeem/",
         InvitationRedeemView.as_view(),

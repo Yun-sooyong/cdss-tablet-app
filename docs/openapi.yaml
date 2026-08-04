@@ -443,6 +443,29 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenRefresh'
           description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: v1_auth_logout_create
+      description: 설계문서 7.2절 — POST /auth/logout. refresh 토큰 폐기(blacklist).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Logout'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Logout'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
   /api/v1/devices/tokens/:
     post:
       operationId: v1_devices_tokens_create
@@ -1378,6 +1401,13 @@ components:
         * `stil_done` - sTIL 완료 (리포트 대기)
         * `succeeded` - 성공
         * `failed` - 실패
+    Logout:
+      type: object
+      properties:
+        refresh:
+          type: string
+      required:
+      - refresh
     MedicationLogCreate:
       type: object
       properties:
