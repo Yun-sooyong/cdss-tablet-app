@@ -7,7 +7,11 @@ class ReservationService {
   final _client = ApiClient.instance;
 
   static const List<String> documentTypes = [
-    '처방전', '진단서', '진료확인서', '보험용 서류', '기타'
+    '처방전',
+    '진단서',
+    '진료확인서',
+    '보험용 서류',
+    '기타'
   ];
 
   List<Department>? _departmentsCache;
@@ -19,8 +23,9 @@ class ReservationService {
     final res = await _client.get('/api/v1/departments/');
     if (res.statusCode != 200) throw Exception('진료과 목록을 불러오지 못했어요.');
     final data = jsonDecode(res.body) as List<dynamic>;
-    _departmentsCache =
-        data.map((d) => Department.fromJson(d as Map<String, dynamic>)).toList();
+    _departmentsCache = data
+        .map((d) => Department.fromJson(d as Map<String, dynamic>))
+        .toList();
     return _departmentsCache!;
   }
 
@@ -115,4 +120,34 @@ class ReservationService {
     });
     if (res.statusCode != 201) throw Exception('예약 신청에 실패했어요.');
   }
+
+  Future<List<TimeSlot>> fetchAvailableSlots(
+      String deptCode, DateTime date) async {
+    final dateStr =
+        '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    final res = await _client.get(
+      '/api/v1/departments/$deptCode/available-slots/',
+      query: {'date': dateStr},
+    );
+    if (res.statusCode != 200) throw Exception('예약 가능 시간을 불러오지 못했어요.');
+    final data = jsonDecode(res.body) as List<dynamic>;
+    return data
+        .map((e) => TimeSlot.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+}
+
+class TimeSlot {
+  final String time; // "09:00" 형식
+  final bool available;
+
+  const TimeSlot({required this.time, required this.available});
+
+  factory TimeSlot.fromJson(Map<String, dynamic> json) => TimeSlot(
+        time: json['time'] as String,
+        available: json['available'] as bool,
+      );
+
+  int get hour => int.parse(time.split(':')[0]);
+  int get minute => int.parse(time.split(':')[1]);
 }

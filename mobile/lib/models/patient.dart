@@ -74,7 +74,6 @@ class Patient {
     );
   }
 
-  // 개인정보 수정 화면에서 일부 필드만 바꿔서 새 Patient 객체를 만들 때 쓴다.
   Patient copyWith({
     String? name,
     DateTime? birthDate,

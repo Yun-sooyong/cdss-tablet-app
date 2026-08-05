@@ -6,16 +6,31 @@ class AuthService {
   Patient? currentPatient;
   final _client = ApiClient.instance;
 
-  Future<void> loginWithEmail(String email, String password) async {
+  // 저장된 토큰이 있으면 그걸로 로그인 상태 복구를 시도한다.
+  // fetchCurrentPatient()가 401을 만나면 ApiClient가 알아서 refresh를 한 번 시도하니까,
+  // 여기까지 실패하면 refresh 토큰도 죽은 거라 완전 로그아웃 처리하는 게 맞다.
+  Future<bool> tryAutoLogin() async {
+    if (!await _client.isLoggedIn) return false;
+    try {
+      await fetchCurrentPatient();
+      return true;
+    } catch (_) {
+      await logout();
+      return false;
+    }
+  }
+
+  Future<void> login(String username, String password) async {
     final res = await _client.post('/api/v1/auth/login/', body: {
-      'username': email,
+      'username': username,
       'password': password,
     });
     if (res.statusCode != 200) {
-      throw Exception('로그인에 실패했어요. 이메일/비밀번호를 확인해주세요.');
+      throw Exception('로그인에 실패했어요. 아이디/비밀번호를 확인해줘.');
     }
     final data = jsonDecode(res.body) as Map<String, dynamic>;
-    await _client.saveTokens(access: data['access'] as String, refresh: data['refresh'] as String);
+    await _client.saveTokens(
+        access: data['access'] as String, refresh: data['refresh'] as String);
     await fetchCurrentPatient();
   }
 
@@ -29,29 +44,36 @@ class AuthService {
   }
 
   Future<void> signUp({
-    required String email,
+    required String username, // 로그인 아이디 — TODO: 백엔드 확인 후 body key 이름 교체 여부 결정
     required String password,
     required String name,
-    required DateTime birthDate,
-    required Sex sex,
-    required String address,
-    required String phone,
+    String? chartNumber,
+    DateTime? birthDate,
+    Sex? sex,
+    String? phone,
+    String? address,
   }) async {
-    final body = {
-      'email': email,
+    final body = <String, dynamic>{
+      'email': username, // TODO: 다희 확인 후 필요하면 'username' 등으로 교체
       'password': password,
       'name': name,
-      'birth_date':
-          '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}',
-      'sex': sex.code,
-      'phone': phone,
-      'address': address,
     };
+    if (chartNumber != null && chartNumber.isNotEmpty) {
+      body['chart_number'] = chartNumber;
+    }
+    if (birthDate != null) {
+      body['birth_date'] =
+          '${birthDate.year.toString().padLeft(4, '0')}-${birthDate.month.toString().padLeft(2, '0')}-${birthDate.day.toString().padLeft(2, '0')}';
+    }
+    if (sex != null) body['sex'] = sex.code;
+    if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+    if (address != null && address.isNotEmpty) body['address'] = address;
+
     final res = await _client.post('/api/v1/patients/register/', body: body);
     if (res.statusCode != 201) {
       throw Exception(_extractErrorMessage(res.body, '회원가입에 실패했어요.'));
     }
-    await loginWithEmail(email, password);
+    await login(username, password);
   }
 
   String _extractErrorMessage(String body, String fallback) {
@@ -109,24 +131,10 @@ class AuthService {
     currentPatient = null;
   }
 
-  Future<void> loginWithSocial(String provider) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    currentPatient = Patient(
-      id: 'mock-kakao-${DateTime.now().millisecondsSinceEpoch}',
-      name: '카카오 사용자',
-      signupProvider: provider,
-    );
-  }
-
   Future<void> changePassword({
     required String currentPassword,
     required String newPassword,
   }) async {
     await Future.delayed(const Duration(milliseconds: 400));
-  }
-
-  Future<void> linkKakao() async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    currentPatient = currentPatient?.copyWith(kakaoLinked: true);
   }
 }

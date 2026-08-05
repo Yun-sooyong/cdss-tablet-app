@@ -1,28 +1,43 @@
 import 'package:flutter/material.dart';
 import 'services/auth_service.dart';
-import 'theme/app_colors.dart';
+import 'services/theme_controller.dart';
 import 'screens/splash_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const PatientApp());
 }
 
-class PatientApp extends StatelessWidget {
+class PatientApp extends StatefulWidget {
   const PatientApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final authService = AuthService();
+  State<PatientApp> createState() => _PatientAppState();
+}
 
-    return MaterialApp(
-      title: '환자 앱',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: AppColors.primary,
-        scaffoldBackgroundColor: AppColors.background,
-      ),
-      home: SplashScreen(authService: authService),
+class _PatientAppState extends State<PatientApp> {
+  final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    ThemeController.instance.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.instance.mode,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          title: 'V-Tree',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: mode,
+          home: SplashScreen(authService: _authService),
+        );
+      },
     );
   }
 }

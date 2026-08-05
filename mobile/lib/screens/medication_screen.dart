@@ -6,6 +6,7 @@ import 'weekly_medication_history_screen.dart';
 import '../services/notification_service.dart';
 import '../utils/top_banner.dart';
 import '../widgets/loading_spinner.dart';
+import 'prescription_info_screen.dart';
 
 class MedicationScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -44,6 +45,15 @@ class _MedicationScreenState extends State<MedicationScreen> {
     }
   }
 
+  void _openPrescriptions() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PrescriptionInfoScreen(
+            medicationService: widget.medicationService)));
+  }
+
+  String _fmtTime(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
   Future<void> _load() async {
     setState(() => _isLoading = true);
     final adherenceFuture = widget.medicationService.fetchWeeklyAdherence();
@@ -60,9 +70,16 @@ class _MedicationScreenState extends State<MedicationScreen> {
     await widget.notificationService.scheduleDailyDoseReminders(_doses);
   }
 
-  Future<void> _markTaken(DoseItem dose) async {
-    await widget.medicationService.markTaken(dose.id);
-    setState(() => dose.taken = true);
+  Future<void> _toggleTaken(DoseItem dose) async {
+    if (dose.taken) {
+      await widget.medicationService.unmarkTaken(dose.id);
+      if (!mounted) return;
+      setState(() => dose.taken = false);
+    } else {
+      await widget.medicationService.markTaken(dose.id);
+      if (!mounted) return;
+      setState(() => dose.taken = true);
+    }
   }
 
   @override
@@ -71,39 +88,65 @@ class _MedicationScreenState extends State<MedicationScreen> {
       return const Center(child: LoadingSpinner());
     }
 
-    final now = DateTime.now();
+    final DoseItem? nextDose = _doses.where((d) => !d.taken).isNotEmpty
+        ? _doses.firstWhere((d) => !d.taken)
+        : null;
 
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('${now.year}년 ${now.month}월',
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
           if (_adherence != null)
             _AdherenceCard(
-                adherence: _adherence!,
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => WeeklyMedicationHistoryScreen(
-                        medicationService: widget.medicationService)))),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('오늘 복용',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              TextButton.icon(
-                icon: const Icon(Icons.settings_outlined, size: 18),
-                label: const Text('알림 설정'),
-                onPressed: _openDoseTimeSettings,
+              adherence: _adherence!,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => WeeklyMedicationHistoryScreen(
+                      medicationService: widget.medicationService))),
+              onOpenPrescriptions: _openPrescriptions,
+            ),
+          const SizedBox(height: 12),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('다음 복용',
+                            style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Text(
+                            nextDose != null
+                                ? _fmtTime(nextDose.date)
+                                : '오늘 복용 완료',
+                            style: const TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold)),
+                        if (nextDose != null) ...[
+                          const SizedBox(height: 2),
+                          Text(nextDose.medicationName,
+                              style: const TextStyle(fontSize: 14)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.notifications_none, size: 18),
+                    label: const Text('복용 알림 설정'),
+                    onPressed: _openDoseTimeSettings,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
+          const SizedBox(height: 20),
+          const Text('오늘 복용',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          ..._doses.map(
-              (dose) => _DoseTile(dose: dose, onTaken: () => _markTaken(dose))),
+          ..._doses.map((dose) =>
+              _DoseTile(dose: dose, onTaken: () => _toggleTaken(dose))),
         ],
       ),
     );
@@ -113,48 +156,87 @@ class _MedicationScreenState extends State<MedicationScreen> {
 class _AdherenceCard extends StatelessWidget {
   final WeeklyAdherence adherence;
   final VoidCallback onTap;
+  final VoidCallback onOpenPrescriptions;
 
-  const _AdherenceCard({required this.adherence, required this.onTap});
+  const _AdherenceCard(
+      {required this.adherence,
+      required this.onTap,
+      required this.onOpenPrescriptions});
 
   @override
   Widget build(BuildContext context) {
     final percent = (adherence.rate * 100).round();
-    const days = ['일', '월', '화', '수', '목', '금', '토'];
     return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('이번 주 복약률 $percent%',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: List.generate(7, (i) {
-                  final done = i < adherence.dayCompleted.length &&
-                      adherence.dayCompleted[i];
-                  return Column(
-                    children: [
-                      Text(days[i],
-                          style: const TextStyle(
-                              fontSize: 12, color: Colors.grey)),
-                      const SizedBox(height: 4),
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor:
-                            done ? AppColors.primary : Colors.grey.shade300,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 84,
+                      height: 84,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          SizedBox(
+                            width: 84,
+                            height: 84,
+                            child: CircularProgressIndicator(
+                              value: adherence.rate,
+                              strokeWidth: 8,
+                              backgroundColor: Colors.grey.shade200,
+                              valueColor: const AlwaysStoppedAnimation(
+                                  AppColors.primary),
+                            ),
+                          ),
+                          Text('$percent%',
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold)),
+                        ],
                       ),
-                    ],
-                  );
-                }),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                        '이번 주 복약률', // 목업엔 '이번 달'이지만 실데이터가 주간(WeeklyAdherence)이라 정직하게 뒀어
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  ],
+                ),
               ),
-            ],
-          ),
+            ),
+            Container(
+                width: 1,
+                height: 100,
+                color: Theme.of(context).dividerColor,
+                margin: const EdgeInsets.symmetric(horizontal: 12)),
+            Expanded(
+              child: InkWell(
+                onTap: onOpenPrescriptions,
+                borderRadius: BorderRadius.circular(12),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.description_outlined,
+                          color: AppColors.primary, size: 18),
+                      SizedBox(width: 6),
+                      Flexible(
+                          child:
+                              Text('처방 내역', overflow: TextOverflow.ellipsis)),
+                      Icon(Icons.chevron_right, size: 18),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -172,15 +254,16 @@ class _DoseTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
+        onTap: onTaken,
         leading: Icon(
           dose.taken ? Icons.check_circle : Icons.circle_outlined,
           color: dose.taken ? AppColors.primary : Colors.grey,
         ),
-        title: Text(dose.medicationName),
-        subtitle: Text(dose.time.label),
+        title: Text('${dose.time.label} · ${dose.medicationName}'),
         trailing: dose.taken
-            ? const Text('복용완료', style: TextStyle(color: Colors.grey))
-            : TextButton(onPressed: onTaken, child: const Text('복용완료')),
+            ? const Text('복용완료',
+                style: TextStyle(color: Colors.grey, fontSize: 12))
+            : null,
       ),
     );
   }
