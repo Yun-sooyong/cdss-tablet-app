@@ -15,6 +15,7 @@ from .serializers import (
     PatientRegisterSerializer,
     PatientSearchQuerySerializer,
     PatientSerializer,
+    PatientStaffCreateSerializer,
     PatientSummarySerializer,
 )
 
@@ -37,6 +38,21 @@ class PatientRegisterView(APIView):
         if User.objects.filter(email=data["email"]).exists():
             raise ValidationError("이미 가입된 이메일입니다.")
 
+        # 병원이 접수처에서 먼저 등록해둔 환자(user=null)가 나중에 앱
+        # 가입하는 경우 — 이름 + chart_number(uuid) 일치를 확인해 기존
+        # 레코드에 계정을 붙인다. 없으면 기존과 동일하게 새로 만든다.
+        # (정다희, 2026-08-05 — 매칭 키를 전화번호가 아니라 이름+차트번호로 결정)
+        chart_number = data.get("chart_number", "")
+        existing_patient = None
+        if chart_number:
+            existing_patient = Patient.objects.filter(
+                chart_number=chart_number, user__isnull=True, deleted_at__isnull=True
+            ).first()
+            if existing_patient is None:
+                raise ValidationError("차트번호를 찾을 수 없거나 이미 연결된 계정입니다.")
+            if existing_patient.name != data["name"]:
+                raise ValidationError("차트번호와 이름이 일치하지 않습니다.")
+
         # User.username에 email을 그대로 넣는다 — 로그인은 여전히
         # POST /auth/login/ + username 필드지만, 값은 email이 된다.
         user = User.objects.create_user(
@@ -44,8 +60,41 @@ class PatientRegisterView(APIView):
             email=data["email"],
             password=data["password"],
         )
+
+        if existing_patient:
+            existing_patient.user = user
+            existing_patient.save(update_fields=["user", "updated_at"])
+            patient = existing_patient
+        else:
+            patient = Patient.objects.create(
+                user=user,
+                name=data["name"],
+                birth_date=data["birth_date"],
+                sex=data["sex"],
+                phone=data["phone"],
+                address=data.get("address", ""),
+            )
+        return Response(PatientSerializer(patient).data, status=status.HTTP_201_CREATED)
+
+
+class PatientStaffCreateView(APIView):
+    """의료진용 환자 등록(워크인) — 회원가입 여부와 무관하게 병원이 먼저
+    환자 정보를 보유해야 한다는 요구사항으로 추가 (2026-08-05). 계정 없이
+    Patient만 생성하고, chart_number를 나중에 환자가 앱 가입 시 계정
+    연결 키로 쓴다 (PatientRegisterSerializer.chart_number 참고)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=PatientStaffCreateSerializer, responses=PatientSerializer)
+    def post(self, request):
+        get_staff_or_403(request.user)
+
+        serializer = PatientStaffCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
         patient = Patient.objects.create(
-            user=user,
+            user=None,
             name=data["name"],
             birth_date=data["birth_date"],
             sex=data["sex"],

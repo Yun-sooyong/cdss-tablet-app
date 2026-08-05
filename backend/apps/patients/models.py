@@ -27,8 +27,15 @@ class Patient(BaseModel):
         OTHER = "O", "기타"
         UNKNOWN = "U", "미상"
 
+    # 병원 접수처에서 먼저 등록해둔("워크인") 환자는 아직 계정이 없을 수 있다
+    # (정다희, 2026-08-04 — 앱 회원가입 여부와 무관하게 병원이 환자 정보를
+    # 보유해야 한다는 요구사항 추가). chart_number를 계정 연결 키로 쓴다.
     user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="patient"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="patient",
+        null=True,
+        blank=True,
     )
     # 차트번호 — 최일운 요청(2026-08-04): name/birth_date/phone은 전부
     # 암호화 컬럼이라 LIKE/범위 검색이 안 돼서, 검색 가능한 평문 식별자가
