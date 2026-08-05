@@ -1,42 +1,3 @@
-<<<<<<< HEAD
-class Patient {
-  final String id; // uuid — 나중에 서버 붙이면 DB의 User/환자 PK
-  final String name;
-  final String email;
-  final DateTime? birthDate;
-  final String? address;
-  final String? phone;
-  final String? profileImageUrl;
-
-  Patient({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.birthDate,
-    this.address,
-    this.phone,
-    this.profileImageUrl,
-  });
-
-  factory Patient.fromJson(Map<String, dynamic> json) => Patient(
-        id: json['id'] as String,
-        name: json['name'] as String,
-        email: json['email'] as String,
-        birthDate: json['birthDate'] != null
-            ? DateTime.parse(json['birthDate'] as String)
-            : null,
-        address: json['address'] as String?,
-        phone: json['phone'] as String?,
-        profileImageUrl: json['profileImageUrl'] as String?,
-      );
-
-  // 개인정보 수정 화면에서 일부 필드만 바꿔서 새 Patient 객체를 만들 때 쓴다.
-  Patient copyWith({
-    String? name,
-    DateTime? birthDate,
-    String? address,
-    String? phone,
-=======
 enum Sex { m, f, o, u }
 
 extension SexCode on Sex {
@@ -52,6 +13,21 @@ extension SexCode on Sex {
         return Sex.o;
       default:
         return Sex.u;
+    }
+  }
+}
+
+extension SexLabel on Sex {
+  String get label {
+    switch (this) {
+      case Sex.m:
+        return '남성';
+      case Sex.f:
+        return '여성';
+      case Sex.o:
+        return '기타';
+      case Sex.u:
+        return '선택 안함';
     }
   }
 }
@@ -98,6 +74,7 @@ class Patient {
     );
   }
 
+  // 개인정보 수정 화면에서 일부 필드만 바꿔서 새 Patient 객체를 만들 때 쓴다.
   Patient copyWith({
     String? name,
     DateTime? birthDate,
@@ -108,18 +85,10 @@ class Patient {
     String? profileImageUrl,
     String? signupProvider,
     bool? kakaoLinked,
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   }) {
     return Patient(
       id: id,
       name: name ?? this.name,
-<<<<<<< HEAD
-      email: email,
-      birthDate: birthDate ?? this.birthDate,
-      address: address ?? this.address,
-      phone: phone ?? this.phone,
-      profileImageUrl: profileImageUrl,
-=======
       birthDate: birthDate ?? this.birthDate,
       sex: sex ?? this.sex,
       address: address ?? this.address,
@@ -128,7 +97,6 @@ class Patient {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       signupProvider: signupProvider ?? this.signupProvider,
       kakaoLinked: kakaoLinked ?? this.kakaoLinked,
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     );
   }
 }

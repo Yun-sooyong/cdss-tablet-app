@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-<<<<<<< HEAD
-=======
 import '../widgets/loading_spinner.dart';
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class EditProfileScreen extends StatefulWidget {
   final AuthService authService;
@@ -82,12 +79,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             TextField(
               controller: _nameController,
-<<<<<<< HEAD
-              decoration: const InputDecoration(
-                  labelText: '이름', border: OutlineInputBorder()),
-=======
               decoration: const InputDecoration(labelText: '이름', border: OutlineInputBorder()),
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             ),
             const SizedBox(height: 12),
             OutlinedButton(
@@ -99,23 +91,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _addressController,
-<<<<<<< HEAD
-              decoration: const InputDecoration(
-                  labelText: '주소', border: OutlineInputBorder()),
-=======
               decoration: const InputDecoration(labelText: '주소', border: OutlineInputBorder()),
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _phoneController,
               keyboardType: TextInputType.phone,
-<<<<<<< HEAD
-              decoration: const InputDecoration(
-                  labelText: '전화번호', border: OutlineInputBorder()),
-=======
               decoration: const InputDecoration(labelText: '전화번호', border: OutlineInputBorder()),
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -124,14 +106,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _save,
                 child: _isSaving
-<<<<<<< HEAD
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
-=======
                     ? const LoadingSpinner(size: 20)
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                     : const Text('저장'),
               ),
             ),
@@ -140,8 +115,4 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d

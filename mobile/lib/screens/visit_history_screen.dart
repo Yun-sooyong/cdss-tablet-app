@@ -2,11 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../models/visit.dart';
 import '../services/visit_service.dart';
-<<<<<<< HEAD
-=======
-import 'visit_detail_screen.dart';
+import 'visit_detail.screen.dart';
 import '../widgets/loading_spinner.dart';
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class VisitHistoryScreen extends StatefulWidget {
   final VisitService visitService;
@@ -121,11 +118,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
           ),
         ),
         if (_isLoading)
-<<<<<<< HEAD
-          const Expanded(child: Center(child: CircularProgressIndicator()))
-=======
           const Expanded(child: Center(child: LoadingSpinner()))
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
         else if (_visits.isEmpty)
           const Expanded(
               child: Center(
@@ -148,12 +141,9 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                       '${v.date.year}.${v.date.month.toString().padLeft(2, '0')}.${v.date.day.toString().padLeft(2, '0')}',
                       style: const TextStyle(color: Colors.grey),
                     ),
-<<<<<<< HEAD
-=======
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => VisitDetailScreen(visit: v)),
                     ),
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                   ),
                 );
               },

@@ -23,12 +23,7 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 2500));
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-<<<<<<< HEAD
-      MaterialPageRoute(
-          builder: (_) => LoginScreen(authService: widget.authService)),
-=======
       MaterialPageRoute(builder: (_) => LoginScreen(authService: widget.authService)),
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     );
   }
 
@@ -41,8 +36,4 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
