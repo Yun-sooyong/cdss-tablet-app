@@ -9,6 +9,8 @@ from apps.accounts.views import (
     InvitationRedeemView,
     LogoutView,
     NotificationListView,
+    NotificationReadAllView,
+    NotificationReadView,
     PasswordChangeView,
     QRVerifyView,
 )
@@ -49,6 +51,16 @@ urlpatterns = [
         "api/v1/notifications/",
         NotificationListView.as_view(),
         name="notification-list",
+    ),
+    path(
+        "api/v1/notifications/read-all/",
+        NotificationReadAllView.as_view(),
+        name="notification-read-all",
+    ),
+    path(
+        "api/v1/notifications/<uuid:notification_id>/",
+        NotificationReadView.as_view(),
+        name="notification-read",
     ),
     path(
         "api/v1/uploads/signed-url/",
