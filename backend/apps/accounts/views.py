@@ -29,9 +29,24 @@ from .serializers import (
 
 
 class InvitationIssueView(APIView):
-    """초대코드 발급 — 관리자 권한 의료진만 (설계문서 7장/12장)."""
+    """초대코드 발급/조회 — 관리자 권한 의료진만 (설계문서 7장/12장).
+
+    조회(GET)는 원래 없어서 새로고침하면 발급 내역이 사라지는 문제가
+    있었다 (최일운 요청, 2026-08-05). 관리자 콘솔 화면이라 issued_by
+    본인 것만이 아니라 전체를 보여준다 — 다른 관리자가 발급한 코드도
+    관리자라면 봐야 초대 현황을 파악할 수 있다고 판단했다. 이 범위가
+    맞는지는 확인 필요."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=InvitationSerializer(many=True))
+    def get(self, request):
+        staff = get_staff_or_403(request.user)
+        if staff.role != Staff.Role.ADMIN:
+            raise PermissionDenied("관리자 권한 의료진만 초대코드 목록을 볼 수 있습니다.")
+
+        invitations = Invitation.objects.order_by("-created_at")
+        return Response(InvitationSerializer(invitations, many=True).data)
 
     @extend_schema(request=InvitationIssueSerializer, responses=InvitationSerializer)
     def post(self, request):
@@ -162,6 +177,33 @@ class NotificationListView(APIView):
     def get(self, request):
         notifications = Notification.objects.filter(user=request.user)
         return Response(NotificationSerializer(notifications, many=True).data)
+
+
+class NotificationReadView(APIView):
+    """PATCH /notifications/{id} — 읽음 처리. 본인 알림만 (최일운 요청,
+    2026-08-05 — 지금까지 목록 조회만 있고 읽음 처리가 없었음)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=None, responses=NotificationSerializer)
+    def patch(self, request, notification_id):
+        notification = get_object_or_404(
+            Notification, id=notification_id, user=request.user
+        )
+        notification.is_read = True
+        notification.save(update_fields=["is_read"])
+        return Response(NotificationSerializer(notification).data)
+
+
+class NotificationReadAllView(APIView):
+    """POST /notifications/read-all — 본인의 안 읽은 알림 전체 읽음 처리."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=None, responses=None)
+    def post(self, request):
+        Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LogoutView(APIView):

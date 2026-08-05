@@ -29,6 +29,7 @@ urlpatterns = [
         views.BatchShareListCreateView.as_view(),
         name="batch-share-list-create",
     ),
+    path("shares/", views.AnalysisShareListView.as_view(), name="share-list"),
     path(
         "shares/<uuid:share_id>/",
         views.ShareRevokeView.as_view(),
@@ -39,6 +40,7 @@ urlpatterns = [
         views.ImageJobCreateView.as_view(),
         name="image-job-create",
     ),
+    path("jobs/", views.JobListView.as_view(), name="job-list"),
     path("jobs/<uuid:job_id>/", views.JobDetailView.as_view(), name="job-detail"),
     path(
         "jobs/<uuid:job_id>/callback/",

@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -77,14 +77,21 @@ def get_accessible_batch_or_404(staff, batch_id):
 
 
 class ModelVersionListView(APIView):
-    """업로드 화면의 '모델 선택' 드롭다운용 — 활성 모델 버전 목록."""
+    """업로드 화면의 '모델 선택' 드롭다운용 — 기본은 활성 모델만.
+
+    ?include_inactive=true면 전체를 내려준다 — 예전 배치가 비활성화된
+    모델로 돌아간 경우, 그 배치 상세에서 모델 이름을 찾으려면 비활성
+    모델도 조회할 수 있어야 한다 (최일운 요청, 2026-08-05).
+    """
 
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(responses=ModelVersionSerializer(many=True))
     def get(self, request):
-        versions = ModelVersion.objects.filter(is_active=True).order_by("name")
-        return Response(ModelVersionSerializer(versions, many=True).data)
+        versions = ModelVersion.objects.all()
+        if request.query_params.get("include_inactive") != "true":
+            versions = versions.filter(is_active=True)
+        return Response(ModelVersionSerializer(versions.order_by("name"), many=True).data)
 
 
 class BatchListCreateView(APIView):
@@ -299,6 +306,34 @@ class ImageJobCreateView(APIView):
         return Response(JobSerializer(job).data, status=status.HTTP_201_CREATED)
 
 
+class JobListView(APIView):
+    """GET /analysis/jobs/ — batch를 거치지 않고 job을 가로질러 조회.
+    대시보드·09 검증 화면·사이드바 배지에서 필요 (최일운 요청, 2026-08-05).
+    본인 batch + 공유받은 batch의 job만, get_accessible_batch_or_404와
+    같은 접근 범위를 재사용한다."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=JobSerializer(many=True))
+    def get(self, request):
+        staff = get_staff_or_403(request.user)
+        shared_batch_ids = active_shares_for(staff).values_list("batch_id", flat=True)
+        jobs = (
+            Job.objects.filter(
+                Q(image__batch__created_by=staff) | Q(image__batch_id__in=shared_batch_ids),
+                image__batch__deleted_at__isnull=True,
+            )
+            .select_related("image", "image__batch__patient")
+            .distinct()
+            .order_by("-created_at")
+        )
+
+        if request.query_params.get("needs_review") == "true":
+            jobs = jobs.filter(status=Job.Status.SUCCEEDED)
+
+        return Response(JobSerializer(jobs, many=True).data)
+
+
 class JobDetailView(APIView):
     """본인 batch + 공유받은 batch의 job만 조회 가능."""
 
@@ -310,6 +345,33 @@ class JobDetailView(APIView):
         job = get_object_or_404(Job, id=job_id)
         get_accessible_batch_or_404(staff, job.image.batch_id)
         return Response(JobSerializer(job).data)
+
+
+class AnalysisShareListView(APIView):
+    """GET /analysis/shares/?direction=sent|received — 공유 전체 목록.
+
+    지금까지 특정 batch 밑(POST/GET .../shares/)으로만 생성·조회가
+    됐는데, batch를 안 거치고 "내가 보낸 것/받은 것"을 한 번에 보는
+    화면이 필요해서 추가 (최일운 요청, 2026-08-05).
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=AnalysisShareSerializer(many=True))
+    def get(self, request):
+        staff = get_staff_or_403(request.user)
+        direction = request.query_params.get("direction")
+        if direction not in ("sent", "received"):
+            raise ValidationError("direction 쿼리 파라미터는 sent 또는 received여야 합니다.")
+
+        if direction == "sent":
+            shares = AnalysisShare.objects.filter(shared_by=staff)
+        else:
+            shares = AnalysisShare.objects.filter(shared_to=staff)
+
+        return Response(
+            AnalysisShareSerializer(shares.order_by("-created_at"), many=True).data
+        )
 
 
 class BatchShareListCreateView(APIView):
