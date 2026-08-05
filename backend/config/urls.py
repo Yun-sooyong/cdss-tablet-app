@@ -16,7 +16,7 @@ from apps.accounts.views import (
     QRVerifyView,
 )
 from apps.analysis.views import UploadSignedUrlView
-from apps.staff.views import DepartmentListView
+from apps.staff.views import DepartmentAvailableSlotsView, DepartmentListView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -69,6 +69,11 @@ urlpatterns = [
         name="upload-signed-url",
     ),
     path("api/v1/departments/", DepartmentListView.as_view(), name="department-list"),
+    path(
+        "api/v1/departments/<str:dept_code>/available-slots/",
+        DepartmentAvailableSlotsView.as_view(),
+        name="department-available-slots",
+    ),
     path("api/v1/audit-logs/", AuditLogListView.as_view(), name="audit-log-list"),
     path("api/v1/analysis/", include("apps.analysis.urls")),
     path("api/v1/chat/", include("apps.chat.urls")),
