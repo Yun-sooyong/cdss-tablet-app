@@ -66,6 +66,7 @@ class _MainShellState extends State<MainShell> {
         medicationService: _medicationService,
         reservationService: _reservationService,
         notificationService: _notificationService,
+        onNavigate: (i) => setState(() => _index = i),
       ),
       VisitHistoryScreen(visitService: _visitService),
       ReservationScreen(

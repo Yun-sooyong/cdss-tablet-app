@@ -52,6 +52,13 @@ class MedicationService {
     }
   }
 
+  Future<void> unmarkTaken(String doseId) async {
+    final res = await _client.delete('/api/v1/medications/logs/$doseId/');
+    if (res.statusCode != 204) {
+      throw Exception('복용 취소에 실패했어요.');
+    }
+  }
+
   Future<List<DailyDoseRecord>> fetchWeeklyDoseHistory() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -86,6 +93,8 @@ class MedicationService {
       throw Exception('처방내역을 불러오지 못했어요.');
     }
     final data = jsonDecode(res.body) as List<dynamic>;
-    return data.map((p) => Prescription.fromJson(p as Map<String, dynamic>)).toList();
+    return data
+        .map((p) => Prescription.fromJson(p as Map<String, dynamic>))
+        .toList();
   }
 }

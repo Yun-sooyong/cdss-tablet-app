@@ -24,7 +24,8 @@ class PrescribedDrug {
     );
   }
 
-  String get dosageInfo => '1회 $dosePerTake$unit · 1일 $timesPerDay회 · $totalDays일분';
+  String get dosageInfo =>
+      '1회 $dosePerTake$unit · 1일 $timesPerDay회 · $totalDays일분';
 }
 
 class Prescription {

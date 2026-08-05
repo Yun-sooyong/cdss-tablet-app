@@ -75,7 +75,7 @@ class _QrScreenState extends State<QrScreen> {
                     Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: const BorderSide(color: AppColors.surfaceMuted),
+                        side: BorderSide(color: Theme.of(context).dividerColor),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -88,7 +88,9 @@ class _QrScreenState extends State<QrScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      _token!.isExpired ? '유효시간이 만료되었어요' : '유효시간 ${_fmt(_token!.remaining)}',
+                      _token!.isExpired
+                          ? '유효시간이 만료되었어요'
+                          : '유효시간 ${_fmt(_token!.remaining)}',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
