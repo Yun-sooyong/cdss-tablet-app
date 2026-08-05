@@ -5,8 +5,13 @@ import '../services/reservation_service.dart';
 import '../theme/app_colors.dart';
 import 'settings_screen.dart';
 import 'prescription_info_screen.dart';
+<<<<<<< HEAD
 import 'document_box_screen.dart';
 import '../services/notification_service.dart';
+=======
+import '../services/notification_service.dart';
+import '../widgets/loading_spinner.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class MyPageScreen extends StatefulWidget {
   final AuthService authService;
@@ -66,7 +71,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
     return SafeArea(
       child: _isLoading
+<<<<<<< HEAD
           ? const Center(child: CircularProgressIndicator())
+=======
+          ? const Center(child: LoadingSpinner())
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
@@ -135,6 +144,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
+<<<<<<< HEAD
                   _SummaryLinkCard(
                     leadingIcon: Icons.event_note_outlined,
                     leadingLabel: '다음 예약',
@@ -145,6 +155,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       MaterialPageRoute(
                         builder: (_) => DocumentBoxScreen(
                             reservationService: widget.reservationService),
+=======
+                  Card(
+                    child: Padding(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      child: Row(
+                        children: [
+                          Icon(Icons.event_note_outlined,
+                              color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('다음 예약',
+                                  style: TextStyle(
+                                      color: Colors.grey, fontSize: 12)),
+                              Text(_fmtDate(_nextReservationDate),
+                                  style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ],
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                       ),
                     ),
                   ),
@@ -155,8 +189,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 }
 
+<<<<<<< HEAD
 // 왼쪽엔 통계(복약률/다음예약), 오른쪽엔 탭 가능한 이동 링크가 나란히 있는 카드.
 // 마이페이지에 반복되는 레이아웃이라 위젯으로 따로 뺐어.
+=======
+// 왼쪽엔 통계, 오른쪽엔 탭 가능한 이동 링크가 나란히 있는 카드.
+// 지금은 "복약률 → 처방내역" 한 곳에서만 쓰여.
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 class _SummaryLinkCard extends StatelessWidget {
   final IconData leadingIcon;
   final String leadingLabel;

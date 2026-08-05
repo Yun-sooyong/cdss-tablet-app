@@ -12,10 +12,15 @@ dependencies:
   qr_flutter: ^4.1.0       # QR 발급 화면에서 씀
   intl: ^0.19.0             # 날짜 포맷
   shared_preferences: ^2.2.0  # 나중에 로그인 토큰 저장용
+<<<<<<< HEAD
   http: ^1.2.0  
   table_calendar: ^3.1.2            # 나중에 진짜 서버 붙일 때 씀
   flutter_local_notifications: ^22.2.0
   timezone: ^0.11.1
+=======
+  http: ^1.2.0     
+  table_calendar: ^3.1.2         # 나중에 진짜 서버 붙일 때 씀
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 dev_dependencies:
   flutter_test:
@@ -26,4 +31,16 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/tree_logo.png
+<<<<<<< HEAD
     - assets/images/tree_loading.gif
+=======
+    - assets/images/tree_loading.gif
+    - assets/images/loading_leaves.png
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/tree_logo.png"
+  adaptive_icon_background: "#F2F1E4"
+  adaptive_icon_foreground: "assets/images/tree_logo.png"
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d

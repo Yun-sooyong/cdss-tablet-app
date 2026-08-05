@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import '../models/dose.dart';
 import '../services/medication_service.dart';
 import '../theme/app_colors.dart';
+<<<<<<< HEAD
+=======
+import '../widgets/loading_spinner.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class WeeklyMedicationHistoryScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -40,7 +44,11 @@ class _WeeklyMedicationHistoryScreenState
     return Scaffold(
       appBar: AppBar(title: const Text('이번 주 복약 기록')),
       body: _isLoading
+<<<<<<< HEAD
           ? const Center(child: CircularProgressIndicator())
+=======
+          ? const Center(child: LoadingSpinner())
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           : ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: _records.length,
