@@ -342,6 +342,19 @@ class BatchShareListCreateView(APIView):
             permission=data["permission"],
             expires_at=data["expires_at"],
         )
+
+        # Notification.Type.SHARE는 원래 있었는데 실제 발송 연결이 빠져있었다
+        # (정다희, 2026-08-05 — 사용자 요청으로 연결).
+        from apps.accounts.services import notify  # noqa: PLC0415 — 순환 임포트 회피
+
+        notify(
+            share.shared_to.user,
+            "share",
+            f"{staff.user.username}님이 분석 결과를 공유했습니다 (batch {batch.id}).",
+            target_type="batch",
+            target_id=batch.id,
+        )
+
         return Response(
             AnalysisShareSerializer(share).data, status=status.HTTP_201_CREATED
         )
