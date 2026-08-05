@@ -101,11 +101,15 @@ class ImageUploadResponseSerializer(ImageSerializer):
 
 class ImageSummarySerializer(serializers.ModelSerializer):
     """job 응답에 끼워 넣는 최소 이미지 정보 — image가 UUID만 있어서 화면에
-    파일명 대신 UUID 앞 8자가 뜨던 문제 (최일운 요청, 2026-08-05)."""
+    파일명 대신 UUID 앞 8자가 뜨던 문제 (최일운 요청, 2026-08-05).
+
+    batch를 추가한다 — 결과 상세 화면의 브레드크럼이 배치를 되찾고
+    (최일운 요청, 2026-08-05), GET /analysis/jobs/ 결과를 배치별로 묶어
+    with_batch_counts() 없이도 배치당 확인 필요 수를 셀 수 있다."""
 
     class Meta:
         model = Image
-        fields = ["id", "original_filename"]
+        fields = ["id", "original_filename", "batch"]
         read_only_fields = fields
 
 

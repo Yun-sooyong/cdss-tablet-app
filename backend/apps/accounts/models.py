@@ -22,42 +22,11 @@ class User(AbstractUser):
 
 
 def generate_invitation_code() -> str:
+    # 초대코드 흐름은 계정발급신청(AccountRequest) API로 대체되어 Invitation
+    # 모델은 삭제됐지만(마이그레이션 0006), 과거 마이그레이션
+    # (0002_invitation.py)이 이 함수를 직접 참조하고 있어 재생성 시 깨지지
+    # 않도록 남겨둔다.
     return secrets.token_hex(6).upper()  # 12자리
-
-
-class Invitation(models.Model):
-    """의료진 발급식 회원가입 초대코드.
-
-    dept_code/position_code는 설계문서 6.2절 기준이지만, 코드 테이블
-    (department/job_group/position)은 3단계에서 만들 예정이라 아직 없다.
-    그래서 지금은 apps.staff.Staff와 동일한 role/department 필드로
-    단순화해뒀다 — 3단계에서 코드 테이블이 생기면 그쪽으로 이관.
-    """
-
-    code = models.CharField(
-        max_length=12, primary_key=True, default=generate_invitation_code
-    )
-    issued_by = models.ForeignKey(
-        "staff.Staff", on_delete=models.PROTECT, related_name="invitations_issued"
-    )
-    role = models.CharField(max_length=20)  # apps.staff.Staff.Role 값 중 하나
-    department = models.CharField(max_length=100, blank=True)
-    expires_at = models.DateTimeField()
-    is_used = models.BooleanField(default=False)
-    used_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="+",
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = "invitation"
-
-    def is_valid(self) -> bool:
-        return not self.is_used and self.expires_at > timezone.now()
 
 
 def generate_qr_token() -> str:
@@ -124,6 +93,10 @@ class Notification(models.Model):
         RESERVATION_CONFIRMED = "reservation_confirmed", "예약 확정"
         VISIT_CREATED = "visit_created", "진료 기록 등록"
         PRESCRIPTION_CREATED = "prescription_created", "처방 등록"
+        # 최일운 요청, 2026-08-05 — 계정발급신청이 오면 관리자 전원에게
+        # 알림. 관리 콘솔은 판독 콘솔 타입(analysis_done/share/chat)을
+        # 제외한 나머지를 그대로 띄우므로 타입명이 달라져도 안전.
+        ACCOUNT_REQUEST = "account_request", "계정 발급 요청"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -144,24 +117,35 @@ class Notification(models.Model):
 
 class AccountRequest(models.Model):
     """계정발급신청 — 신규 의료진이 태블릿/React 웹(의료진용 클라이언트)에서
-    신청하면 Django 기본 admin 화면(/admin/)에 뜨고, 관리자가 거기서 직접
-    계정을 만들어준다. 환자용 모바일 앱과는 무관 — Patient를 참조하지
-    않고 항상 User+Staff만 생성한다. 초대코드와 달리 신청자가 스스로
-    비밀번호를 정하지 않는다 — 승인 시점에 관리자가 만든 임시 비밀번호를
-    따로(카톡 등) 전달하는 방식이라, 여기엔 비밀번호 필드가 없다."""
+    신청을 제출하면 관리자(role=admin) 전원에게 알림이 가고, 관리 콘솔의
+    요청 목록/승인/거절 API로 처리한다 (최일운 요청, 2026-08-05 — 기존엔
+    Django 기본 admin 화면에서만 처리 가능했음). 환자용 모바일 앱과는
+    무관 — Patient를 참조하지 않고 항상 User+Staff만 생성한다. 초대코드와
+    달리 신청자가 스스로 비밀번호를 정하지 않는다 — 승인 시점에 서버가
+    만든 임시 비밀번호를 승인 응답에서 1회만 반환하고, 관리자가 그걸
+    복사해 신청자에게 직접(메일 등) 전달하는 방식이라 여기엔 비밀번호
+    필드가 없다."""
 
     class Status(models.TextChoices):
-        PENDING = "PENDING", "대기중"
-        APPROVED = "APPROVED", "승인됨"
-        REJECTED = "REJECTED", "거절됨"
+        PENDING = "pending", "대기중"
+        APPROVED = "approved", "승인됨"
+        REJECTED = "rejected", "거절됨"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50)
     email = models.EmailField()
-    requested_role = models.CharField(max_length=20)  # apps.staff.Staff.Role 값 중 하나
-    requested_department = models.CharField(max_length=100, blank=True)
+    role = models.CharField(max_length=20)  # apps.staff.Staff.Role 값 중 하나
+    department = models.CharField(max_length=100, blank=True)
+    note = models.TextField(blank=True)
     status = models.CharField(
         max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    reviewed_by = models.ForeignKey(
+        "staff.Staff",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
     )
     created_user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

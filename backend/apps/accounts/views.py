@@ -1,3 +1,4 @@
+import secrets
 from datetime import timedelta
 
 from django.shortcuts import get_object_or_404
@@ -18,120 +19,160 @@ from .models import (
     AccountRequest,
     AuditLog,
     DeviceToken,
-    Invitation,
     Notification,
     QRToken,
     User,
 )
 from .serializers import (
+    AccountRequestApproveSerializer,
     AccountRequestCreateSerializer,
+    AccountRequestRejectSerializer,
+    AccountRequestSerializer,
     AuditLogSerializer,
     DeviceTokenSerializer,
-    InvitationIssueSerializer,
-    InvitationRedeemSerializer,
-    InvitationSerializer,
     LogoutSerializer,
     NotificationSerializer,
     PasswordChangeSerializer,
     QRTokenSerializer,
     QRVerifySerializer,
 )
+from .services import notify
 
 
-class InvitationIssueView(APIView):
-    """초대코드 발급/조회 — 관리자 권한 의료진만 (설계문서 7장/12장).
-
-    조회(GET)는 원래 없어서 새로고침하면 발급 내역이 사라지는 문제가
-    있었다 (최일운 요청, 2026-08-05). 관리자 콘솔 화면이라 issued_by
-    본인 것만이 아니라 전체를 보여준다 — 다른 관리자가 발급한 코드도
-    관리자라면 봐야 초대 현황을 파악할 수 있다고 판단했다. 이 범위가
-    맞는지는 확인 필요."""
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    @extend_schema(responses=InvitationSerializer(many=True))
-    def get(self, request):
-        staff = get_staff_or_403(request.user)
-        if staff.role != Staff.Role.ADMIN:
-            raise PermissionDenied("관리자 권한 의료진만 초대코드 목록을 볼 수 있습니다.")
-
-        invitations = Invitation.objects.order_by("-created_at")
-        return Response(InvitationSerializer(invitations, many=True).data)
-
-    @extend_schema(request=InvitationIssueSerializer, responses=InvitationSerializer)
-    def post(self, request):
-        staff = get_staff_or_403(request.user)
-        if staff.role != Staff.Role.ADMIN:
-            raise PermissionDenied("관리자 권한 의료진만 초대코드를 발급할 수 있습니다.")
-
-        serializer = InvitationIssueSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        data = serializer.validated_data
-
-        invitation = Invitation.objects.create(
-            issued_by=staff,
-            role=data["role"],
-            department=data["department"],
-            expires_at=timezone.now() + timedelta(days=data["expires_in_days"]),
-        )
-        return Response(
-            InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED
-        )
+def _require_admin(user):
+    staff = get_staff_or_403(user)
+    if staff.role != Staff.Role.ADMIN:
+        raise PermissionDenied("관리자 권한 의료진만 이용할 수 있습니다.")
+    return staff
 
 
-class AccountRequestCreateView(APIView):
-    """POST /auth/account-requests/ — 계정발급신청. 로그인 불필요.
+class AccountRequestListCreateView(APIView):
+    """계정발급신청 목록/생성.
 
-    신청자가 스스로 아이디/비밀번호를 정하지 않는다 — 여기선 이름/이메일/
-    희망 role·부서만 받아서 AccountRequest(대기중)를 만든다. 승인은
-    Django 기본 admin 화면(/admin/)에서 관리자가 직접 처리한다
-    (apps/accounts/admin.py `AccountRequestAdmin`의 승인 액션 참고) —
-    앱 안의 Staff(role=admin) 유저가 아니라 개발/인사팀이 관리자실
-    운영자로 이 화면을 쓴다는 전제라 별도 알림(FCM 등) 발송은 없다."""
+    POST(로그인 불필요) — 신청자가 스스로 아이디/비밀번호를 정하지
+    않는다. 이름/이메일/희망 role·부서·사유만 받아서 AccountRequest
+    (대기중)를 만들고, role=admin인 Staff 전원에게 알림을 보낸다.
+    같은 이메일로 대기중인 신청이 이미 있으면 중복 신청을 막는다.
 
-    authentication_classes = []
+    GET(관리자 전용) — 관리 콘솔의 요청 목록 화면. ?status=로 필터
+    (최일운 요청, 2026-08-05 — 기존엔 Django 기본 admin 화면에서만
+    조회/처리가 가능했음. apps/accounts/admin.py 참고)."""
+
     permission_classes = [permissions.AllowAny]
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [permissions.IsAuthenticated()]
+        return [permissions.AllowAny()]
+
+    @extend_schema(responses=AccountRequestSerializer(many=True))
+    def get(self, request):
+        _require_admin(request.user)
+
+        requests_qs = AccountRequest.objects.order_by("-created_at")
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            requests_qs = requests_qs.filter(status=status_filter.lower())
+
+        return Response(AccountRequestSerializer(requests_qs, many=True).data)
 
     @extend_schema(request=AccountRequestCreateSerializer, responses=None)
     def post(self, request):
         serializer = AccountRequestCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        AccountRequest.objects.create(**serializer.validated_data)
-        return Response(status=status.HTTP_201_CREATED)
-
-
-class InvitationRedeemView(APIView):
-    """초대코드로 의료진 가입 — 로그인 불필요."""
-
-    authentication_classes = []
-    permission_classes = [permissions.AllowAny]
-
-    @extend_schema(request=InvitationRedeemSerializer, responses=None)
-    def post(self, request):
-        serializer = InvitationRedeemSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        invitation = get_object_or_404(Invitation, code=data["code"])
-        if not invitation.is_valid():
-            raise ValidationError("만료되었거나 이미 사용된 초대코드입니다.")
+        if AccountRequest.objects.filter(
+            email=data["email"], status=AccountRequest.Status.PENDING
+        ).exists():
+            raise ValidationError("이미 대기중인 신청이 있습니다.")
+
+        account_request = AccountRequest.objects.create(**data)
+
+        for admin_staff in Staff.objects.filter(role=Staff.Role.ADMIN):
+            notify(
+                admin_staff.user,
+                Notification.Type.ACCOUNT_REQUEST,
+                body=f"{account_request.name}님이 계정 발급을 요청했습니다.",
+                target_type="account_request",
+                target_id=account_request.id,
+            )
+
+        return Response(
+            {"id": account_request.id, "status": account_request.status},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class AccountRequestApproveView(APIView):
+    """POST /auth/account-requests/{id}/approve/ — 관리자 전용.
+
+    User+Staff를 생성하고, 서버가 만든 임시 비밀번호를 이 응답에서만
+    평문으로 반환한다 — 다시 조회할 수 없으므로 관리자가 바로 복사해
+    신청자에게 전달해야 한다."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=AccountRequestApproveSerializer, responses=None)
+    def post(self, request, request_id):
+        staff = _require_admin(request.user)
+
+        account_request = get_object_or_404(AccountRequest, id=request_id)
+        if account_request.status != AccountRequest.Status.PENDING:
+            raise ValidationError("이미 처리된 신청입니다.")
+
+        serializer = AccountRequestApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
         if User.objects.filter(username=data["username"]).exists():
             raise ValidationError("이미 사용 중인 아이디입니다.")
 
+        temporary_password = secrets.token_urlsafe(9)
         user = User.objects.create_user(
             username=data["username"],
-            email=data["email"],
-            password=data["password"],
+            email=account_request.email,
+            password=temporary_password,
         )
         Staff.objects.create(
-            user=user, role=invitation.role, department=invitation.department
+            user=user, role=data["role"], department=data["department"]
         )
-        invitation.is_used = True
-        invitation.used_by = user
-        invitation.save(update_fields=["is_used", "used_by"])
 
-        return Response(status=status.HTTP_201_CREATED)
+        account_request.status = AccountRequest.Status.APPROVED
+        account_request.reviewed_by = staff
+        account_request.reviewed_at = timezone.now()
+        account_request.created_user = user
+        account_request.save(
+            update_fields=["status", "reviewed_by", "reviewed_at", "created_user"]
+        )
+
+        return Response(
+            {"username": data["username"], "temporary_password": temporary_password}
+        )
+
+
+class AccountRequestRejectView(APIView):
+    """POST /auth/account-requests/{id}/reject/ — 관리자 전용."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=AccountRequestRejectSerializer, responses=None)
+    def post(self, request, request_id):
+        staff = _require_admin(request.user)
+
+        account_request = get_object_or_404(AccountRequest, id=request_id)
+        if account_request.status != AccountRequest.Status.PENDING:
+            raise ValidationError("이미 처리된 신청입니다.")
+
+        serializer = AccountRequestRejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        account_request.status = AccountRequest.Status.REJECTED
+        account_request.reviewed_by = staff
+        account_request.reviewed_at = timezone.now()
+        account_request.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class PatientQRIssueView(APIView):
