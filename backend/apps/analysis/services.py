@@ -1,3 +1,4 @@
+import mimetypes
 import uuid
 
 from django.utils import timezone
@@ -5,11 +6,19 @@ from django.utils import timezone
 from apps.common.gcs import generate_signed_url
 
 
-def build_upload_url(storage_key: str) -> str:
-    """이미지 업로드용 서명 URL(PUT) 발급."""
-    return generate_signed_url(
-        storage_key, method="PUT", content_type="application/octet-stream"
-    )
+def build_upload_url(storage_key: str, content_type: str = "application/octet-stream") -> str:
+    """이미지 업로드용 서명 URL(PUT) 발급.
+
+    content_type을 서명에 그대로 묶기 때문에, 클라이언트가 실제 PUT
+    요청에서 이 값과 정확히 같은 Content-Type 헤더를 보내야 한다(안
+    맞으면 403). GCS는 업로드 시 받은 content-type을 그대로 저장하고
+    나중에 GET할 때도 그걸 돌려주므로, 여기서 실제 이미지 타입을
+    보내지 않으면(예: 예전처럼 고정값 application/octet-stream) 원본
+    이미지를 다시 불러올 때 브라우저/Flutter가 이미지로 렌더링을
+    거부하는 문제가 생긴다 (2026-08-05, 태블릿 화면 원본 로딩 실패로
+    발견 — 응답의 upload_content_type 필드를 그대로 PUT 헤더에 써야 함).
+    """
+    return generate_signed_url(storage_key, method="PUT", content_type=content_type)
 
 
 def build_mask_read_url(job) -> str | None:
@@ -50,10 +59,11 @@ def create_image_with_upload_url(batch, filename: str):
     from .models import Image  # noqa: PLC0415 — 순환 임포트 회피
 
     storage_key = f"uploads/{batch.id}/{uuid.uuid4()}_{filename}"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     image = Image.objects.create(
         batch=batch, storage_key=storage_key, original_filename=filename
     )
-    return image, build_upload_url(storage_key)
+    return image, build_upload_url(storage_key, content_type=content_type), content_type
 
 
 def apply_job_result(job, status, result=None, error_message=""):

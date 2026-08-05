@@ -88,9 +88,14 @@ class ImageUploadRequestSerializer(serializers.Serializer):
 
 class ImageUploadResponseSerializer(ImageSerializer):
     upload_url = serializers.URLField()
+    # 실제 PUT 요청에 이 값 그대로 Content-Type 헤더로 보내야 서명이 맞다
+    # (2026-08-05 — 예전엔 항상 application/octet-stream으로 고정 서명해서
+    # 업로드된 이미지가 그 타입으로 저장되고, 나중에 다시 불러올 때
+    # 브라우저/Flutter가 이미지로 렌더링을 거부하는 문제가 있었음).
+    upload_content_type = serializers.CharField()
 
     class Meta(ImageSerializer.Meta):
-        fields = ImageSerializer.Meta.fields + ["upload_url"]
+        fields = ImageSerializer.Meta.fields + ["upload_url", "upload_content_type"]
         read_only_fields = fields
 
 
