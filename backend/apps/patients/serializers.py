@@ -44,18 +44,20 @@ class PatientSearchQuerySerializer(serializers.Serializer):
 
 
 class PatientRegisterSerializer(serializers.Serializer):
-    """이메일/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
+    """아이디/비밀번호 방식 환자 회원가입. 카카오 소셜 로그인은 별도(추후).
 
-    별도 아이디(username) 없이 email을 로그인 식별자로 쓴다 — User.username에
-    email 값을 그대로 저장(User 모델 자체는 안 바꿈, 로그인은 여전히
-    POST /auth/login/에 username 필드로 보내되 값이 email인 것뿐).
+    이메일 필드는 뺐다 — 로그인 식별자는 본인이 직접 정하는 username
+    (정은님 요청, 2026-08-05로 이메일 방식에서 변경). 로그인은 여전히
+    POST /auth/login/에 username+password.
 
     chart_number(선택) — 병원이 접수처에서 먼저 등록해둔 환자가 나중에
     앱 가입할 때, 새 Patient를 또 만들지 않고 기존 레코드에 계정을 붙이기
-    위한 연결 키. phone이 기존 레코드와 일치해야 연결된다(본인 확인).
+    위한 연결 키. 이름이 기존 레코드와 일치해야 연결된다(본인 확인).
+    이 연결 시점 외에는 chart_number로 로그인하는 기능은 없다 — 필요
+    없다고 확인됨.
     """
 
-    email = serializers.EmailField()
+    username = serializers.CharField(max_length=150)
     password = serializers.CharField(write_only=True, min_length=8)
     name = serializers.CharField(max_length=100)
     birth_date = serializers.DateField()
