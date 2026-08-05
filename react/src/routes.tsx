@@ -41,7 +41,7 @@ export default function AppRoutes() {
 
                     {/* 관리자 */}
                     <Route path="profile" element={<ProfilePage />} />
-                    <Route path="notifications" element={<NotificationsPage />} />
+                    <Route path="notifications" element={<NotificationsPage scope="admin" />} />
                 </Route>
 
                 <Route element={<AppShell />}>
