@@ -2,14 +2,23 @@ import hashlib
 import secrets
 
 from django.conf import settings
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from encrypted_model_fields.fields import EncryptedCharField, EncryptedDateField
 
 from apps.common.models import BaseModel
 
+CHART_NUMBER_SAVE_RETRIES = 5
+
 
 def generate_chart_number() -> str:
-    return "P" + secrets.token_hex(4).upper()  # 예: PA1B2C3D4
+    """4바이트(2^32)로는 생일역설 때문에 환자 6만 명 선에서 충돌 확률이
+    50%를 넘어간다. 6바이트(2^48)로 늘려 여유를 둔다 (정다희, 2026-08-05).
+
+    이 함수는 마이그레이션 재실행(테이블 재구성) 중에도 호출될 수 있어서
+    여기서 DB를 조회하면 안 된다 — 남는 충돌 가능성은 Patient.save()에서
+    저장 시점에 재시도로 처리한다.
+    """
+    return "P" + secrets.token_hex(6).upper()  # 예: PA1B2C3D4E5F
 
 
 class Patient(BaseModel):
@@ -59,7 +68,28 @@ class Patient(BaseModel):
 
     def save(self, *args, **kwargs):
         self.phone_hash = hashlib.sha256(self.phone.encode()).hexdigest()
-        super().save(*args, **kwargs)
+
+        if not self._state.adding:
+            super().save(*args, **kwargs)
+            return
+
+        # 신규 생성 시에만: chart_number 충돌(희박하지만 가능)이 나면
+        # 다른 제약 위반과 구분해서 재생성 후 재시도한다.
+        for attempt in range(CHART_NUMBER_SAVE_RETRIES):
+            try:
+                with transaction.atomic():
+                    super().save(*args, **kwargs)
+                return
+            except IntegrityError:
+                collided = (
+                    type(self)
+                    .objects.filter(chart_number=self.chart_number)
+                    .exclude(pk=self.pk)
+                    .exists()
+                )
+                if not collided or attempt == CHART_NUMBER_SAVE_RETRIES - 1:
+                    raise
+                self.chart_number = generate_chart_number()
 
     def __str__(self):
         return str(self.id)
