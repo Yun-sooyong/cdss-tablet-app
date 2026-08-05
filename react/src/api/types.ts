@@ -142,34 +142,47 @@ export interface Department {
 }
 
 
-/* 초대코드 >> /api/v1/staff/invitations · /api/v1/auth/invitations/redeem */
+/* 계정 요청 >> /api/v1/auth/account-requests */
 
-export interface Invitation {
-    code : string;
+export type AccountRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export interface AccountRequest {
+    id : string;
+    name : string;
+    email : string;
     role : Role;
     department : string;
-    expires_at : string;
-    is_used : boolean;
+    note : string;
+    status : AccountRequestStatus;
     created_at : string;
+    reviewed_at : string | null;
+    reviewed_by : string | null;
 }
 
-export interface InvitationIssue {
+export interface AccountRequestCreate {
+    name : string;
+    email : string;
     role : Role;
     department? : string;
-    expires_in_days? : number;
+    note? : string;
 }
 
-export interface InvitationRedeem {
-    code : string;
+export interface AccountRequestApprove {
     username : string;
-    email : string;
-    password : string;
+    role : Role;
+    department? : string;
+}
+
+// AccountRequestApproved >> 승인 응답에만 평문 비밀번호가 실린다. 다시 조회할 수 없다
+export interface AccountRequestApproved {
+    username : string;
+    temporary_password : string;
 }
 
 
 /* 알림 >> /api/v1/notifications */
 
-export type NotificationType = 'analysis_done' | 'share' | 'chat';
+export type NotificationType = 'analysis_done' | 'share' | 'chat' | 'account_request';
 
 // AppNotification 
 export interface AppNotification {

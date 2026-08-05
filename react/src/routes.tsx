@@ -19,7 +19,7 @@ const ResultSummaryPage = lazy(() => import('@/pages/ResultSummaryPage'));
 const SharingPage = lazy(() => import('@/pages/SharingPage'));
 const UploadPage = lazy(() => import('@/pages/UploadPage'));
 const AdminDepartmentsPage = lazy(() => import('@/pages/admin/DepartmentsPage'));
-const AdminInvitationsPage = lazy(() => import('@/pages/admin/InvitationsPage'));
+const AdminAccountRequestsPage = lazy(() => import('@/pages/admin/AccountRequestsPage'));
 const AdminModelsPage = lazy(() => import('@/pages/admin/ModelsPage'));
 const AdminStaffPage = lazy(() => import('@/pages/admin/StaffPage'));
 
@@ -35,7 +35,7 @@ export default function AppRoutes() {
                 <Route path="/admin" element={<AdminShell />}>
                     <Route index element={<Navigate to="/admin/staff" replace />} />
                     <Route path="staff" element={<AdminStaffPage />} />
-                    <Route path="invitations" element={<AdminInvitationsPage />} />
+                    <Route path="requests" element={<AdminAccountRequestsPage />} />
                     <Route path="models" element={<AdminModelsPage />} />
                     <Route path="departments" element={<AdminDepartmentsPage />} />
 

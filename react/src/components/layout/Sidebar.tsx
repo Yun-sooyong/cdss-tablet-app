@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
-import { getLatestJobs, getMe, getNotifications } from '@/api';
+import { getAccountRequests, getLatestJobs, getMe, getNotifications } from '@/api';
 import { qk } from '@/api/keys';
 import { Logo } from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -41,6 +41,7 @@ const IDLE = 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink';
 const BADGE_TONE = {
     review: { dot: 'bg-decision-abstain', pill: 'bg-decision-abstain/18 text-decision-abstain' },
     unread: { dot: 'bg-brand', pill: 'bg-brand-soft text-brand' },
+    requests: { dot: 'bg-admin', pill: 'bg-admin/15 text-admin' },
 } as const;
 
 const COLLAPSE_KEY = 'cdss.sidebar.collapsed';
@@ -191,11 +192,17 @@ function NavList({
         queryFn: getNotifications,
         enabled: needs.has('unread'),
     });
+    const { data: requests } = useQuery({
+        queryKey: qk.accountRequests('pending'),
+        queryFn: () => getAccountRequests('pending'),
+        enabled: needs.has('requests'),
+    });
 
     const count = {
         review: jobs?.filter((job) => needsReview(job.result)).length ?? 0,
         // 배지와 알림 화면이 같은 것을 세야 한다
         unread: unreadIn(notifications, tone === 'admin' ? 'admin' : 'clinical'),
+        requests: requests?.length ?? 0,
     };
 
     return (

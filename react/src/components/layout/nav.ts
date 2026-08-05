@@ -3,7 +3,6 @@ import {
     Bell,
     Boxes,
     Building2,
-    KeyRound,
     LayoutDashboard,
     List,
     MessageSquare,
@@ -11,6 +10,7 @@ import {
     Share2,
     Upload,
     User,
+    UserPlus,
     Users,
 } from 'lucide-react';
 
@@ -19,7 +19,7 @@ export interface NavItem {
     label : string;
     icon : LucideIcon;
     // badge >> 사이드바에 건수를 띄울 항목
-    badge? : 'review' | 'unread';
+    badge? : 'review' | 'unread' | 'requests';
 }
 
 export interface NavGroup {
@@ -62,7 +62,7 @@ export const ADMIN_NAV_GROUPS : NavGroup[] = [
         title: '구성원',
         items: [
             { to: '/admin/staff', label: '구성원', icon: Users },
-            { to: '/admin/invitations', label: '초대코드', icon: KeyRound },
+            { to: '/admin/requests', label: '계정 요청', icon: UserPlus, badge: 'requests' },
         ],
     },
     {

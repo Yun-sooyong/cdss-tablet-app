@@ -1,55 +1,75 @@
-// 17 초대코드 가입
+// 계정 요청 >> 관리자가 승인하면 아이디와 임시 비밀번호를 메일로 받는다
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
-import { redeemInvitation } from '@/api';
-import { PasswordField } from '@/components/PasswordField';
+import { createAccountRequest, getDepartments } from '@/api';
+import { qk } from '@/api/keys';
+import type { Role } from '@/api/types';
 import AuthShell, { FIELD_INPUT, FIELD_SUBMIT, Field } from '@/components/layout/AuthShell';
+import { ROLE_LABEL } from '@/lib/staff';
+import { useQuery } from '@tanstack/react-query';
 
-const MIN_PASSWORD = 8;
+const ROLE_OPTIONS : Role[] = ['doctor', 'nurse', 'admin'];
 
 export default function SignUpPage() {
-    const navigate = useNavigate();
+    const { data: departments } = useQuery({
+        queryKey: qk.departments,
+        queryFn: getDepartments,
+    });
 
-    const [code, setCode] = useState('');
-    const [username, setUsername] = useState('');
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [role, setRole] = useState<Role>('doctor');
+    const [department, setDepartment] = useState('');
+    const [note, setNote] = useState('');
     const [error, setError] = useState('');
 
-    const shortPassword = !!password && password.length < MIN_PASSWORD;
-    const canSubmit =
-        !!code.trim() && !!username.trim() && !!email.trim() && !shortPassword && !!password;
+    const canSubmit = !!name.trim() && !!email.trim();
 
-    const redeem = useMutation({
+    const request = useMutation({
         mutationFn: () =>
-            redeemInvitation({
-                code: code.trim(),
-                username: username.trim(),
+            createAccountRequest({
+                name: name.trim(),
                 email: email.trim(),
-                password,
+                role,
+                department: department || undefined,
+                note: note.trim() || undefined,
             }),
-        onSuccess: () => {
-            toast.success('가입이 완료되었습니다', { description: '새 계정으로 로그인해 주세요.' });
-            navigate('/login', { replace: true });
-        },
-        onError: (err : Error) => setError(err.message || '가입에 실패했습니다.'),
+        onError: (err : Error) => setError(err.message || '요청을 보내지 못했습니다.'),
     });
 
     function submit(e : FormEvent) {
         e.preventDefault();
-        if (!canSubmit || redeem.isPending) return;
+        if (!canSubmit || request.isPending) return;
 
-        redeem.mutate();
+        setError('');
+        request.mutate();
+    }
+
+    if (request.isSuccess) {
+        return (
+            <AuthShell
+                title="요청을 접수했습니다"
+                description="관리자가 확인한 뒤 계정 정보를 메일로 보냅니다."
+                footer={
+                    <Link to="/login" className="text-ink underline-offset-2 hover:underline">
+                        로그인으로
+                    </Link>
+                }
+            >
+                <p className="rounded-md border border-border bg-surface px-4 py-3 text-sm text-ink-muted">
+                    {email.trim()}
+                </p>
+            </AuthShell>
+        );
     }
 
     return (
         <AuthShell
-            title="초대코드 가입"
-            description="발급받은 초대코드를 입력하세요"
+            title="계정 요청"
+            description="관리자 승인 후 계정 정보를 메일로 받습니다."
             footer={
                 <>
                     이미 계정이 있으신가요?{' '}
@@ -60,28 +80,15 @@ export default function SignUpPage() {
             }
         >
             <form onSubmit={submit} className="space-y-4">
-                <Field label="초대코드">
+                <Field label="이름">
                     <input
-                        value={code}
+                        value={name}
                         onChange={(e) => {
-                            setCode(e.target.value.toUpperCase());
+                            setName(e.target.value);
                             setError('');
                         }}
-                        maxLength={12}
-                        placeholder="K7M2QX9A"
-                        className={`${FIELD_INPUT} font-mono tracking-widest`}
-                    />
-                </Field>
-
-                <Field label="아이디">
-                    <input
-                        value={username}
-                        onChange={(e) => {
-                            setUsername(e.target.value);
-                            setError('');
-                        }}
-                        maxLength={150}
-                        autoComplete="username"
+                        maxLength={100}
+                        autoComplete="name"
                         className={FIELD_INPUT}
                     />
                 </Field>
@@ -97,27 +104,57 @@ export default function SignUpPage() {
                         autoComplete="email"
                         className={FIELD_INPUT}
                     />
+                    <span className="mt-1.5 block text-xs text-ink-faint">
+                        이 주소로 계정 정보를 보냅니다
+                    </span>
                 </Field>
 
-                <PasswordField
-                    label="비밀번호"
-                    hint={`${MIN_PASSWORD}자 이상`}
-                    value={password}
-                    onChange={(next) => {
-                        setPassword(next);
-                        setError('');
-                    }}
-                    autoComplete="new-password"
-                />
+                <Field label="직군">
+                    <select
+                        value={role}
+                        onChange={(e) => setRole(e.target.value as Role)}
+                        className={FIELD_INPUT}
+                    >
+                        {ROLE_OPTIONS.map((r) => (
+                            <option key={r} value={r}>
+                                {ROLE_LABEL[r]}
+                            </option>
+                        ))}
+                    </select>
+                </Field>
 
-                {(error || shortPassword) && (
+                <Field label="소속">
+                    <select
+                        value={department}
+                        onChange={(e) => setDepartment(e.target.value)}
+                        className={FIELD_INPUT}
+                    >
+                        <option value="">미지정</option>
+                        {(departments ?? []).map((d) => (
+                            <option key={d.dept_code} value={d.name}>
+                                {d.name}
+                            </option>
+                        ))}
+                    </select>
+                </Field>
+
+                <Field label="요청 사유">
+                    <textarea
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        rows={3}
+                        className={`${FIELD_INPUT} h-auto py-2`}
+                    />
+                </Field>
+
+                {error && (
                     <p role="alert" className="text-sm text-danger">
-                        {error || `비밀번호는 ${MIN_PASSWORD}자 이상이어야 합니다.`}
+                        {error}
                     </p>
                 )}
 
-                <button type="submit" disabled={!canSubmit} className={FIELD_SUBMIT}>
-                    가입
+                <button type="submit" disabled={!canSubmit || request.isPending} className={FIELD_SUBMIT}>
+                    {request.isPending ? '보내는 중' : '요청 보내기'}
                 </button>
             </form>
         </AuthShell>
