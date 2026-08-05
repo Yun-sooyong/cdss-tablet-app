@@ -60,6 +60,12 @@ GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
 # 최초 migrate 이전에 반드시 설정되어 있어야 한다. 자세한 내용은 README 참조.
 AUTH_USER_MODEL = "accounts.User"
 
+# 환자는 로그인 시 username(이메일) 대신 chart_number로도 인증 가능
+# (서정은 요청, 2026-08-05). apps/accounts/backends.py 참고.
+AUTHENTICATION_BACKENDS = [
+    "apps.accounts.backends.ChartNumberOrUsernameBackend",
+]
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",  # CommonMiddleware보다 위에 있어야 함
