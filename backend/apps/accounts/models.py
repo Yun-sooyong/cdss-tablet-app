@@ -119,12 +119,17 @@ class Notification(models.Model):
         ANALYSIS_DONE = "analysis_done", "분석 완료"
         SHARE = "share", "공유"
         CHAT = "chat", "채팅"
+        # 서정은 요청, 2026-08-05 — 환자용 알림 화면 만들 예정이라 환자
+        # 쪽 이벤트도 최대한 커버
+        RESERVATION_CONFIRMED = "reservation_confirmed", "예약 확정"
+        VISIT_CREATED = "visit_created", "진료 기록 등록"
+        PRESCRIPTION_CREATED = "prescription_created", "처방 등록"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
-    type = models.CharField(max_length=20, choices=Type.choices)
+    type = models.CharField(max_length=30, choices=Type.choices)
     body = models.CharField(max_length=255)
     target_type = models.CharField(max_length=50, blank=True)
     target_id = models.UUIDField(null=True, blank=True)
