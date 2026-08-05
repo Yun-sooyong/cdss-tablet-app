@@ -1,6 +1,7 @@
 import mimetypes
 import uuid
 
+from django.conf import settings
 from django.utils import timezone
 
 from apps.common.gcs import generate_signed_url
