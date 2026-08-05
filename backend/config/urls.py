@@ -57,6 +57,7 @@ urlpatterns = [
     ),
     path("api/v1/departments/", DepartmentListView.as_view(), name="department-list"),
     path("api/v1/analysis/", include("apps.analysis.urls")),
+    path("api/v1/chat/", include("apps.chat.urls")),
     path("api/v1/patients/", include("apps.patients.urls")),
     path("api/v1/staff/", include("apps.staff.urls")),
     path("api/v1/", include("apps.clinical.urls")),
