@@ -1,18 +1,21 @@
 // 11 알림
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CircleCheck, MessageSquare, Share2 } from 'lucide-react';
+import { Bell, CircleCheck, MessageSquare, Share2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '@/api';
 import { qk } from '@/api/keys';
-import type { AppNotification, NotificationType } from '@/api/types';
+import type { AppNotification } from '@/api/types';
 import { Empty, Failed, Pending } from '@/components/QueryState';
 import { formatRelative } from '@/lib/format';
+import { inScope } from '@/lib/notification';
+import type { NotificationScope } from '@/lib/notification';
 import { cn } from '@/lib/utils';
 
-const TYPE_ICON : Record<NotificationType, LucideIcon> = {
+// 모르는 종류가 와도 아이콘 자리는 비지 않는다
+const TYPE_ICON : Record<string, LucideIcon> = {
     analysis_done: CircleCheck,
     share: Share2,
     chat: MessageSquare,
@@ -26,7 +29,11 @@ const targetPath = (n : AppNotification) : string | null => {
     return null;
 };
 
-export default function NotificationsPage() {
+export default function NotificationsPage({
+    scope = 'clinical',
+} : {
+    scope? : NotificationScope;
+}) {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 
@@ -64,7 +71,8 @@ export default function NotificationsPage() {
     if (isPending) return <Pending />;
     if (isError) return <Failed error={error} onRetry={() => void refetch()} />;
 
-    const unread = data.filter((n) => !n.is_read).length;
+    const shown = data.filter((n) => inScope(n, scope));
+    const unread = shown.filter((n) => !n.is_read).length;
 
     return (
         <div className="max-w-3xl">
@@ -81,12 +89,12 @@ export default function NotificationsPage() {
                 </div>
             )}
 
-            {data.length === 0 ? (
+            {shown.length === 0 ? (
                 <Empty label="받은 알림이 없습니다." />
             ) : (
                 <div className="divide-y divide-border border-y border-border">
-                    {data.map((n) => {
-                        const Icon = TYPE_ICON[n.type];
+                    {shown.map((n) => {
+                        const Icon = TYPE_ICON[n.type] ?? Bell;
 
                         return (
                             <button

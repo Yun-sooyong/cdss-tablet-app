@@ -80,6 +80,15 @@ async function parse(response : Response) : Promise<unknown> {
     }
 }
 
+// endSession >> 세션이 죽으면 남은 화면은 401만 반복한다. 로그인으로 되돌린다
+function endSession() : void {
+    setSession(null);
+
+    if (!window.location.pathname.startsWith('/login')) {
+        window.location.assign('/login');
+    }
+}
+
 // refreshing
 let refreshing : Promise<boolean> | null = null;
 
@@ -94,13 +103,13 @@ async function refreshAccess() : Promise<boolean> {
     });
 
     if (!response.ok) {
-        setSession(null);
+        endSession();
         return false;
     }
 
     const body = (await parse(response)) as { access? : string; refresh? : string };
     if (!body?.access) {
-        setSession(null);
+        endSession();
         return false;
     }
 
