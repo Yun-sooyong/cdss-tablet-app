@@ -17,7 +17,8 @@ def _pack_masks_like_real_server(masks: np.ndarray) -> bytes:
     return buf.getvalue()
 
 
-def fake_server_response(masks: np.ndarray, declared_mc_samples: int = None) -> MagicMock:
+def fake_server_response(masks: np.ndarray, declared_mc_samples: int = None,
+                          mask_key: str = None) -> MagicMock:
     resp = MagicMock()
     resp.raise_for_status.return_value = None
     resp.content = msgpack.packb({
@@ -28,6 +29,7 @@ def fake_server_response(masks: np.ndarray, declared_mc_samples: int = None) -> 
         "width": masks.shape[2],
         "num_classes": 5,
         "masks": _pack_masks_like_real_server(masks),
+        "mask_key": mask_key,
     }, use_bin_type=True)
     return resp
 
@@ -37,10 +39,21 @@ def test_unpack_matches_real_server_packing():
     masks[:, 4:, :] = 2
     resp = fake_server_response(masks)
 
-    unpacked = _unpack_masks(resp.content)
+    unpacked, mask_key = _unpack_masks(resp.content)
     assert unpacked.shape == (20, 8, 8)
     assert unpacked.dtype == np.uint8
     assert (unpacked == masks).all()
+    assert mask_key is None  # 이 테스트에선 안 실었으니 None이 정상
+
+
+def test_unpack_returns_mask_key_when_present():
+    """서버가 마스크 PNG 업로드에 성공하면 mask_key가 같이 온다
+    (2026-08-05, 프론트엔드 오버레이 기능 추가)."""
+    masks = np.zeros((20, 8, 8), dtype=np.uint8)
+    resp = fake_server_response(masks, mask_key="masks/job-1.png")
+
+    _, mask_key = _unpack_masks(resp.content)
+    assert mask_key == "masks/job-1.png"
 
 
 def test_mc_samples_mismatch_raises():
@@ -59,13 +72,14 @@ def test_call_segmentation_sends_gcs_path_and_model_name():
 
     with patch("clients.mosec.GCS_BUCKET", "test-bucket"), \
          patch("requests.post", return_value=fake_server_response(masks)) as mock_post:
-        result = call_segmentation("uploads/x.png", "attention_unet_v1", job_id="job-9")
+        mc_stack, mask_key = call_segmentation("uploads/x.png", "attention_unet_v1", job_id="job-9")
 
     args, kwargs = mock_post.call_args
     body = msgpack.unpackb(kwargs["data"], raw=False)
     assert body["gcs_image_path"] == "gs://test-bucket/uploads/x.png"
     assert body["job_id"] == "job-9"
-    assert result.shape == (20, 8, 8)
+    assert mc_stack.shape == (20, 8, 8)
+    assert mask_key is None
 
 
 if __name__ == "__main__":
