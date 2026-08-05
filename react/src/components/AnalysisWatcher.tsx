@@ -25,10 +25,10 @@ export function AnalysisWatcher() {
         let alive = true;
 
         async function tick() {
-            const batches = await getBatches().catch(() => null);
-            if (!alive || !batches) return;
+            const page = await getBatches().catch(() => null);
+            if (!alive || !page) return;
 
-            for (const batch of batches) {
+            for (const batch of page.results) {
                 if (!isBatchTerminal(batch.status)) {
                     watching.current.add(batch.id);
                     continue;
