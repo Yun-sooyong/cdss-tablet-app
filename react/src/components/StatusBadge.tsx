@@ -1,3 +1,5 @@
+import { CircleAlert } from 'lucide-react';
+
 import type {Decision, JobStatus, BatchStatus} from '@/api/types';
 import {Badge} from '@/components/ui/badge';
 import {DECISION_LABEL} from '@/lib/decision'
@@ -22,11 +24,12 @@ export function DecisionBadge({
         <Badge
             variant="outline"
             className={cn(
-                'px-2.5 py-1 text-sm font-medium',
+                'h-auto px-2.5 py-1 text-sm font-medium',
                 DECISION_STYLE[decision],
                 className,
             )}
         >
+            {decision === 'ABSTAIN' && <CircleAlert />}
             {DECISION_LABEL[decision]}
         </Badge>
     );

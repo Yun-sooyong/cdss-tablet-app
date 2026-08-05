@@ -3,14 +3,21 @@ export type BatchStatus = 'pending' | 'processing' | 'done' | 'failed';
 export type Decision = 'LOW' | 'HIGH' | 'ABSTAIN';
 export type Sex = 'M' | 'F' | 'O' | 'U';
 
-// PatientSummary >> batch/job 응답에 끼워 넣는 판독 맥락용 최소 정보.
-// 주소 전화번호처럼 민감한 필드는 들어오지 않는다.
+// PatientSummary
 export interface PatientSummary {
     id : string;
     chart_number : string;
     name : string;
     birth_date : string;
     sex : Sex;
+}
+
+// PatientCreate
+export interface PatientCreate {
+    name : string;
+    birth_date : string;
+    sex : Sex;
+    phone : string;
 }
 
 export type ClassComposition = {
@@ -42,12 +49,20 @@ export interface Batch {
     patient : string | null;
     patient_summary : PatientSummary | null;
     status : BatchStatus;
+    image_count : number;
+    needs_review_count : number;
     created_by : string;
     created_at : string;
     updated_at : string;
 }
 
-// BatchDetail >> GET /analysis/batches/{id}/ 응답. job 목록이 딸려 온다
+// ImageSummary
+export interface ImageSummary {
+    id : string;
+    original_filename : string;
+}
+
+// BatchDetail
 export interface BatchDetail extends Batch {
     jobs : Job[];
 }
@@ -59,14 +74,18 @@ export interface ImageUpload {
     original_filename : string;
     created_at : string;
     upload_url : string;
+    upload_content_type : string;
 }
 
 export interface Job {
     id : string;
     image : string;
+    image_summary : ImageSummary | null;
+    original_url : string;
     model_version : string;
     status : JobStatus;
     result : JobResult | null;
+    mask_url : string | null;
     patient_summary : PatientSummary | null;
     error_message : string;
     started_at : string | null;
@@ -105,12 +124,12 @@ export interface Staff {
     created_at : string;
 }
 
-// StaffMeUpdate >> role은 권한 상승 위험이라 서버가 막는다
+// StaffMeUpdate 
 export interface StaffMeUpdate {
     department? : string;
 }
 
-// PasswordChange >> 환자·의료진 공용. 새 비밀번호 8자 이상
+// PasswordChange 
 export interface PasswordChange {
     old_password : string;
     new_password : string;
@@ -152,7 +171,7 @@ export interface InvitationRedeem {
 
 export type NotificationType = 'analysis_done' | 'share' | 'chat';
 
-// AppNotification >> DOM 전역 Notification과 겹쳐서 접두사를 붙임
+// AppNotification 
 export interface AppNotification {
     id : string;
     type : NotificationType;
@@ -175,7 +194,7 @@ export interface AnalysisShare {
     shared_to : string;
     permission : SharePermission;
     expires_at : string | null;
-    // revoked_at >> 회수는 물리 삭제가 아니라 이 값이 찍히는 것
+    // revoked_at >> 회수는 물리 삭제 X
     revoked_at : string | null;
     created_at : string;
 }

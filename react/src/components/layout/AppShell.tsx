@@ -1,10 +1,12 @@
+import { Suspense } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 import { getMe } from '@/api';
 import { qk } from '@/api/keys';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Pending } from '@/components/QueryState';
-import Header from './Header';
+import Breadcrumb from './Breadcrumb';
 import Sidebar, { NavDrawer } from './Sidebar';
 import { CONTAINER } from './container';
 import { NAV_GROUPS } from './nav';
@@ -25,17 +27,25 @@ export default function AppShell() {
     if (me?.role === 'admin') return <Navigate to="/admin" replace />;
 
     return (
-        <div className="flex min-h-dvh bg-background text-foreground">
+        <div className="flex h-dvh bg-background text-foreground">
             <Sidebar groups={NAV_GROUPS} />
 
-            <div className="flex min-h-dvh flex-1 flex-col">
-                <Header nav={<NavDrawer groups={NAV_GROUPS} />} />
-                <main className="flex-1 overflow-auto">
-                    <div className={CONTAINER + ' p-6'}>
-                        <Outlet />
+            <main className="flex-1 overflow-auto">
+                <div className={CONTAINER + ' p-6'}>
+                    {/* 드로어 트리거는 lg 미만에서만 보인다 */}
+                    <div className="mb-3 lg:hidden">
+                        <NavDrawer groups={NAV_GROUPS} />
                     </div>
-                </main>
-            </div>
+
+                    <Breadcrumb />
+
+                    <ErrorBoundary>
+                        <Suspense fallback={<Pending />}>
+                            <Outlet />
+                        </Suspense>
+                    </ErrorBoundary>
+                </div>
+            </main>
         </div>
     );
 }

@@ -33,7 +33,7 @@ export default function SignUpPage() {
                 password,
             }),
         onSuccess: () => {
-            toast('가입이 완료되었습니다', { description: '새 계정으로 로그인해 주세요.' });
+            toast.success('가입이 완료되었습니다', { description: '새 계정으로 로그인해 주세요.' });
             navigate('/login', { replace: true });
         },
         onError: (err : Error) => setError(err.message || '가입에 실패했습니다.'),

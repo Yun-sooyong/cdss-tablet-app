@@ -1,26 +1,27 @@
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import AbstainReviewPage from '@/pages/AbstainReviewPage';
-import CaseListPage from '@/pages/CaseListPage';
-import ChatPage from '@/pages/ChatPage';
-import DashboardPage from '@/pages/DashboardPage';
 import LoginPage from '@/pages/LoginPage';
 import NotFoundPage from '@/pages/NotFoundPage';
-import NotificationsPage from '@/pages/NotificationsPage';
-import ProfilePage from '@/pages/ProfilePage';
-import ResultDetailPage from '@/pages/ResultDetailPage';
-import ResultSummaryPage from '@/pages/ResultSummaryPage';
-import SharedWithMePage from '@/pages/SharedWithMePage';
-import SharingPage from '@/pages/SharingPage';
 import SignUpPage from '@/pages/SignUpPage';
-import UploadPage from '@/pages/UploadPage';
-import AdminDepartmentsPage from '@/pages/admin/DepartmentsPage';
-import AdminInvitationsPage from '@/pages/admin/InvitationsPage';
-import AdminModelsPage from '@/pages/admin/ModelsPage';
-import AdminStaffPage from '@/pages/admin/StaffPage';
 import AdminShell from '@/components/layout/AdminShell';
 import AppShell from '@/components/layout/AppShell';
 import SessionShell from '@/components/layout/SessionShell';
+
+const AbstainReviewPage = lazy(() => import('@/pages/AbstainReviewPage'));
+const CaseListPage = lazy(() => import('@/pages/CaseListPage'));
+const ChatPage = lazy(() => import('@/pages/ChatPage'));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
+const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'));
+const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
+const ResultDetailPage = lazy(() => import('@/pages/ResultDetailPage'));
+const ResultSummaryPage = lazy(() => import('@/pages/ResultSummaryPage'));
+const SharingPage = lazy(() => import('@/pages/SharingPage'));
+const UploadPage = lazy(() => import('@/pages/UploadPage'));
+const AdminDepartmentsPage = lazy(() => import('@/pages/admin/DepartmentsPage'));
+const AdminInvitationsPage = lazy(() => import('@/pages/admin/InvitationsPage'));
+const AdminModelsPage = lazy(() => import('@/pages/admin/ModelsPage'));
+const AdminStaffPage = lazy(() => import('@/pages/admin/StaffPage'));
 
 /* 라우트 >> 상태는 URL 또는 서버에서만 관리 */
 export default function AppRoutes() {
@@ -38,7 +39,7 @@ export default function AppRoutes() {
                     <Route path="models" element={<AdminModelsPage />} />
                     <Route path="departments" element={<AdminDepartmentsPage />} />
 
-                    {/* 관리자는 판독 콘솔에 못 들어가므로 자기 화면도 여기 걸어 둔다 */}
+                    {/* 관리자 */}
                     <Route path="profile" element={<ProfilePage />} />
                     <Route path="notifications" element={<NotificationsPage />} />
                 </Route>
@@ -51,7 +52,6 @@ export default function AppRoutes() {
                     <Route path="/batches/:batchId" element={<ResultSummaryPage />} />
                     <Route path="/results/:jobId" element={<ResultDetailPage />} />
                     <Route path="/sharing" element={<SharingPage />} />
-                    <Route path="/shared" element={<SharedWithMePage />} />
                     <Route path="/chat" element={<ChatPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />

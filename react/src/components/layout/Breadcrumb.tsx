@@ -3,9 +3,10 @@ import { Link, matchPath, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
 
-import { getBatchDetail, getImage, getJob } from '@/api';
+import { getBatchDetail, getJob } from '@/api';
 import { qk } from '@/api/keys';
-import { patientBrief } from '@/lib/patient';
+import { APP_NAME } from '@/lib/app';
+import { patientLabel } from '@/lib/patient';
 import { ADMIN_NAV_GROUPS, NAV_GROUPS } from './nav';
 
 interface Crumb {
@@ -37,28 +38,16 @@ export default function Breadcrumb() {
         enabled: !!jobId,
     });
 
-    // Job에 batch 필드가 없어 image를 거쳐야 배치를 알 수 있다
-    const imageId = job?.image;
-    const { data: image } = useQuery({
-        queryKey: qk.image(imageId ?? ''),
-        queryFn: () => getImage(imageId!),
-        enabled: !!imageId,
-    });
-
-    const batchId = batchMatch?.params.batchId ?? image?.batch;
+    const batchId = batchMatch?.params.batchId;
     const { data: batch } = useQuery({
         queryKey: qk.batch(batchId ?? ''),
         queryFn: () => getBatchDetail(batchId!),
         enabled: !!batchId,
     });
 
-    // 아직 안 온 것은 식별자로 버틴다. 제목이 빈 채로 깜빡이지 않게
+    // 아직 안 온 것은 식별자
     const batchCrumb = (id : string) : Crumb => {
-        const who = batch?.patient_summary
-            ? patientBrief(batch.patient_summary)
-            : batch
-              ? '환자 미연결'
-              : null;
+        const who = batch ? patientLabel(batch.patient_summary) : null;
 
         return {
             label: who ? `${who} · ${id.slice(0, 8)}` : id.slice(0, 8),
@@ -71,11 +60,11 @@ export default function Breadcrumb() {
             return [CASES, batchCrumb(batchMatch.params.batchId)];
         }
 
+        // job 응답에 batch가 없어 배치 크럼을 못 만든다. image_summary.batch가 오면 복구
         if (jobId) {
             return [
                 CASES,
-                ...(image ? [batchCrumb(image.batch)] : []),
-                { label: image?.original_filename ?? jobId.slice(0, 8) },
+                { label: job?.image_summary?.original_filename ?? jobId.slice(0, 8) },
             ];
         }
 
@@ -86,35 +75,40 @@ export default function Breadcrumb() {
         return off ? [{ label: off }] : [];
     })();
 
+    const ancestors = crumbs.slice(0, -1);
+    const current = crumbs[crumbs.length - 1];
+
     return (
-        <nav
-            aria-label="위치"
-            className="flex min-w-0 items-center gap-1.5 text-[15px]"
-        >
-            {crumbs.map((crumb, at) => {
-                const last = at === crumbs.length - 1;
+        <div className="mb-5 min-w-0">
+            {ancestors.length > 0 && (
+                <nav
+                    aria-label="위치"
+                    className="mb-1 flex min-w-0 items-center gap-1 text-xs text-ink-muted"
+                >
+                    {ancestors.map((crumb, at) => (
+                        <Fragment key={crumb.to ?? crumb.label}>
+                            {at > 0 && (
+                                <ChevronRight size={12} className="shrink-0 text-ink-faint" />
+                            )}
 
-                return (
-                    <Fragment key={crumb.to ?? crumb.label}>
-                        {at > 0 && (
-                            <ChevronRight size={14} className="shrink-0 text-ink-faint" />
-                        )}
+                            {crumb.to ? (
+                                <Link
+                                    to={crumb.to}
+                                    className="shrink-0 transition-colors hover:text-ink"
+                                >
+                                    {crumb.label}
+                                </Link>
+                            ) : (
+                                <span className="shrink-0">{crumb.label}</span>
+                            )}
+                        </Fragment>
+                    ))}
+                </nav>
+            )}
 
-                        {crumb.to && !last ? (
-                            <Link
-                                to={crumb.to}
-                                className="shrink-0 text-ink-muted transition-colors hover:text-ink"
-                            >
-                                {crumb.label}
-                            </Link>
-                        ) : (
-                            <span className="truncate font-medium text-ink" aria-current="page">
-                                {crumb.label}
-                            </span>
-                        )}
-                    </Fragment>
-                );
-            })}
-        </nav>
+            <h1 className="truncate text-[17px] font-bold tracking-tight text-ink">
+                {current?.label ?? APP_NAME}
+            </h1>
+        </div>
     );
 }
