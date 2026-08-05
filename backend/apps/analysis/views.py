@@ -183,9 +183,10 @@ class BatchImageUploadView(APIView):
         serializer.is_valid(raise_exception=True)
         filename = serializer.validated_data["original_filename"]
 
-        image, upload_url = create_image_with_upload_url(batch, filename)
+        image, upload_url, content_type = create_image_with_upload_url(batch, filename)
         data = ImageSerializer(image).data
         data["upload_url"] = upload_url
+        data["upload_content_type"] = content_type
         return Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -205,11 +206,12 @@ class UploadSignedUrlView(APIView):
         if batch.created_by_id != staff.id:
             raise PermissionDenied("본인 batch에만 이미지를 추가할 수 있습니다.")
 
-        image, upload_url = create_image_with_upload_url(
+        image, upload_url, content_type = create_image_with_upload_url(
             batch, serializer.validated_data["original_filename"]
         )
         data = ImageSerializer(image).data
         data["upload_url"] = upload_url
+        data["upload_content_type"] = content_type
         return Response(data, status=status.HTTP_201_CREATED)
 
 
