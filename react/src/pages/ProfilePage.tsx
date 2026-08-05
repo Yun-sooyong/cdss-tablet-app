@@ -3,13 +3,14 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { LogOut } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { changePassword, getDepartments, getMe, logout, updateMe } from '@/api';
 import { qk } from '@/api/keys';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_INPUT } from '@/components/form';
 import { PasswordField } from '@/components/PasswordField';
-import { Failed, Pending } from '@/components/QueryState';
+import { Empty, Failed, Pending } from '@/components/QueryState';
 import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
 import { EMPLOYMENT_LABEL, ROLE_LABEL } from '@/lib/staff';
@@ -33,9 +34,9 @@ export default function ProfilePage() {
             void queryClient.invalidateQueries({ queryKey: qk.me });
             void queryClient.invalidateQueries({ queryKey: qk.staff });
             setPicked(undefined);
-            toast('소속을 변경했습니다');
+            toast.success('소속을 변경했습니다');
         },
-        onError: (error) => toast('변경하지 못했습니다', { description: error.message }),
+        onError: (error) => toast.error('변경하지 못했습니다', { description: error.message }),
     });
 
     async function signOut() {
@@ -49,9 +50,7 @@ export default function ProfilePage() {
 
     if (!me.data) {
         return (
-            <div className="py-16 text-center text-sm text-ink-faint">
-                로그인 정보를 찾을 수 없습니다.
-            </div>
+            <Empty label="로그인 정보를 찾을 수 없습니다." />
         );
     }
 
@@ -115,8 +114,9 @@ export default function ProfilePage() {
                 <button
                     type="button"
                     onClick={signOut}
-                    className={`${BUTTON_SECONDARY} text-ink-muted hover:border-danger hover:bg-transparent hover:text-danger`}
+                    className={`${BUTTON_SECONDARY} inline-flex items-center gap-1.5 text-ink-muted hover:border-danger hover:bg-transparent hover:text-danger`}
                 >
+                    <LogOut size={16} />
                     로그아웃
                 </button>
             </section>
@@ -141,7 +141,7 @@ function PasswordSection() {
             setOldPassword('');
             setNewPassword('');
             setError('');
-            toast('비밀번호를 변경했습니다');
+            toast.success('비밀번호를 변경했습니다');
         },
         onError: (err : Error) => setError(err.message || '변경하지 못했습니다.'),
     });

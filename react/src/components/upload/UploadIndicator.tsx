@@ -1,10 +1,10 @@
-import { CloudUpload, RotateCcw } from 'lucide-react';
+import { Check, CloudUpload, RotateCcw } from 'lucide-react';
 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { useUploads } from './context';
+import { stalledBatchIds, useUploads } from './context';
 
-export function UploadIndicator() {
+export function UploadIndicator({ collapsed } : { collapsed? : boolean }) {
     const { items, retry, clearFinished } = useUploads();
 
     const active = items.filter((it) => it.status !== 'done');
@@ -15,20 +15,36 @@ export function UploadIndicator() {
         items.reduce((sum, it) => sum + it.progress, 0) / items.length,
     );
     const failed = items.some((it) => it.status === 'failed');
+    const stalled = stalledBatchIds(items).size;
 
     return (
         <Popover>
             {/* 진행·실패를 화면에 안 띄워도 읽어 줘야 한다 */}
             <PopoverTrigger
                 aria-live="polite"
-                className="flex items-center gap-2 rounded-md border border-border px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+                aria-label={`업로드 ${done}/${items.length}`}
+                title={collapsed ? `업로드 ${done}/${items.length} · ${overall}%` : undefined}
+                className={cn(
+                    'flex h-8 items-center rounded-md text-sm text-ink-muted transition-colors hover:bg-ink/[0.04] hover:text-ink',
+                    collapsed ? 'w-full justify-center' : 'w-full gap-2.5 px-2.5',
+                )}
             >
-                <CloudUpload size={15} className={cn(failed && 'text-danger')} />
-                업로드 {done}/{items.length}
-                <span className="font-mono tabular-nums">{overall}%</span>
+                <span className="relative flex shrink-0 items-center">
+                    <CloudUpload size={16} className={cn(failed && 'text-danger')} />
+                    {collapsed && (failed || stalled > 0) && (
+                        <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-danger" />
+                    )}
+                </span>
+
+                {!collapsed && (
+                    <>
+                        <span className="flex-1 text-left">업로드 {done}/{items.length}</span>
+                        <span className="font-mono text-xs tabular-nums">{overall}%</span>
+                    </>
+                )}
             </PopoverTrigger>
 
-            <PopoverContent align="end" className="w-96 p-0">
+            <PopoverContent side="right" align="end" className="w-96 p-0">
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                     <span className="text-sm font-medium">업로드</span>
                     {done > 0 && (
@@ -59,6 +75,8 @@ export function UploadIndicator() {
                                         <RotateCcw size={12} />
                                         재시도
                                     </button>
+                                ) : it.status === 'done' ? (
+                                    <Check size={14} className="text-brand" />
                                 ) : (
                                     <span className="font-mono text-xs tabular-nums text-ink-muted">
                                         {Math.round(it.progress)}%
@@ -70,7 +88,11 @@ export function UploadIndicator() {
                                 <div
                                     className={cn(
                                         'h-full rounded-full transition-[width]',
-                                        it.status === 'failed' ? 'bg-danger' : 'bg-brand',
+                                        it.status === 'failed'
+                                            ? 'bg-danger'
+                                            : it.status === 'done'
+                                              ? 'bg-brand/40'
+                                              : 'bg-brand',
                                     )}
                                     style={{ width: `${it.progress}%` }}
                                 />
@@ -78,6 +100,15 @@ export function UploadIndicator() {
                         </div>
                     ))}
                 </div>
+
+                {stalled > 0 && (
+                    <p
+                        role="alert"
+                        className="border-t border-border px-4 py-2.5 text-xs text-danger"
+                    >
+                        재시도하기 전까지 분석이 시작되지 않습니다
+                    </p>
+                )}
 
                 <p className="border-t border-border px-4 py-2.5 text-xs text-ink-faint">
                     창을 닫으면 업로드가 중단됩니다

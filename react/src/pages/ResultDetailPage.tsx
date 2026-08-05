@@ -1,12 +1,11 @@
 // 08 결과 상세
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Copy } from 'lucide-react';
+import { Copy, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { getJob, retryJob } from '@/api';
 import { qk } from '@/api/keys';
-import type { ClassComposition } from '@/api/types';
 import { BUTTON_SECONDARY, ICON_BUTTON } from '@/components/form';
 import { IntervalAxis } from '@/components/IntervalAxis';
 import { ClinicalNotice } from '@/components/ClinicalNotice';
@@ -15,15 +14,17 @@ import { Failed, Pending } from '@/components/QueryState';
 import { SlideViewer } from '@/components/SlideViewer';
 import { DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
 import { toIntervalView } from '@/lib/decision';
+import { patientLabelFull } from '@/lib/patient';
+import { SEG_CLASSES } from '@/lib/seg';
 
 // 분석 ID >> 접어 두고 복사만
 function JobId({ id } : { id : string }) {
     async function copy() {
         try {
             await navigator.clipboard.writeText(id);
-            toast('분석 ID를 복사했습니다');
+            toast.info('분석 ID를 복사했습니다');
         } catch {
-            toast('복사하지 못했습니다', { description: id });
+            toast.error('복사하지 못했습니다', { description: id });
         }
     }
 
@@ -48,14 +49,6 @@ function JobId({ id } : { id : string }) {
     );
 }
 
-const COMPOSITION_ROWS: { key: keyof ClassComposition; label: string; color: string }[] = [
-    { key: 'tumor', label: '종양', color: 'var(--seg-tumor)' },
-    { key: 'stroma', label: '기질', color: 'var(--seg-stroma)' },
-    { key: 'immune', label: '림프구', color: 'var(--seg-tils)' },
-    { key: 'necrosis', label: '괴사', color: 'var(--ink-faint)' },
-    { key: 'other', label: '기타', color: 'var(--border-strong)' },
-];
-
 export default function ResultDetailPage() {
     const { jobId } = useParams();
     const navigate = useNavigate();
@@ -73,23 +66,35 @@ export default function ResultDetailPage() {
         mutationFn: (imageId : string) => retryJob(imageId),
         onSuccess: (next) => {
             void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
-            toast('다시 분석을 요청했습니다');
+            toast.success('다시 분석을 요청했습니다');
             navigate(`/results/${next.id}`, { replace: true });
         },
         onError: (err : Error) =>
-            toast('다시 요청하지 못했습니다', { description: err.message }),
+            toast.error('다시 요청하지 못했습니다', { description: err.message }),
     });
 
     if (isPending) return <Pending />;
     if (isError) return <Failed error={error} onRetry={() => void refetch()} />;
 
     const result = job.result;
+    const filename = job.image_summary?.original_filename;
 
     return (
         <div>
-            {/* 환자·파일명은 브레드크럼 */}
             <div className="mb-6 flex items-start justify-between gap-4">
-                <JobId id={job.id} />
+                <div className="min-w-0">
+                    <p className="truncate text-[15px]" title={patientLabelFull(job.patient_summary)}>
+                        {patientLabelFull(job.patient_summary)}
+                    </p>
+
+                    {filename && (
+                        <p className="mt-0.5 truncate text-[13px] text-ink-faint" title={filename}>
+                            {filename}
+                        </p>
+                    )}
+
+                    <JobId id={job.id} />
+                </div>
 
                 <div className="flex shrink-0 gap-2">
                     {result && <DecisionBadge decision={result.decision} />}
@@ -111,15 +116,19 @@ export default function ResultDetailPage() {
                             type="button"
                             onClick={() => retry.mutate(job.image)}
                             disabled={retry.isPending}
-                            className={`mt-4 ${BUTTON_SECONDARY}`}
+                            className={`mt-4 inline-flex items-center gap-1.5 ${BUTTON_SECONDARY}`}
                         >
+                            <RotateCcw size={14} />
                             재실행
                         </button>
                     )}
                 </div>
             ) : (
                 <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-                    <SlideViewer />
+                    <SlideViewer
+                        originalUrl={job.original_url}
+                        maskUrl={job.mask_url ?? undefined}
+                    />
 
                     <div className="space-y-6">
                         <section>
@@ -166,23 +175,23 @@ export default function ResultDetailPage() {
                             <h2 className="mb-3 text-sm font-medium">조직 구성</h2>
 
                             <div className="mb-3 flex h-2.5 overflow-hidden rounded-full">
-                                {COMPOSITION_ROWS.map((row) => (
+                                {SEG_CLASSES.map((row) => (
                                     <div
                                         key={row.key}
                                         style={{
                                             width: `${result.class_composition[row.key]}%`,
-                                            backgroundColor: row.color,
+                                            backgroundColor: `var(${row.token})`,
                                         }}
                                     />
                                 ))}
                             </div>
 
                             <dl className="space-y-1.5 text-sm">
-                                {COMPOSITION_ROWS.map((row) => (
+                                {SEG_CLASSES.map((row) => (
                                     <div key={row.key} className="flex items-center gap-2">
                                         <span
                                             className="size-2.5 shrink-0 rounded-sm"
-                                            style={{ backgroundColor: row.color }}
+                                            style={{ backgroundColor: `var(${row.token})` }}
                                         />
                                         <dt className="flex-1 text-ink-muted">{row.label}</dt>
                                         <dd className="font-mono tabular-nums">

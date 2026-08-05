@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 
-import { getBatches, getImages, getJobsByBatch, getLatestJobs } from '@/api';
+import { getBatches, getJobsByBatch, getLatestJobs } from '@/api';
 import { qk } from '@/api/keys';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { IntervalBar } from '@/components/IntervalBar';
@@ -11,7 +11,7 @@ import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge, DecisionBadge } from '@/components/StatusBadge';
 import { CUTOFF, needsReview, toIntervalView } from '@/lib/decision';
 import { formatShort } from '@/lib/format';
-import { patientBrief } from '@/lib/patient';
+import { patientLabel } from '@/lib/patient';
 import { cn } from '@/lib/utils';
 
 const PREVIEW_COUNT = 5;
@@ -19,7 +19,6 @@ const PREVIEW_COUNT = 5;
 export default function DashboardPage() {
     const batches = useQuery({ queryKey: qk.batches, queryFn: getBatches });
     const jobs = useQuery({ queryKey: qk.latestJobs, queryFn: getLatestJobs });
-    const { data: images } = useQuery({ queryKey: qk.images, queryFn: getImages });
 
     const recent = (batches.data ?? [])
         .slice()
@@ -45,9 +44,6 @@ export default function DashboardPage() {
     const processing = batches.data.filter((b) => b.status === 'processing').length;
     const done = batches.data.filter((b) => b.status === 'done').length;
     const failed = batches.data.filter((b) => b.status === 'failed').length;
-
-    const filenameOf = (imageId : string) =>
-        images?.find((i) => i.id === imageId)?.original_filename;
 
     return (
         <div>
@@ -92,13 +88,14 @@ export default function DashboardPage() {
                                         )}
                                     >
                                         <span className="min-w-0">
-                                            <span className="block truncate text-[15px]">
-                                                {job.patient_summary
-                                                    ? patientBrief(job.patient_summary)
-                                                    : '환자 미연결'}
+                                            <span
+                                                className="block truncate text-[15px]"
+                                                title={patientLabel(job.patient_summary)}
+                                            >
+                                                {patientLabel(job.patient_summary)}
                                             </span>
                                             <span className="block truncate text-[13px] text-ink-faint">
-                                                {filenameOf(job.image) ?? job.id.slice(0, 8)}
+                                                {job.image_summary?.original_filename ?? job.id.slice(0, 8)}
                                             </span>
                                         </span>
 
@@ -139,10 +136,11 @@ export default function DashboardPage() {
                                 to={`/batches/${batch.id}`}
                                 className="flex items-center gap-4 py-4 transition-colors hover:bg-brand-soft/50"
                             >
-                                <span className="min-w-0 flex-1 truncate text-[15px]">
-                                    {batch.patient_summary
-                                        ? patientBrief(batch.patient_summary)
-                                        : '환자 미연결'}
+                                <span
+                                    className="min-w-0 flex-1 truncate text-[15px]"
+                                    title={patientLabel(batch.patient_summary)}
+                                >
+                                    {patientLabel(batch.patient_summary)}
                                 </span>
                                 <span className="font-mono text-sm tabular-nums text-ink-muted">
                                     슬라이드 {slideQueries[at]?.data?.length ?? '-'}

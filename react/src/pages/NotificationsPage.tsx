@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '@/api';
 import { qk } from '@/api/keys';
 import type { AppNotification, NotificationType } from '@/api/types';
-import { Failed, Pending } from '@/components/QueryState';
+import { Empty, Failed, Pending } from '@/components/QueryState';
 import { formatRelative } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
@@ -22,7 +22,7 @@ const TYPE_ICON : Record<NotificationType, LucideIcon> = {
 // chat은 화면이 아직 없어 보내지 않는다. 읽음만 처리된다
 const targetPath = (n : AppNotification) : string | null => {
     if (n.target_type === 'batch' && n.target_id) return `/batches/${n.target_id}`;
-    if (n.target_type === 'share') return '/shared';
+    if (n.target_type === 'share') return '/cases?from=shared';
     return null;
 };
 
@@ -42,14 +42,14 @@ export default function NotificationsPage() {
         mutationFn: (id : string) => markNotificationRead(id),
         onSuccess: invalidate,
         onError: (err : Error) =>
-            toast('읽음 처리하지 못했습니다', { description: err.message }),
+            toast.error('읽음 처리하지 못했습니다', { description: err.message }),
     });
 
     const readAll = useMutation({
         mutationFn: markAllNotificationsRead,
         onSuccess: invalidate,
         onError: (err : Error) =>
-            toast('읽음 처리하지 못했습니다', { description: err.message }),
+            toast.error('읽음 처리하지 못했습니다', { description: err.message }),
     });
 
     function open(n : AppNotification) {
@@ -58,7 +58,7 @@ export default function NotificationsPage() {
         const path = targetPath(n);
         // 갈 곳이 없으면 클릭이 먹통으로 보인다. 읽음 처리했다고 알린다
         if (path) navigate(path);
-        else toast('읽음으로 표시했습니다');
+        else toast.info('읽음으로 표시했습니다');
     }
 
     if (isPending) return <Pending />;
@@ -82,9 +82,7 @@ export default function NotificationsPage() {
             )}
 
             {data.length === 0 ? (
-                <div className="py-16 text-center text-sm text-ink-faint">
-                    받은 알림이 없습니다.
-                </div>
+                <Empty label="받은 알림이 없습니다." />
             ) : (
                 <div className="divide-y divide-border border-y border-border">
                     {data.map((n) => {

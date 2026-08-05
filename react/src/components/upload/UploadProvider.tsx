@@ -17,7 +17,9 @@ const AUTO_CLEAR_MS = 4000;
 interface BatchTicket {
     batchId : string;
     modelVersionId? : string;
-    remaining : number;
+    total : number;
+    done : number;
+    failed : number;
 }
 
 export function UploadProvider({ children } : { children : ReactNode }) {
@@ -31,6 +33,29 @@ export function UploadProvider({ children } : { children : ReactNode }) {
         setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...next } : it)));
     }, []);
 
+    // settle
+    const settle = useCallback((batchId : string, ok : boolean) => {
+        const ticket = tickets.current.get(batchId);
+        if (!ticket) return;
+
+        const next = ok
+            ? { ...ticket, done: ticket.done + 1 }
+            : { ...ticket, failed: ticket.failed + 1 };
+
+        tickets.current.set(batchId, next);
+
+        if (next.done + next.failed < next.total) return;
+        if (next.failed > 0) return;
+
+        tickets.current.delete(batchId);
+
+        void startBatch(batchId, next.modelVersionId).then(() => {
+            void queryClient.invalidateQueries({ queryKey: qk.batches });
+            void queryClient.invalidateQueries({ queryKey: qk.batch(batchId) });
+            void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
+        });
+    }, [queryClient]);
+
     const pump = useCallback(function pump() {
         while (running.current < CONCURRENCY && queue.current.length > 0) {
             const item = queue.current[0];
@@ -38,39 +63,23 @@ export function UploadProvider({ children } : { children : ReactNode }) {
             running.current += 1;
             patch(item.id, { status: 'uploading' });
 
-            uploadToSignedUrl(item.uploadUrl, item.file, (percent) =>
+            uploadToSignedUrl(item.uploadUrl, item.file, item.contentType, (percent) =>
                 patch(item.id, { progress: percent }),
             )
                 .then(() => {
                     patch(item.id, { status: 'done', progress: 100 });
-
-                    // 배치의 파일이 전부 올라가면 분석 시작
-                    const ticket = tickets.current.get(item.batchId);
-                    if (!ticket) return;
-
-                    const left = ticket.remaining - 1;
-                    if (left > 0) {
-                        tickets.current.set(item.batchId, { ...ticket, remaining: left });
-                        return;
-                    }
-
-                    tickets.current.delete(item.batchId);
-
-                    void startBatch(ticket.batchId, ticket.modelVersionId).then(() => {
-                        void queryClient.invalidateQueries({ queryKey: qk.batches });
-                        void queryClient.invalidateQueries({
-                            queryKey: qk.batch(ticket.batchId),
-                        });
-                        void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
-                    });
+                    settle(item.batchId, true);
                 })
-                .catch(() => patch(item.id, { status: 'failed' }))
+                .catch(() => {
+                    patch(item.id, { status: 'failed' });
+                    settle(item.batchId, false);
+                })
                 .finally(() => {
                     running.current -= 1;
                     pump();
                 });
         }
-    }, [patch, queryClient]);
+    }, [patch, settle]);
 
     const enqueue = useCallback<UploadContextValue['enqueue']>(
         (batchId, modelVersionId, files) => {
@@ -79,6 +88,7 @@ export function UploadProvider({ children } : { children : ReactNode }) {
                 batchId,
                 filename: f.filename,
                 uploadUrl: f.uploadUrl,
+                contentType: f.contentType,
                 file: f.file,
                 progress: 0,
                 status: 'waiting',
@@ -87,7 +97,9 @@ export function UploadProvider({ children } : { children : ReactNode }) {
             tickets.current.set(batchId, {
                 batchId,
                 modelVersionId,
-                remaining: next.length,
+                total: next.length,
+                done: 0,
+                failed: 0,
             });
 
             setItems((prev) => [...prev, ...next]);
@@ -99,26 +111,40 @@ export function UploadProvider({ children } : { children : ReactNode }) {
 
     const retry = useCallback(
         (id : string) => {
-            setItems((prev) => {
-                const target = prev.find((it) => it.id === id);
-                if (target) {
-                    queue.current = [
-                        ...queue.current,
-                        { ...target, progress: 0, status: 'waiting' },
-                    ];
-                }
-                return prev.map((it) =>
-                    it.id === id ? { ...it, progress: 0, status: 'waiting' } : it,
-                );
-            });
+            const target = items.find((it) => it.id === id);
+            if (!target || target.status !== 'failed') return;
+
+            const ticket = tickets.current.get(target.batchId);
+            if (ticket) {
+                tickets.current.set(target.batchId, {
+                    ...ticket,
+                    failed: Math.max(0, ticket.failed - 1),
+                });
+            }
+
+            queue.current = [
+                ...queue.current,
+                { ...target, progress: 0, status: 'waiting' },
+            ];
+            patch(id, { progress: 0, status: 'waiting' });
             pump();
         },
-        [pump],
+        [items, patch, pump],
     );
 
     const clearFinished = useCallback(() => {
         setItems((prev) => prev.filter((it) => it.status !== 'done'));
     }, []);
+
+    // beforeunload
+    useEffect(() => {
+        if (!items.some((it) => it.status !== 'done')) return;
+
+        const warn = (e : BeforeUnloadEvent) => e.preventDefault();
+        window.addEventListener('beforeunload', warn);
+
+        return () => window.removeEventListener('beforeunload', warn);
+    }, [items]);
 
     // 완료 항목 자동 정리 >> 실패만 남는다
     useEffect(() => {

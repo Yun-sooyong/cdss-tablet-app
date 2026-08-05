@@ -1,14 +1,16 @@
-/* 세이지 팔레트 >> 라이트는 윤수용 님 Flutter 원안, 다크는 제안값 (합의 전) */
+/* 세이지 팔레트 */
 
 :root {
-  /* color-scheme >> 스크롤바·select 드롭다운·range 트랙 같은 네이티브 위젯이
-     OS 설정이 아니라 앱 테마를 따르게 한다 */
+  /* color-scheme */
   color-scheme: light;
 
   --brand: #0B5D4E;
   --brand-dark: #084438;
   --brand-soft: #E6EFEA;
   --on-brand: #FFFFFF;
+
+  /* logo >> 밝은 바탕에서는 진한 쪽이 읽힌다 */
+  --logo: #558055;
 
   --bg: #F2F1E4;
   --surface: #FFFFFF;
@@ -35,6 +37,8 @@
   --brand-dark: #2E8A74;
   --brand-soft: #12302A;
   --on-brand: #04342C;
+
+  --logo: #8FAE8B;
 
   --bg: #131714;
   --surface: #1C221E;
@@ -78,9 +82,11 @@
 
 /* 세그멘테이션 >> 브랜드 색이 아니라 판독 규약. 팔레트 합의 대상에서 제외 */
 :root {
-  --seg-tumor: #FF0055;
-  --seg-stroma: #00D2FF;
-  --seg-tils: #FFE600;
+  --seg-tumor: #E6194B;
+  --seg-stroma: #3CB44B;
+  --seg-tils: #FFE119;
+  --seg-necrosis: #0082C8;
+  --seg-other: #808080;
   --seg-abstain: #F59E0B;
 }
 
