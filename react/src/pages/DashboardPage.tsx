@@ -17,10 +17,12 @@ import { cn } from '@/lib/utils';
 const PREVIEW_COUNT = 5;
 
 export default function DashboardPage() {
-    const batches = useQuery({ queryKey: qk.batches, queryFn: getBatches });
+    const batches = useQuery({ queryKey: qk.batchList(), queryFn: () => getBatches() });
     const jobs = useQuery({ queryKey: qk.latestJobs, queryFn: getLatestJobs });
 
-    const recent = (batches.data ?? [])
+    const all = batches.data?.results ?? [];
+
+    const recent = all
         .slice()
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PREVIEW_COUNT);
@@ -40,10 +42,10 @@ export default function DashboardPage() {
 
     const review = (jobs.data ?? []).filter((j) => needsReview(j.result));
 
-    // 배치 기준
-    const processing = batches.data.filter((b) => b.status === 'processing').length;
-    const done = batches.data.filter((b) => b.status === 'done').length;
-    const failed = batches.data.filter((b) => b.status === 'failed').length;
+    // 배치 기준 >> 서버가 한 페이지만 주므로 이 건수는 최근 것 기준이다
+    const processing = all.filter((b) => b.status === 'processing').length;
+    const done = all.filter((b) => b.status === 'done').length;
+    const failed = all.filter((b) => b.status === 'failed').length;
 
     return (
         <div>

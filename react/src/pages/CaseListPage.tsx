@@ -1,17 +1,16 @@
 // 03 케이스 목록
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { Inbox, Search } from 'lucide-react';
 
-import { getBatches, getJobsByBatch, getMe, getSharesToMe, getStaff } from '@/api';
+import { getBatches, getMe, getSharesToMe, getStaff } from '@/api';
 import { qk } from '@/api/keys';
 import type { Batch, BatchStatus, Staff } from '@/api/types';
 import { FIELD_INPUT } from '@/components/form';
 import { ListFrame } from '@/components/ListFrame';
 import { Empty, Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge } from '@/components/StatusBadge';
-import { needsReview } from '@/lib/decision';
 import { formatShort } from '@/lib/format';
 import { BATCH_STATUS_LABEL } from '@/lib/jobStatus';
 import { patientBrief } from '@/lib/patient';
@@ -37,19 +36,25 @@ export default function CaseListPage() {
     const status = (searchParams.get('status') ?? 'all') as BatchStatus | 'all';
     const sharedOnly = searchParams.get('from') === 'shared';
 
-    const batches = useQuery({ queryKey: qk.batches, queryFn: getBatches });
+    // 검색어는 URL에 넣지 않는다. 왕복하면 한글 조합이 깨져 글자가 중복된다
+    const [draft, setDraft] = useState('');
+    const [q, setQ] = useState('');
+
+    // 타이핑마다 요청하지 않는다
+    useEffect(() => {
+        const id = setTimeout(() => setQ(draft.trim()), 300);
+        return () => clearTimeout(id);
+    }, [draft]);
+
+    // 필터·검색은 서버가 한다. 페이지를 끊는 순간 클라이언트 필터는 이 페이지만 보게 된다
+    const batches = useQuery({
+        queryKey: qk.batchList({ status, q }),
+        queryFn: () => getBatches({ status: status === 'all' ? undefined : status, q: q || undefined }),
+    });
 
     // 소유자만 공유할 수 있다 >> created_by가 곧 공유한 사람
     const { data: me } = useQuery({ queryKey: qk.me, queryFn: getMe });
     const { data: staff } = useQuery({ queryKey: qk.staff, queryFn: getStaff });
-
-    // 슬라이드 수 · 확인 필요 >> 배치 목록 응답에 없어 배치마다 따로 조회
-    const jobQueries = useQueries({
-        queries: (batches.data ?? []).map((batch) => ({
-            queryKey: qk.jobsByBatch(batch.id),
-            queryFn: () => getJobsByBatch(batch.id),
-        })),
-    });
 
     function setParam(key : string, value : string) {
         const next = new URLSearchParams(searchParams);
@@ -57,9 +62,6 @@ export default function CaseListPage() {
         else next.delete(key);
         setSearchParams(next, { replace: true });
     }
-
-    // 검색어는 URL에 넣지 않는다. 왕복하면 한글 조합이 깨져 글자가 중복된다
-    const [draft, setDraft] = useState('');
 
     const staffById = new Map<string, Staff>((staff ?? []).map((s) => [s.id, s]));
     const sharedWithMe = (batch : Batch) : boolean => !!me && batch.created_by !== me.id;
@@ -83,48 +85,18 @@ export default function CaseListPage() {
         return { text: who, title: [who, ...detail].join(' · ') };
     }
 
-    const scoped = (batches.data ?? [])
-        .map((batch, at) => {
-            const jobs = jobQueries[at]?.data;
+    // 서버가 정렬·필터를 끝낸 목록. 슬라이드 수와 확인 필요 수도 응답에 들어 있다
+    const matched = (batches.data?.results ?? [])
+        .filter((batch) => !sharedOnly || sharedWithMe(batch))
+        .map((batch) => ({
+            batch,
+            slides: batch.image_count,
+            review: batch.needs_review_count,
+        }));
 
-            return {
-                batch,
-                slides: jobs?.length,
-                review: jobs?.filter((j) => needsReview(j.result)).length,
-            };
-        })
-        .sort(
-            (a, b) =>
-                new Date(b.batch.created_at).getTime() -
-                new Date(a.batch.created_at).getTime(),
-        )
-        .filter((row) => !sharedOnly || sharedWithMe(row.batch));
-
-    const countOf = (value : BatchStatus | 'all') : number =>
-        value === 'all'
-            ? scoped.length
-            : scoped.filter((row) => row.batch.status === value).length;
-
-    const rows = scoped.filter((row) => status === 'all' || row.batch.status === status);
-
-    const q = draft.trim().toLowerCase();
-
-    const matched = q
-        ? rows.filter((row) => {
-              const p = row.batch.patient_summary;
-              if (!p) return row.batch.id.toLowerCase().includes(q);
-
-              return (
-                  p.chart_number.toLowerCase().includes(q) ||
-                  p.name.toLowerCase().includes(q)
-              );
-          })
-        : rows;
-
-    // 환자 미연결이라 검색으로 못 걸린 건수
-    const unlinkedHidden = q
-        ? rows.filter((row) => !row.batch.patient_summary && !matched.includes(row)).length
-        : 0;
+    const total = batches.data?.count ?? 0;
+    // 서버가 끊어 준 페이지보다 전체가 많으면 알린다
+    const hidden = Math.max(0, total - (batches.data?.results.length ?? 0));
 
     return (
         <div>
@@ -144,34 +116,23 @@ export default function CaseListPage() {
                 </div>
 
                 <div className="flex items-center gap-0.5 rounded-md border border-border p-0.5">
-                    {STATUS_FILTERS.map((f) => {
-                        const n = countOf(f.value);
-
-                        return (
-                            <button
-                                key={f.value}
-                                type="button"
-                                onClick={() => setParam('status', f.value)}
-                                aria-pressed={status === f.value}
-                                className={cn(
-                                    'flex h-8 items-center gap-1.5 rounded px-2.5 text-sm transition-colors',
-                                    status === f.value
-                                        ? 'bg-surface-raised font-medium text-ink shadow-sm'
-                                        : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink',
-                                )}
-                            >
-                                {f.label}
-                                <span
-                                    className={cn(
-                                        'font-mono text-xs tabular-nums',
-                                        n ? 'text-ink-faint' : 'text-ink-faint/50',
-                                    )}
-                                >
-                                    {n}
-                                </span>
-                            </button>
-                        );
-                    })}
+                    {/* 상태별 건수는 서버가 걸러 주므로 이 페이지만으로는 셀 수 없다 */}
+                    {STATUS_FILTERS.map((f) => (
+                        <button
+                            key={f.value}
+                            type="button"
+                            onClick={() => setParam('status', f.value)}
+                            aria-pressed={status === f.value}
+                            className={cn(
+                                'flex h-8 items-center rounded px-2.5 text-sm transition-colors',
+                                status === f.value
+                                    ? 'bg-surface-raised font-medium text-ink shadow-sm'
+                                    : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink',
+                            )}
+                        >
+                            {f.label}
+                        </button>
+                    ))}
                 </div>
 
                 <button
@@ -190,20 +151,14 @@ export default function CaseListPage() {
                 </button>
 
                 <span className="ml-auto text-[15px] text-ink-muted">
-                    {batches.isSuccess ? `${matched.length}건` : ''}
+                    {batches.isSuccess ? `${sharedOnly ? matched.length : total}건` : ''}
                 </span>
             </div>
 
-            {unlinkedHidden > 0 && (
+            {/* 서버가 한 번에 50건까지만 준다. 나머지가 있다는 걸 숨기지 않는다 */}
+            {hidden > 0 && (
                 <p className="mb-3 text-sm text-ink-muted">
-                    환자가 연결되지 않아 검색에서 빠진 케이스 {unlinkedHidden}건이 있습니다.{' '}
-                    <button
-                        type="button"
-                        onClick={() => setDraft('')}
-                        className="underline underline-offset-2 transition-colors hover:text-ink"
-                    >
-                        검색 지우기
-                    </button>
+                    {total}건 중 {matched.length}건을 보고 있습니다. 검색이나 상태로 좁혀 주세요
                 </p>
             )}
 

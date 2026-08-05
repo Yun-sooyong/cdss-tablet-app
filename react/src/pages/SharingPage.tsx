@@ -55,7 +55,8 @@ export default function SharingPage() {
     const queryClient = useQueryClient();
 
     const { data: me } = useQuery({ queryKey: qk.me, queryFn: getMe });
-    const { data: batches } = useQuery({ queryKey: qk.batches, queryFn: getBatches });
+    const { data: batchPage } = useQuery({ queryKey: qk.batchList(), queryFn: () => getBatches() });
+    const batches = batchPage?.results;
     const { data: staff } = useQuery({ queryKey: qk.staff, queryFn: getStaff });
 
     const sent = useQuery({ queryKey: qk.sharesOut, queryFn: getSharesSentByMe });
