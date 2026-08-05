@@ -1,4 +1,9 @@
 import type {
+    AccountRequest,
+    AccountRequestApprove,
+    AccountRequestApproved,
+    AccountRequestCreate,
+    AccountRequestStatus,
     AnalysisShare,
     AnalysisShareCreate,
     AppNotification,
@@ -6,9 +11,6 @@ import type {
     BatchDetail,
     Department,
     ImageUpload,
-    Invitation,
-    InvitationIssue,
-    InvitationRedeem,
     Job,
     ModelVersion,
     PasswordChange,
@@ -101,7 +103,7 @@ export const getStaff = () : Promise<Staff[]> => get<Staff[]>('/api/v1/staff/');
 export const deactivateStaff = (id : string) : Promise<Staff> =>
     del<Staff>(`/api/v1/staff/${id}/`);
 
-// profile · 관리 콘솔 부서 · 초대코드 페이지
+// profile · 관리 콘솔 부서 · 계정 요청 페이지
 export const getDepartments = () : Promise<Department[]> =>
     get<Department[]>('/api/v1/departments/');
 
@@ -184,18 +186,27 @@ export const retryJob = (imageId : string, modelVersionId? : string) : Promise<J
     });
 
 
-/* 초대코드 */
+/* 계정 요청 */
 
-// 관리 콘솔 초대코드 페이지
-export const issueInvitation = (body : InvitationIssue) : Promise<Invitation> =>
-    post<Invitation>('/api/v1/staff/invitations/', body);
+// 계정 요청 페이지 >> 인증 불필요
+export const createAccountRequest = (body : AccountRequestCreate) : Promise<AccountRequest> =>
+    post<AccountRequest>('/api/v1/auth/account-requests/', body);
 
-export const getIssuedInvitations = () : Promise<Invitation[]> =>
-    get<Invitation[]>('/api/v1/staff/invitations/');
+// 관리 콘솔 계정 요청 페이지
+export const getAccountRequests = (
+    status? : AccountRequestStatus,
+) : Promise<AccountRequest[]> =>
+    get<AccountRequest[]>(`/api/v1/auth/account-requests/${query({ status })}`);
 
-// 초대코드 가입 페이지
-export const redeemInvitation = (body : InvitationRedeem) : Promise<void> =>
-    post<void>('/api/v1/auth/invitations/redeem/', body);
+// approveAccountRequest >> 응답의 temporary_password는 여기서만 온다. 다시 못 받는다
+export const approveAccountRequest = (
+    id : string,
+    body : AccountRequestApprove,
+) : Promise<AccountRequestApproved> =>
+    post<AccountRequestApproved>(`/api/v1/auth/account-requests/${id}/approve/`, body);
+
+export const rejectAccountRequest = (id : string, reason = '') : Promise<void> =>
+    post<void>(`/api/v1/auth/account-requests/${id}/reject/`, { reason });
 
 
 /* 알림 */
