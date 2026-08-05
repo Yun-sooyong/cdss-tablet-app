@@ -7,7 +7,7 @@ urlpatterns = [
     path("", views.StaffListView.as_view(), name="staff-list"),
     path(
         "<uuid:staff_id>/",
-        views.StaffDeactivateView.as_view(),
-        name="staff-deactivate",
+        views.StaffDetailView.as_view(),
+        name="staff-detail",
     ),
 ]

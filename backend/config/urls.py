@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import (
+    AuditLogListView,
     DeviceTokenRegisterView,
     InvitationIssueView,
     InvitationRedeemView,
@@ -68,6 +69,7 @@ urlpatterns = [
         name="upload-signed-url",
     ),
     path("api/v1/departments/", DepartmentListView.as_view(), name="department-list"),
+    path("api/v1/audit-logs/", AuditLogListView.as_view(), name="audit-log-list"),
     path("api/v1/analysis/", include("apps.analysis.urls")),
     path("api/v1/chat/", include("apps.chat.urls")),
     path("api/v1/patients/", include("apps.patients.urls")),

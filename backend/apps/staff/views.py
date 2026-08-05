@@ -9,7 +9,12 @@ from rest_framework.views import APIView
 from apps.common.permissions import get_staff_or_403
 
 from .models import Department, Staff
-from .serializers import DepartmentSerializer, StaffMeUpdateSerializer, StaffSerializer
+from .serializers import (
+    DepartmentSerializer,
+    StaffAdminUpdateSerializer,
+    StaffMeUpdateSerializer,
+    StaffSerializer,
+)
 
 
 class DepartmentListView(APIView):
@@ -57,10 +62,25 @@ class StaffListView(APIView):
         return Response(StaffSerializer(staff, many=True).data)
 
 
-class StaffDeactivateView(APIView):
-    """설계문서 7.4절 — DELETE /staff/{id}. 관리자 권한만."""
+class StaffDetailView(APIView):
+    """설계문서 7.4절 — PATCH/DELETE /staff/{id}. 둘 다 관리자 권한만.
+
+    PATCH는 role/department 수정(최일운 요청, 2026-08-05) — 예: 신규
+    입사자를 doctor에서 admin으로 승격. DELETE는 비활성화(기존)."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=StaffAdminUpdateSerializer, responses=StaffSerializer)
+    def patch(self, request, staff_id):
+        requester = get_staff_or_403(request.user)
+        if requester.role != Staff.Role.ADMIN:
+            raise PermissionDenied("관리자 권한 의료진만 다른 직원 정보를 수정할 수 있습니다.")
+
+        target = get_object_or_404(Staff, id=staff_id)
+        serializer = StaffAdminUpdateSerializer(target, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(StaffSerializer(target).data)
 
     @extend_schema(request=None, responses=StaffSerializer)
     def delete(self, request, staff_id):
