@@ -33,4 +33,9 @@ urlpatterns = [
         views.MedicationLogCreateView.as_view(),
         name="medication-log-create",
     ),
+    path(
+        "medications/logs/<uuid:schedule_id>/",
+        views.MedicationLogDeleteView.as_view(),
+        name="medication-log-delete",
+    ),
 ]

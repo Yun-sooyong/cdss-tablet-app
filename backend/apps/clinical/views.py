@@ -335,3 +335,27 @@ class MedicationLogCreateView(APIView):
             defaults={"is_taken": True, "taken_at": timezone.now()},
         )
         return Response(DoseLogSerializer(log).data, status=status.HTTP_201_CREATED)
+
+
+class MedicationLogDeleteView(APIView):
+    """DELETE /medications/logs/{schedule_id}/ — 복용 체크 취소.
+
+    DoseLog는 BaseModel이 아니라 deleted_at도 없는 단순 체크 상태라(
+    진료기록 본체가 아니라 "먹었다/안먹었다" 토글) soft delete 규칙
+    대상이 아니다. row 자체를 지운다. schedule_id를 키로 받는 이유는
+    POST /medications/logs가 이미 schedule_id로 받고 있어서 대칭을
+    맞춘 것 — 프론트가 log의 id를 별도로 들고 있을 필요가 없다.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=None, responses=None)
+    def delete(self, request, schedule_id):
+        patient = get_patient_or_404(request.user)
+        schedule = get_object_or_404(
+            DoseSchedule,
+            id=schedule_id,
+            prescription_drug__prescription__visit__patient=patient,
+        )
+        DoseLog.objects.filter(schedule=schedule).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
