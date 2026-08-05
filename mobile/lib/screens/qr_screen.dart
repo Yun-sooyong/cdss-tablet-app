@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/qr_service.dart';
 import '../theme/app_colors.dart';
+<<<<<<< HEAD
+=======
+import '../widgets/loading_spinner.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class QrScreen extends StatefulWidget {
   final QrService qrService;
@@ -65,7 +69,11 @@ class _QrScreenState extends State<QrScreen> {
       appBar: AppBar(title: const Text('환자 확인용 QR')),
       body: Center(
         child: _isLoading
+<<<<<<< HEAD
             ? const CircularProgressIndicator()
+=======
+            ? const LoadingSpinner()
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             : Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -87,9 +95,13 @@ class _QrScreenState extends State<QrScreen> {
                     ),
                     const SizedBox(height: 20),
                     Text(
+<<<<<<< HEAD
                       _token!.isExpired
                           ? '유효시간이 만료되었어요'
                           : '유효시간 ${_fmt(_token!.remaining)}',
+=======
+                      _token!.isExpired ? '유효시간이 만료되었어요' : '유효시간 ${_fmt(_token!.remaining)}',
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

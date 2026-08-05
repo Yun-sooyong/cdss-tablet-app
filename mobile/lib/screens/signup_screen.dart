@@ -1,6 +1,14 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
 import '../services/auth_service.dart';
 import 'main_shell.dart';
+=======
+import '../models/patient.dart';
+import '../services/auth_service.dart';
+import '../utils/validators.dart';
+import 'main_shell.dart';
+import '../widgets/loading_spinner.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class SignupScreen extends StatefulWidget {
   final AuthService authService;
@@ -12,12 +20,20 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+<<<<<<< HEAD
+=======
+  final _formKey = GlobalKey<FormState>();
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   DateTime? _birthDate;
+<<<<<<< HEAD
+=======
+  Sex? _sex;
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   bool _isLoading = false;
   String? _error;
 
@@ -33,10 +49,21 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   Future<void> _handleSignup() async {
+<<<<<<< HEAD
+=======
+    if (!_formKey.currentState!.validate()) return;
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     if (_birthDate == null) {
       setState(() => _error = '생년월일을 선택해줘');
       return;
     }
+<<<<<<< HEAD
+=======
+    if (_sex == null) {
+      setState(() => _error = '성별을 선택해줘');
+      return;
+    }
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     setState(() {
       _isLoading = true;
       _error = null;
@@ -47,6 +74,10 @@ class _SignupScreenState extends State<SignupScreen> {
         password: _passwordController.text,
         name: _nameController.text,
         birthDate: _birthDate!,
+<<<<<<< HEAD
+=======
+        sex: _sex!,
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
         address: _addressController.text,
         phone: _phoneController.text,
       );
@@ -80,6 +111,7 @@ class _SignupScreenState extends State<SignupScreen> {
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
+<<<<<<< HEAD
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -160,9 +192,108 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
               ),
             ],
+=======
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  validator: (v) => Validators.required(v, '이름'),
+                  decoration: const InputDecoration(
+                    hintText: '이름',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: Validators.email,
+                  decoration: const InputDecoration(
+                    hintText: '이메일',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  validator: Validators.password,
+                  decoration: const InputDecoration(
+                    hintText: '비밀번호 (8자 이상)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: _pickBirthDate,
+                  child: Text(
+                    _birthDate == null
+                        ? '생년월일 선택'
+                        : '${_birthDate!.year}.${_birthDate!.month.toString().padLeft(2, '0')}.${_birthDate!.day.toString().padLeft(2, '0')}',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<Sex>(
+                  value: _sex,
+                  decoration: const InputDecoration(
+                    hintText: '성별',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: [Sex.m, Sex.f]
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))
+                      .toList(),
+                  onChanged: (v) => setState(() => _sex = v),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _addressController,
+                  validator: (v) => Validators.required(v, '주소'),
+                  decoration: const InputDecoration(
+                    hintText: '주소',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _phoneController,
+                  keyboardType: TextInputType.phone,
+                  validator: Validators.phone,
+                  decoration: const InputDecoration(
+                    hintText: '전화번호',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                if (_error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                ],
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _isLoading ? null : _handleSignup,
+                    child: _isLoading
+                        ? const LoadingSpinner(size: 20)
+                        : const Text('가입하기'),
+                  ),
+                ),
+              ],
+            ),
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           ),
         ),
       ),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d

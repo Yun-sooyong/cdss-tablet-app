@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+<<<<<<< HEAD
+=======
+import '../models/department.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 import '../models/reservation.dart';
 import '../services/reservation_service.dart';
 import '../services/visit_service.dart';
 import '../theme/app_colors.dart';
 import '../models/visit.dart';
+<<<<<<< HEAD
+=======
+import '../utils/top_banner.dart';
+import '../widgets/loading_spinner.dart';
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class ReservationScreen extends StatefulWidget {
   final ReservationService reservationService;
@@ -67,10 +76,44 @@ class _ReservationScreenState extends State<ReservationScreen> {
   Future<void> _reschedule(Reservation r) async {
     final newDate = await _pickDateTime(initial: r.dateTime);
     if (newDate == null) return;
+<<<<<<< HEAD
     await widget.reservationService.reschedule(r.id, newDate);
     _load();
   }
 
+=======
+    final reason = await _pickChangeReason();
+    await widget.reservationService.reschedule(r.id, newDate, changeReason: reason);
+    _load();
+  }
+
+  Future<String?> _pickChangeReason() async {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('일정 변경 사유 (선택)'),
+        content: TextField(
+          controller: controller,
+          maxLines: 2,
+          decoration: const InputDecoration(hintText: '사유를 입력해줘 (안 써도 돼)'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(null),
+            child: const Text('건너뛰기'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(
+                controller.text.trim().isEmpty ? null : controller.text.trim()),
+            child: const Text('확인'),
+          ),
+        ],
+      ),
+    );
+  }
+
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   void _showNewReservationSheet() {
     showModalBottomSheet(
       context: context,
@@ -78,19 +121,30 @@ class _ReservationScreenState extends State<ReservationScreen> {
       builder: (_) => _NewReservationSheet(
         reservationService: widget.reservationService,
         visitService: widget.visitService,
+<<<<<<< HEAD
         onSubmit: (dateTime, department, doctor, purpose) async {
+=======
+        onSubmit: (dateTime, department, purpose) async {
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           await widget.reservationService.requestNew(
             dateTime: dateTime,
             hospitalName: '서울내과',
             department: department,
+<<<<<<< HEAD
             doctorName: doctor,
+=======
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             purpose: purpose,
           );
           if (!mounted) return;
           Navigator.of(context).pop();
+<<<<<<< HEAD
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('예약 요청이 완료되었습니다.')),
           );
+=======
+          showTopBanner(context, '예약 요청이 완료되었습니다.');
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           _load();
         },
       ),
@@ -100,7 +154,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
+<<<<<<< HEAD
       return const Center(child: CircularProgressIndicator());
+=======
+      return const Center(child: LoadingSpinner());
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     }
 
     return RefreshIndicator(
@@ -132,7 +190,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
                     title: Text(
                         '${r.dateTime.month}.${r.dateTime.day.toString().padLeft(2, '0')} · ${r.hospitalName}'),
                     subtitle: Text(
+<<<<<<< HEAD
                         '${r.department} · ${r.purpose} · ${r.doctorName}'),
+=======
+                        '${r.department}${r.doctorName.isNotEmpty ? ' · ${r.doctorName}' : ''}'),
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                   ),
                 )),
           const SizedBox(height: 24),
@@ -175,7 +237,13 @@ class _UpcomingCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
+<<<<<<< HEAD
                 '${reservation.hospitalName} · ${reservation.department} · ${reservation.purpose} · ${reservation.doctorName}'),
+=======
+              '${reservation.hospitalName} · ${reservation.department} · ${reservation.doctorName}',
+              style: const TextStyle(color: Colors.grey),
+            ),
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             const SizedBox(height: 12),
             Row(
               children: [
@@ -201,8 +269,12 @@ class _NewReservationSheet extends StatefulWidget {
   final ReservationService reservationService;
   final VisitService visitService;
   final Future<void> Function(
+<<<<<<< HEAD
           DateTime dateTime, String department, String doctor, String purpose)
       onSubmit;
+=======
+      DateTime dateTime, String department, String purpose) onSubmit;
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
   const _NewReservationSheet({
     required this.reservationService,
@@ -216,7 +288,13 @@ class _NewReservationSheet extends StatefulWidget {
 
 class _NewReservationSheetState extends State<_NewReservationSheet> {
   String? _department;
+<<<<<<< HEAD
   String? _doctor;
+=======
+  List<Department> _departments = [];
+  bool _loadingDepartments = true;
+
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   _VisitPurposeCategory _category = _VisitPurposeCategory.consult;
 
   VisitType? _visitType;
@@ -229,9 +307,29 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
   DateTime? _dateTime;
   bool _isSubmitting = false;
 
+<<<<<<< HEAD
   bool get _canSubmit {
     if (_department == null || _doctor == null || _dateTime == null)
       return false;
+=======
+  @override
+  void initState() {
+    super.initState();
+    _loadDepartments();
+  }
+
+  Future<void> _loadDepartments() async {
+    final list = await widget.reservationService.fetchDepartments();
+    if (!mounted) return;
+    setState(() {
+      _departments = list;
+      _loadingDepartments = false;
+    });
+  }
+
+  bool get _canSubmit {
+    if (_department == null || _dateTime == null) return false;
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     if (_category == _VisitPurposeCategory.consult) {
       return _visitType != null && _symptomController.text.trim().isNotEmpty;
     }
@@ -277,9 +375,13 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
         ? '진료 · ${_visitType!.label} · ${_symptomController.text.trim()}'
         : '서류 발급 · $_documentType';
 
+<<<<<<< HEAD
     // 실제 저장/팝업 닫기/스낵바는 부모(ReservationScreen)의 onSubmit이 다 처리한다 —
     // 여기서는 값만 넘겨준다.
     await widget.onSubmit(_dateTime!, _department!, _doctor!, purpose);
+=======
+    await widget.onSubmit(_dateTime!, _department!, purpose);
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
     if (!mounted) return;
     setState(() => _isSubmitting = false);
@@ -293,8 +395,11 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< HEAD
     final departments = ReservationService.departments;
     final doctors = ReservationService.doctors;
+=======
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     final documentTypes = ReservationService.documentTypes;
 
     return Padding(
@@ -312,6 +417,7 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
             const Text('새 예약',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
+<<<<<<< HEAD
             DropdownButtonFormField<String>(
               value: _department,
               decoration: const InputDecoration(
@@ -334,6 +440,26 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
                   .toList(),
               onChanged: (v) => setState(() => _doctor = v),
             ),
+=======
+            _loadingDepartments
+                ? const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: LinearProgressIndicator(),
+                  )
+                : DropdownButtonFormField<String>(
+                    value: _department,
+                    decoration: const InputDecoration(
+                        labelText: '진료과', border: OutlineInputBorder()),
+                    items: _departments
+                        .map((d) => DropdownMenuItem(
+                            value: d.name, child: Text(d.name)))
+                        .toList(),
+                    onChanged: (v) {
+                      setState(() => _department = v);
+                      _loadLastVisitIfNeeded();
+                    },
+                  ),
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
             const SizedBox(height: 16),
             const Text('방문 목적', style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -447,10 +573,14 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
               child: ElevatedButton(
                 onPressed: (_canSubmit && !_isSubmitting) ? _submit : null,
                 child: _isSubmitting
+<<<<<<< HEAD
                     ? const SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2))
+=======
+                    ? const LoadingSpinner(size: 20)
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
                     : const Text('예약하기'),
               ),
             ),
@@ -459,4 +589,8 @@ class _NewReservationSheetState extends State<_NewReservationSheet> {
       ),
     );
   }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
