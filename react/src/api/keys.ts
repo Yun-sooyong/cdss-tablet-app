@@ -13,11 +13,10 @@ export const qk = {
     jobsByBatch: (id : string) => ['batches', id, 'jobs'] as const,
     latestJobs: ['jobs', 'latest'] as const,
     job: (id : string) => ['jobs', id] as const,
-    images: ['images'] as const,
-    image: (id : string) => ['images', id] as const,
 
     sharesIn: ['shares', 'in'] as const,
     sharesOut: ['shares', 'out'] as const,
 
+    patients: ['patients'] as const,
     patientSearch: (query : string) => ['patients', 'search', query] as const,
 };

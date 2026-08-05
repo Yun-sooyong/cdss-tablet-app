@@ -12,9 +12,10 @@ import {
     searchPatients,
 } from '@/api';
 import { qk } from '@/api/keys';
-import { FIELD_INPUT, FIELD_SUBMIT, ICON_BUTTON } from '@/components/form';
+import { BUTTON_SECONDARY, FIELD_INPUT, FIELD_SUBMIT, ICON_BUTTON } from '@/components/form';
 import type { PatientSummary } from '@/api/types';
 import { useUploads } from '@/components/upload/context';
+import { PatientRegisterForm } from '@/components/upload/PatientRegisterForm';
 import { patientBrief, patientFull } from '@/lib/patient';
 import { cn } from '@/lib/utils';
 
@@ -35,6 +36,7 @@ export default function UploadPage() {
 
     const [query, setQuery] = useState('');
     const [patient, setPatient] = useState<PatientSummary | null>(null);
+    const [registering, setRegistering] = useState(false);
     const [files, setFiles] = useState<File[]>([]);
     // '' >> 미선택. 목록이 오면 첫 번째가 기본
     const [modelId, setModelId] = useState('');
@@ -71,7 +73,12 @@ export default function UploadPage() {
             const queued = await Promise.all(
                 files.map(async (file) => {
                     const image = await requestUploadUrl(batch.id, file.name);
-                    return { file, uploadUrl: image.upload_url, filename: file.name };
+                    return {
+                        file,
+                        uploadUrl: image.upload_url,
+                        contentType: image.upload_content_type,
+                        filename: file.name,
+                    };
                 }),
             );
 
@@ -81,7 +88,7 @@ export default function UploadPage() {
             enqueue(batch.id, pickedModel || undefined, queued);
             void queryClient.invalidateQueries({ queryKey: qk.batches });
 
-            toast('업로드를 시작했습니다', {
+            toast.success('업로드를 시작했습니다', {
                 description: `${name} · 슬라이드 ${count}장 · 헤더에서 진행 상황을 볼 수 있습니다`,
                 action: {
                     label: '진행 보기',
@@ -95,7 +102,7 @@ export default function UploadPage() {
             setFiles([]);
         },
         onError: (error : Error) =>
-            toast('업로드를 시작하지 못했습니다', { description: error.message }),
+            toast.error('업로드를 시작하지 못했습니다', { description: error.message }),
     });
 
     return (
@@ -114,6 +121,15 @@ export default function UploadPage() {
                                     변경
                                 </button>
                             </div>
+                        ) : registering ? (
+                            <PatientRegisterForm
+                                onCancel={() => setRegistering(false)}
+                                onCreated={(created) => {
+                                    setPatient(created);
+                                    setRegistering(false);
+                                    setQuery('');
+                                }}
+                            />
                         ) : (
                             <>
                                 <div className="relative">
@@ -143,9 +159,18 @@ export default function UploadPage() {
                                                 검색 중
                                             </p>
                                         ) : search.data.length === 0 ? (
-                                            <p className="px-4 py-6 text-center text-sm text-ink-faint">
-                                                일치하는 환자가 없습니다
-                                            </p>
+                                            <div className="px-4 py-6 text-center">
+                                                <p className="text-sm text-ink-faint">
+                                                    일치하는 환자가 없습니다
+                                                </p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setRegistering(true)}
+                                                    className={`mt-3 ${BUTTON_SECONDARY}`}
+                                                >
+                                                    새 환자 등록
+                                                </button>
+                                            </div>
                                         ) : (
                                             search.data.map((p) => (
                                                 <button

@@ -1,15 +1,18 @@
 import { useState } from 'react';
-import { Maximize2, Minus, Plus } from 'lucide-react';
+import { Minus, Plus, RotateCcw } from 'lucide-react';
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch';
 
-import { PlaceholderMask, PlaceholderSlide } from '@/dev';
+import { PlaceholderBadge, PlaceholderMask, PlaceholderSlide } from '@/dev';
+import { SEG_CLASSES } from '@/lib/seg';
 import { cn } from '@/lib/utils';
 
-const SEG_LEGEND = [
-    { label: '종양', className: 'bg-seg-tumor' },
-    { label: '기질', className: 'bg-seg-stroma' },
-    { label: '림프구', className: 'bg-seg-tils' },
-];
+// PAN_STEP
+const PAN_STEP : Record<string, [number, number]> = {
+    ArrowLeft: [40, 0],
+    ArrowRight: [-40, 0],
+    ArrowUp: [0, 40],
+    ArrowDown: [0, -40],
+};
 
 export function SlideViewer({
     originalUrl,
@@ -25,9 +28,22 @@ export function SlideViewer({
     return (
         <div className={cn('overflow-hidden rounded-lg border border-viewer-border', className)}>
             <TransformWrapper doubleClick={{ mode: 'reset' }} minScale={1} maxScale={8}>
-                {({ zoomIn, zoomOut, resetTransform }) => (
+                {({ zoomIn, zoomOut, resetTransform, instance, setTransform }) => (
                     <>
-                        <div className="relative bg-viewer">
+                        <div
+                            role="group"
+                            aria-label="슬라이드 뷰어. 방향키로 이동합니다"
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                                const step = PAN_STEP[e.key];
+                                if (!step) return;
+
+                                e.preventDefault();
+                                const { positionX, positionY, scale } = instance.state;
+                                setTransform(positionX + step[0], positionY + step[1], scale);
+                            }}
+                            className="relative bg-viewer"
+                        >
                             <TransformComponent
                                 wrapperClass="!w-full !h-[420px]"
                                 contentClass="!w-full !h-full"
@@ -55,11 +71,16 @@ export function SlideViewer({
                                                 className="h-full w-full object-contain"
                                             />
                                         ) : (
-                                            <PlaceholderMask className="h-full w-full" />
+                                            // 진짜 원본 위에 예시 마스크를 덮지 않는다
+                                            !originalUrl && (
+                                                <PlaceholderMask className="h-full w-full" />
+                                            )
                                         )}
                                     </div>
                                 </div>
                             </TransformComponent>
+
+                            {!originalUrl && <PlaceholderBadge />}
 
                             <div className="absolute right-3 top-3 flex flex-col gap-1">
                                 <ViewerButton onClick={() => zoomIn()} label="확대">
@@ -69,7 +90,7 @@ export function SlideViewer({
                                     <Minus size={15} />
                                 </ViewerButton>
                                 <ViewerButton onClick={() => resetTransform()} label="원래대로">
-                                    <Maximize2 size={15} />
+                                    <RotateCcw size={15} />
                                 </ViewerButton>
                             </div>
                         </div>
@@ -91,12 +112,15 @@ export function SlideViewer({
                             </label>
 
                             <div className="flex items-center gap-3">
-                                {SEG_LEGEND.map((s) => (
+                                {SEG_CLASSES.map((s) => (
                                     <span
                                         key={s.label}
                                         className="flex items-center gap-1.5 text-xs text-viewer-ink"
                                     >
-                                        <span className={cn('size-2.5 rounded-sm', s.className)} />
+                                        <span
+                                            className="size-2.5 rounded-sm"
+                                            style={{ backgroundColor: `var(${s.token})` }}
+                                        />
                                         {s.label}
                                     </span>
                                 ))}

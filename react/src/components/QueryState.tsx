@@ -7,6 +7,10 @@ export function Pending({ label = '불러오는 중입니다.' } : { label? : st
     );
 }
 
+export function Empty({ label } : { label : string }) {
+    return <div className="py-16 text-center text-sm text-ink-faint">{label}</div>;
+}
+
 export function Failed({
     error,
     onRetry,
