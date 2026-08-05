@@ -59,6 +59,10 @@ class Patient(BaseModel):
     address = EncryptedCharField(max_length=255, blank=True)
     phone = EncryptedCharField(max_length=30)
     phone_hash = models.CharField(max_length=64, db_index=True, editable=False)
+    # 접수처 시나리오(QR·앱 없는 환자, "성함이랑 생년월일 불러주세요") 검색용
+    # — 윤수용 요청, 2026-08-05. phone_hash와 동일 패턴. 이름/생년월일 둘 다
+    # 정확히 일치해야만 찾아지는 정확match 전용 해시라 부분검색은 여전히 안 됨.
+    name_dob_hash = models.CharField(max_length=64, db_index=True, editable=False)
     first_visit_at = models.DateTimeField(null=True, blank=True)
     last_visit_at = models.DateTimeField(null=True, blank=True)
     deleted_at = models.DateTimeField(null=True, blank=True)  # soft delete, 물리삭제 금지
@@ -68,6 +72,10 @@ class Patient(BaseModel):
 
     def save(self, *args, **kwargs):
         self.phone_hash = hashlib.sha256(self.phone.encode()).hexdigest()
+        normalized_name = (self.name or "").strip()
+        dob = self.birth_date
+        dob = dob.isoformat() if hasattr(dob, "isoformat") else (dob or "")
+        self.name_dob_hash = hashlib.sha256(f"{normalized_name}|{dob}".encode()).hexdigest()
 
         if not self._state.adding:
             super().save(*args, **kwargs)

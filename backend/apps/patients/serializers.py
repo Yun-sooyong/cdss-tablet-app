@@ -32,13 +32,24 @@ class PatientSummarySerializer(serializers.ModelSerializer):
 
 
 class PatientSearchQuerySerializer(serializers.Serializer):
+    """chart_number(부분일치) / phone(정확일치) / name+birth_date(정확일치)
+    셋 중 하나. name+birth_date는 접수처 시나리오용 — 윤수용 요청,
+    2026-08-05(QR·앱 없는 환자를 "성함이랑 생년월일" 불러받아 찾는 흐름)."""
+
     chart_number = serializers.CharField(required=False, allow_blank=True)
     phone = serializers.CharField(required=False, allow_blank=True)
+    name = serializers.CharField(required=False, allow_blank=True)
+    birth_date = serializers.DateField(required=False)
 
     def validate(self, attrs):
-        if not attrs.get("chart_number") and not attrs.get("phone"):
+        has_name_dob = bool(attrs.get("name")) and bool(attrs.get("birth_date"))
+        if attrs.get("name") and not attrs.get("birth_date"):
+            raise serializers.ValidationError("name으로 검색하려면 birth_date도 같이 필요합니다.")
+        if attrs.get("birth_date") and not attrs.get("name"):
+            raise serializers.ValidationError("birth_date로 검색하려면 name도 같이 필요합니다.")
+        if not attrs.get("chart_number") and not attrs.get("phone") and not has_name_dob:
             raise serializers.ValidationError(
-                "chart_number 또는 phone 중 하나는 필요합니다."
+                "chart_number, phone, name+birth_date 조합 중 하나는 필요합니다."
             )
         return attrs
 
