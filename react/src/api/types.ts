@@ -44,6 +44,24 @@ export interface JobResult {
     medgemma_report? : MedgemmaReport;
 }
 
+// Paginated >> 배치 목록이 이 봉투로 온다. limit 기본 50 · 최대 200
+export interface Paginated<T> {
+    count : number;
+    limit : number;
+    offset : number;
+    results : T[];
+}
+
+export interface BatchQuery {
+    status? : BatchStatus;
+    q? : string;
+    patient? : string;
+    date_from? : string;
+    date_to? : string;
+    limit? : number;
+    offset? : number;
+}
+
 export interface Batch {
     id : string;
     patient : string | null;

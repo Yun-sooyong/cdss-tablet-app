@@ -9,7 +9,9 @@ import type {
     AppNotification,
     Batch,
     BatchDetail,
+    BatchQuery,
     Department,
+    Paginated,
     ImageUpload,
     Job,
     ModelVersion,
@@ -130,9 +132,9 @@ export const registerPatient = (body : PatientCreate) : Promise<PatientSummary> 
 
 /* 분석 */
 
-// 대시보드 · 판독 목록 · 공유 페이지
-export const getBatches = () : Promise<Batch[]> =>
-    get<Batch[]>('/api/v1/analysis/batches/');
+// 대시보드 · 판독 목록 · 공유 페이지 >> {count, limit, offset, results} 봉투로 온다
+export const getBatches = (params : BatchQuery = {}) : Promise<Paginated<Batch>> =>
+    get<Paginated<Batch>>(`/api/v1/analysis/batches/${query({ ...params })}`);
 
 // 배치 요약 · 브레드크럼
 export const getBatchDetail = (id : string) : Promise<BatchDetail> =>
