@@ -66,9 +66,13 @@ chat_rooms/{roomId}/reads/{uid}      // uid == 본인 staff.id인 문서만 쓸 
 
 저장소 루트 `firestore.rules`에 정의되어 있다 — 방 멤버(`member_ids`에
 포함된 staff)만 읽기/쓰기 가능, 메시지는 `sender_id`가 본인이어야 생성
-가능, 수정은 `deleted_at` 필드만 허용(소프트 삭제). 규칙을 바꿔야 하면
-그 파일을 고치고 `firebase deploy --only firestore:rules`로 배포 —
-누구든 Firebase 콘솔 Editor 이상 권한 있으면 가능하다 (다희님한테 요청).
+가능, 수정은 `deleted_at` 필드만 허용(소프트 삭제).
+
+**배포 완료** (2026-08-05) — `firebase deploy --only firestore:rules`로
+반영했고, `firebaserules.googleapis.com` API로 릴리스 내용까지 대조
+확인함. 이제부터 방 멤버가 아니면 실제로 읽기/쓰기가 막힌다. 규칙을
+바꿔야 하면 `firestore.rules`를 고치고 같은 명령으로 재배포 —
+Firebase 콘솔 Editor 이상 권한 있으면 누구나 가능하다.
 
 ## 아직 안 정해진 것 (필요해지면 논의)
 
