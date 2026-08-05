@@ -21,8 +21,9 @@ from .serializers import (
 
 
 class PatientRegisterView(APIView):
-    """설계문서 3.1-a — 이메일/비밀번호 방식 환자 회원가입.
-    카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에."""
+    """아이디/비밀번호 방식 환자 회원가입 (2026-08-05, 이메일 방식에서
+    변경 — 정은님 요청). 카카오 소셜 로그인(POST /auth/social/{provider})은
+    별도로 나중에."""
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -35,8 +36,8 @@ class PatientRegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        if User.objects.filter(email=data["email"]).exists():
-            raise ValidationError("이미 가입된 이메일입니다.")
+        if User.objects.filter(username=data["username"]).exists():
+            raise ValidationError("이미 사용 중인 아이디입니다.")
 
         # 병원이 접수처에서 먼저 등록해둔 환자(user=null)가 나중에 앱
         # 가입하는 경우 — 이름 + chart_number(uuid) 일치를 확인해 기존
@@ -53,11 +54,8 @@ class PatientRegisterView(APIView):
             if existing_patient.name != data["name"]:
                 raise ValidationError("차트번호와 이름이 일치하지 않습니다.")
 
-        # User.username에 email을 그대로 넣는다 — 로그인은 여전히
-        # POST /auth/login/ + username 필드지만, 값은 email이 된다.
         user = User.objects.create_user(
-            username=data["email"],
-            email=data["email"],
+            username=data["username"],
             password=data["password"],
         )
 

@@ -48,10 +48,10 @@ def with_batch_counts(queryset):
     불러야 했고, 그때마다 BatchDetailView.get의 AuditLog READ가
     쌓이는 문제가 있었다(07 화면 2초 폴링이라 특히 심함).
 
-    needs_review_count = 결과가 다 나와서(succeeded) 의료진 확인을
-    기다리는 job 수. queued/running/stil_done(리포트 대기)/failed는
-    아직 확인 대상이 아니라고 보고 제외했다 — 이 기준이 맞는지는
-    확인 필요.
+    needs_review_count = 의료진 확인을 기다리는 job 수 — succeeded뿐
+    아니라 stil_done(sTIL은 끝나서 볼 게 있음, MedGemma 리포트만 대기)도
+    포함 (최일운 확인, 2026-08-05). queued/running/failed는 아직
+    확인 대상이 아니라고 보고 제외했다.
     """
     from .models import Job  # noqa: PLC0415 — 순환 임포트 회피
 
@@ -59,7 +59,9 @@ def with_batch_counts(queryset):
         image_count=Count("images", distinct=True),
         needs_review_count=Count(
             "images__jobs",
-            filter=Q(images__jobs__status=Job.Status.SUCCEEDED),
+            filter=Q(
+                images__jobs__status__in=[Job.Status.STIL_DONE, Job.Status.SUCCEEDED]
+            ),
             distinct=True,
         ),
     )
@@ -329,7 +331,7 @@ class JobListView(APIView):
         )
 
         if request.query_params.get("needs_review") == "true":
-            jobs = jobs.filter(status=Job.Status.SUCCEEDED)
+            jobs = jobs.filter(status__in=[Job.Status.STIL_DONE, Job.Status.SUCCEEDED])
 
         return Response(JobSerializer(jobs, many=True).data)
 
