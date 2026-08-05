@@ -4,6 +4,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import (
+    AccountRequestCreateView,
     AuditLogListView,
     DeviceTokenRegisterView,
     InvitationIssueView,
@@ -36,6 +37,11 @@ urlpatterns = [
         "api/v1/auth/invitations/redeem/",
         InvitationRedeemView.as_view(),
         name="invitation-redeem",
+    ),
+    path(
+        "api/v1/auth/account-requests/",
+        AccountRequestCreateView.as_view(),
+        name="account-request-create",
     ),
     path(
         "api/v1/staff/invitations/",

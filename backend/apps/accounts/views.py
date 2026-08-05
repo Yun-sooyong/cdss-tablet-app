@@ -14,8 +14,17 @@ from apps.common.audit import log_access
 from apps.common.permissions import get_patient_or_404, get_staff_or_403
 from apps.staff.models import Staff
 
-from .models import AuditLog, DeviceToken, Invitation, Notification, QRToken, User
+from .models import (
+    AccountRequest,
+    AuditLog,
+    DeviceToken,
+    Invitation,
+    Notification,
+    QRToken,
+    User,
+)
 from .serializers import (
+    AccountRequestCreateSerializer,
     AuditLogSerializer,
     DeviceTokenSerializer,
     InvitationIssueSerializer,
@@ -68,6 +77,27 @@ class InvitationIssueView(APIView):
         return Response(
             InvitationSerializer(invitation).data, status=status.HTTP_201_CREATED
         )
+
+
+class AccountRequestCreateView(APIView):
+    """POST /auth/account-requests/ — 계정발급신청. 로그인 불필요.
+
+    신청자가 스스로 아이디/비밀번호를 정하지 않는다 — 여기선 이름/이메일/
+    희망 role·부서만 받아서 AccountRequest(대기중)를 만든다. 승인은
+    Django 기본 admin 화면(/admin/)에서 관리자가 직접 처리한다
+    (apps/accounts/admin.py `AccountRequestAdmin`의 승인 액션 참고) —
+    앱 안의 Staff(role=admin) 유저가 아니라 개발/인사팀이 관리자실
+    운영자로 이 화면을 쓴다는 전제라 별도 알림(FCM 등) 발송은 없다."""
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    @extend_schema(request=AccountRequestCreateSerializer, responses=None)
+    def post(self, request):
+        serializer = AccountRequestCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        AccountRequest.objects.create(**serializer.validated_data)
+        return Response(status=status.HTTP_201_CREATED)
 
 
 class InvitationRedeemView(APIView):

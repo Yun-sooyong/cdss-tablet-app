@@ -142,6 +142,45 @@ class Notification(models.Model):
         ordering = ["-created_at"]
 
 
+class AccountRequest(models.Model):
+    """계정발급신청 — 신규 의료진이 태블릿/React 웹(의료진용 클라이언트)에서
+    신청하면 Django 기본 admin 화면(/admin/)에 뜨고, 관리자가 거기서 직접
+    계정을 만들어준다. 환자용 모바일 앱과는 무관 — Patient를 참조하지
+    않고 항상 User+Staff만 생성한다. 초대코드와 달리 신청자가 스스로
+    비밀번호를 정하지 않는다 — 승인 시점에 관리자가 만든 임시 비밀번호를
+    따로(카톡 등) 전달하는 방식이라, 여기엔 비밀번호 필드가 없다."""
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "대기중"
+        APPROVED = "APPROVED", "승인됨"
+        REJECTED = "REJECTED", "거절됨"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=50)
+    email = models.EmailField()
+    requested_role = models.CharField(max_length=20)  # apps.staff.Staff.Role 값 중 하나
+    requested_department = models.CharField(max_length=100, blank=True)
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING
+    )
+    created_user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="account_request",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "account_request"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.name} ({self.status})"
+
+
 class AuditLog(models.Model):
     """접근 로그. 설계문서 6.9절/12장 — 의료 시스템은 조회 이력까지 남겨야
     유출 시 범위 파악이 가능하다 (법적 요구사항에 가까움)."""
