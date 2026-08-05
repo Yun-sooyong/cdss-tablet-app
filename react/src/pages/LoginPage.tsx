@@ -44,9 +44,9 @@ export default function LoginPage() {
             description="sTIL 판독 콘솔"
             footer={
                 <>
-                    초대코드를 받으셨나요?{' '}
+                    계정이 필요하신가요?{' '}
                     <Link to="/signup" className="text-ink underline-offset-2 hover:underline">
-                        가입하기
+                        계정 요청
                     </Link>
                 </>
             }
