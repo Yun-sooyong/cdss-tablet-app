@@ -26,12 +26,16 @@ REQUEST_TIMEOUT = int(os.environ.get("SEGMENTATION_TIMEOUT", "1800"))
 GCS_BUCKET = os.environ.get("GCS_BUCKET", "")
 
 
-def _unpack_masks(resp_bytes: bytes) -> np.ndarray:
-    """서버 응답(msgpack) -> (N, H, W) uint8 마스크.
+def _unpack_masks(resp_bytes: bytes):
+    """서버 응답(msgpack) -> ((N, H, W) uint8 마스크, mask_key).
 
     실제 서버(inference.py의 pack_masks)가 항상 "masks"라는 키로 npz를
     압축한다는 걸 소스로 확인했으므로, 이전처럼 여러 키 이름을 추측할
     필요가 없다.
+
+    ⚠️ 2026-08-05: 서버가 mask_key(프론트엔드 오버레이용 색칠된 PNG의 GCS
+       경로)도 같이 보내주기 시작해서 반환값이 튜플로 바뀌었다 — GCS 쓰기
+       권한이 아직 없으면 서버가 None을 보낼 수 있다(정상, 에러 아님).
     """
     resp = msgpack.unpackb(resp_bytes, raw=False)
     with np.load(io.BytesIO(resp["masks"])) as npz:
@@ -43,15 +47,20 @@ def _unpack_masks(resp_bytes: bytes) -> np.ndarray:
             f"응답의 mc_samples({declared})와 실제 배열 회차 수({masks.shape[0]})가 다릅니다. "
             f"q=19.63은 20회 기준으로 보정된 값이라 회차가 다르면 커버리지가 깨집니다."
         )
-    return masks.astype(np.uint8, copy=False)
+    return masks.astype(np.uint8, copy=False), resp.get("mask_key")
 
 
-def call_segmentation(image_key: str, model_version_id: str, job_id: str = "") -> np.ndarray:
+def call_segmentation(image_key: str, model_version_id: str, job_id: str = ""):
     """Mosec 서버(/inference)에 GCS 경로를 넘겨 MC-Dropout 마스크 스택을 받는다.
 
     Mosec이 GCS를 직접 읽으므로(inference.py의 download_gcs_bytes) 워커가
     이미지를 따로 다운로드할 필요가 없다 — image_key를 gcs_image_path
     문자열로 바꿔서 넘기기만 하면 된다.
+
+    Returns:
+        (mc_stack, mask_key) — mask_key는 프론트엔드 오버레이용 색칠된 마스크
+        PNG의 GCS 오브젝트 경로(예: "masks/{job_id}.png"). 서버가 아직 업로드
+        권한이 없으면 None일 수 있다.
     """
     import requests
 

@@ -31,6 +31,7 @@ from genkit.types import GenerateRequest, GenerateResponse, Message, Role, TextP
 from clients.mosec import call_medgemma
 from pipeline.medgemma_report import (
     DISCLAIMER,
+    OPINION_NOTE,
     SYSTEM_PROMPT,
     _build_user_text,
     _build_visualization,
@@ -44,10 +45,27 @@ class ReportOutput(BaseModel):
     지시문을 대신한다. Genkit이 이 스키마에 맞게 파싱·검증까지 담당한다."""
 
     segmentation_summary: str = Field(
-        description="첨부 이미지의 조직 유형별 구성을 1~2문장으로 요약"
+        description=(
+            "첨부 이미지의 조직 유형별 구성을 서술하되, 종양 대비 면역세포 "
+            "비중이 어떤지, 괴사 조직이 눈에 띄는지 등 구성 요소 간의 관계까지 "
+            "포함해 설명 (3~4문장, 숫자만 나열하지 말 것)"
+        )
     )
     findings: str = Field(
-        description="sTIL 수치와 불확실성(기권 여부)을 고려한 임상 판독 소견"
+        description=(
+            "sTIL 수치·예측구간·판정 결과를 그대로 재진술하지 말고 해석할 것: "
+            "(1) sTIL 수준이 조직 구성비와 일관되는지, (2) 예측구간 폭이 판정 "
+            "신뢰도에 시사하는 바, (3) ABSTAIN이면 경계선에 걸리는 이유, "
+            "(4) 병리의가 육안으로 추가 확인하면 좋을 포인트 (4~6문장)"
+        )
+    )
+    ai_opinion: str = Field(
+        description=(
+            "findings와 구분되는 임상적 '의견' — 이 케이스에서 특히 주의 깊게 "
+            "봐야 할 부분, sTIL 수준·조직 구성을 근거로 고려해볼 만한 후속 조치 "
+            "방향(추가 검사, 치료 전략 논의 등). 단정이 아니라 '~을 고려해볼 "
+            "수 있습니다' 같은 조심스러운 의견 어조로 (2~4문장)"
+        )
     )
 
 
@@ -103,7 +121,9 @@ async def mosec_medgemma_model(request: GenerateRequest) -> GenerateResponse:
                     b64_data = url.split(",", 1)[1]
                     image = Image.open(io.BytesIO(base64.b64decode(b64_data)))
 
-    generated_text = call_medgemma(image, system_text, user_text)
+    # 더 풍부한 해석을 요구하는 프롬프트라 500 토큰 기본값으론 잘릴 수 있다.
+    # MAX_NEW_TOKENS_CAP(medgemma_worker.py)이 800이라 그 안에서 여유 있게 잡는다.
+    generated_text = call_medgemma(image, system_text, user_text, max_new_tokens=700)
     return GenerateResponse(
         message=Message(role=Role.MODEL, content=[TextPart(text=generated_text)])
     )
@@ -143,7 +163,9 @@ def generate_report(stats: dict, mc_stack, job_id: str = "") -> dict:
         return {
             "segmentation_summary": "",
             "findings": "sTIL 계산 불가로 판독 보고서를 생성하지 않았습니다.",
+            "ai_opinion": "",
             "disclaimer": DISCLAIMER,
+            "opinion_note": OPINION_NOTE,
             "generation_failed": True,
         }
 
@@ -162,19 +184,25 @@ def generate_report(stats: dict, mc_stack, job_id: str = "") -> dict:
         if isinstance(result, dict):
             summary = result.get("segmentation_summary", "")
             findings = result.get("findings", "")
+            opinion = result.get("ai_opinion", "")
         else:
             summary = result.segmentation_summary
             findings = result.findings
+            opinion = result.ai_opinion
         return {
             "segmentation_summary": summary,
             "findings": findings,
+            "ai_opinion": opinion,
             "disclaimer": DISCLAIMER,
+            "opinion_note": OPINION_NOTE,
             "generation_failed": False,
         }
     except Exception as exc:  # noqa: BLE001 — 실험용 경로, 실패 사유를 그대로 보고
         return {
             "segmentation_summary": "(자동 요약 생성 실패 — 수동 확인 필요)",
             "findings": f"(판독 소견 생성 실패: {exc})",
+            "ai_opinion": "",
             "disclaimer": DISCLAIMER,
+            "opinion_note": OPINION_NOTE,
             "generation_failed": True,
         }
