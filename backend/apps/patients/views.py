@@ -149,13 +149,17 @@ class PatientMeView(APIView):
 
 
 class PatientSearchView(APIView):
-    """의료진용 환자 검색 — 최일운 요청, 2026-08-04.
+    """의료진용 환자 검색 — 최일운 요청, 2026-08-04. name+birth_date
+    조합은 윤수용 요청, 2026-08-05(접수처 시나리오 — QR·앱 없는 환자를
+    "성함이랑 생년월일" 불러받아 찾는 흐름).
 
     name/birth_date/phone은 암호화 컬럼이라 서버가 DB 레벨에서 LIKE·범위
     검색을 할 수 없다(모든 행을 복호화해야 해서 성능·보안 둘 다 안 좋음).
-    그래서 검색 키는 두 개로 한정한다:
+    그래서 검색 키는 세 가지로 한정한다:
     - chart_number: 평문 인덱스 컬럼, 부분일치 가능
     - phone: phone_hash(SHA-256)로 정확히 일치하는 것만 (부분검색 불가)
+    - name+birth_date: name_dob_hash(SHA-256)로 정확히 일치하는 것만
+      (부분검색 불가 — 이름 철자가 하나라도 다르면 안 찾아짐)
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -171,12 +175,19 @@ class PatientSearchView(APIView):
         qs = Patient.objects.filter(deleted_at__isnull=True)
         chart_number = data.get("chart_number")
         phone = data.get("phone")
+        name = data.get("name")
+        birth_date = data.get("birth_date")
 
         if chart_number:
             qs = qs.filter(chart_number__icontains=chart_number)
-        else:
+        elif phone:
             phone_hash = hashlib.sha256(phone.encode()).hexdigest()
             qs = qs.filter(phone_hash=phone_hash)
+        else:
+            name_dob_hash = hashlib.sha256(
+                f"{name.strip()}|{birth_date.isoformat()}".encode()
+            ).hexdigest()
+            qs = qs.filter(name_dob_hash=name_dob_hash)
 
         results = qs.order_by("chart_number")[:20]
         return Response(PatientSummarySerializer(results, many=True).data)
