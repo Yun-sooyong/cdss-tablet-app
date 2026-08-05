@@ -9,7 +9,8 @@ import { qk } from '@/api/keys';
 import type { Role } from '@/api/types';
 import { BUTTON_PRIMARY, FIELD_INPUT, ICON_BUTTON } from '@/components/form';
 import { ListCount } from '@/components/ListCount';
-import { Failed, Pending } from '@/components/QueryState';
+import { ListFrame } from '@/components/ListFrame';
+import { Empty, Failed, Pending } from '@/components/QueryState';
 import { StateBadge } from '@/components/StateBadge';
 import { formatDate } from '@/lib/format';
 import { INVITATION_STATE_LABEL, ROLE_LABEL, invitationState } from '@/lib/staff';
@@ -26,9 +27,9 @@ const EXPIRY_OPTIONS = [3, 7, 14, 30];
 async function copyCode(code : string) {
     try {
         await navigator.clipboard.writeText(code);
-        toast('초대코드를 복사했습니다');
+        toast.info('초대코드를 복사했습니다');
     } catch {
-        toast('복사하지 못했습니다', { description: code });
+        toast.error('복사하지 못했습니다', { description: code });
     }
 }
 
@@ -57,13 +58,13 @@ export default function AdminInvitationsPage() {
             }),
         onSuccess: (invitation) => {
             void queryClient.invalidateQueries({ queryKey: qk.invitations });
-            toast(`초대코드 ${invitation.code}`, {
+            toast.success(`초대코드 ${invitation.code}`, {
                 description: `${ROLE_LABEL[invitation.role]} · ${invitation.department || '소속 미지정'} · ${days}일 후 만료`,
                 action: { label: '복사', onClick: () => void copyCode(invitation.code) },
             });
         },
         onError: (error) => {
-            toast('발급하지 못했습니다', { description: error.message });
+            toast.error('발급하지 못했습니다', { description: error.message });
         },
     });
 
@@ -128,81 +129,79 @@ export default function AdminInvitationsPage() {
 
             <ListCount value={invitations.data?.length} unit="개" />
 
-            <div
-                className={cn(
-                    GRID,
-                    'mb-1.5 border-b border-border pb-1.5 text-xs text-ink-muted',
-                )}
+            <ListFrame
+                grid={GRID}
+                header={
+                    <>
+                        <span>코드</span>
+                        <span>직군</span>
+                        <span>소속</span>
+                        <span className="text-right">만료</span>
+                        <span>상태</span>
+                        <span />
+                    </>
+                }
             >
-                <span>코드</span>
-                <span>직군</span>
-                <span>소속</span>
-                <span className="text-right">만료</span>
-                <span>상태</span>
-                <span />
-            </div>
+                {invitations.isPending ? (
+                    <Pending />
+                ) : invitations.isError ? (
+                    <Failed
+                        error={invitations.error}
+                        onRetry={() => void invitations.refetch()}
+                    />
+                ) : invitations.data.length === 0 ? (
+                    <Empty label="발급한 초대코드가 없습니다" />
+                ) : (
+                    <div className="divide-y divide-border">
+                        {invitations.data.map((invitation) => {
+                            const state = invitationState(invitation);
 
-            {invitations.isPending ? (
-                <Pending />
-            ) : invitations.isError ? (
-                <Failed
-                    error={invitations.error}
-                    onRetry={() => void invitations.refetch()}
-                />
-            ) : invitations.data.length === 0 ? (
-                <div className="py-16 text-center text-sm text-ink-faint">
-                    발급한 초대코드가 없습니다
-                </div>
-            ) : (
-                <div className="divide-y divide-border">
-                    {invitations.data.map((invitation) => {
-                        const state = invitationState(invitation);
+                            return (
+                                <div key={invitation.code} className={cn(GRID, 'py-3.5')}>
+                                    <span
+                                        className={cn(
+                                            'font-mono text-sm tracking-wider',
+                                            state === 'live' ? 'text-ink' : 'text-ink-faint',
+                                        )}
+                                    >
+                                        {invitation.code}
+                                    </span>
 
-                        return (
-                            <div key={invitation.code} className={cn(GRID, 'py-3.5')}>
-                                <span
-                                    className={cn(
-                                        'font-mono text-sm tracking-wider',
-                                        state === 'live' ? 'text-ink' : 'text-ink-faint',
-                                    )}
-                                >
-                                    {invitation.code}
-                                </span>
+                                    <span className="text-sm text-ink-muted">
+                                        {ROLE_LABEL[invitation.role]}
+                                    </span>
 
-                                <span className="text-sm text-ink-muted">
-                                    {ROLE_LABEL[invitation.role]}
-                                </span>
+                                    <span className="truncate text-sm text-ink-muted">
+                                        {invitation.department || '미지정'}
+                                    </span>
 
-                                <span className="truncate text-sm text-ink-muted">
-                                    {invitation.department || '미지정'}
-                                </span>
+                                    <span className="truncate text-right text-sm text-ink-muted">
+                                        {formatDate(invitation.expires_at)}
+                                    </span>
 
-                                <span className="truncate text-right text-sm text-ink-muted">
-                                    {formatDate(invitation.expires_at)}
-                                </span>
+                                    <span>
+                                        <StateBadge
+                                            label={INVITATION_STATE_LABEL[state]}
+                                            live={state === 'live'}
+                                        />
+                                    </span>
 
-                                <span>
-                                    <StateBadge
-                                        label={INVITATION_STATE_LABEL[state]}
-                                        live={state === 'live'}
-                                    />
-                                </span>
-
-                                {/* 사용 가능한 코드만 복사 */}
-                                <button
-                                    type="button"
-                                    onClick={() => void copyCode(invitation.code)}
-                                    disabled={state !== 'live'}
-                                    aria-label={`${invitation.code} 복사`}
-                                    className={`justify-self-end ${ICON_BUTTON}`}
-                                >
-                                    <Copy size={15} />
-                                </button>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
+                                    {/* 사용 가능한 코드만 복사 */}
+                                    <button
+                                        type="button"
+                                        onClick={() => void copyCode(invitation.code)}
+                                        disabled={state !== 'live'}
+                                        aria-label={`${invitation.code} 복사`}
+                                        className={`justify-self-end ${ICON_BUTTON}`}
+                                    >
+                                        <Copy size={15} />
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </ListFrame>
 
             <p className="mt-4 text-xs text-ink-faint">
                 코드에 직군과 소속이 포함됩니다

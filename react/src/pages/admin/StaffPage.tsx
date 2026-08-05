@@ -7,6 +7,7 @@ import { deactivateStaff, getMe, getStaff } from '@/api';
 import { qk } from '@/api/keys';
 import { ICON_BUTTON } from '@/components/form';
 import { ListCount } from '@/components/ListCount';
+import { ListFrame } from '@/components/ListFrame';
 import { Failed, Pending } from '@/components/QueryState';
 import { formatDate } from '@/lib/format';
 import { ROLE_LABEL } from '@/lib/staff';
@@ -26,10 +27,10 @@ export default function AdminStaffPage() {
         mutationFn: (id : string) => deactivateStaff(id),
         onSuccess: (staff) => {
             void queryClient.invalidateQueries({ queryKey: qk.staff });
-            toast(`${staff.username}을(를) 퇴사 처리했습니다`);
+            toast.success(`${staff.username}을(를) 퇴사 처리했습니다`);
         },
         onError: (error) => {
-            toast('퇴사 처리하지 못했습니다', { description: error.message });
+            toast.error('퇴사 처리하지 못했습니다', { description: error.message });
         },
     });
 
@@ -49,62 +50,62 @@ export default function AdminStaffPage() {
         <div>
             <ListCount prefix="재직" value={members.data.length} unit="명" />
 
-            <div
-                className={cn(
-                    GRID,
-                    'mb-1.5 border-b border-border pb-1.5 text-xs text-ink-muted',
-                )}
+            <ListFrame
+                grid={GRID}
+                header={
+                    <>
+                        <span>아이디</span>
+                        <span>이메일</span>
+                        <span>직군</span>
+                        <span>소속</span>
+                        <span className="text-right">가입일</span>
+                        <span />
+                    </>
+                }
             >
-                <span>아이디</span>
-                <span>이메일</span>
-                <span>직군</span>
-                <span>소속</span>
-                <span className="text-right">가입일</span>
-                <span />
-            </div>
+                <div className="divide-y divide-border">
+                    {members.data.map((member) => {
+                        const self = member.id === me?.id;
 
-            <div className="divide-y divide-border">
-                {members.data.map((member) => {
-                    const self = member.id === me?.id;
+                        return (
+                            <div key={member.id} className={cn(GRID, 'py-3.5')}>
+                                <span className="truncate text-[15px]">
+                                    {member.username}
+                                    {self && <span className="ml-1.5 text-xs text-ink-faint">나</span>}
+                                </span>
 
-                    return (
-                        <div key={member.id} className={cn(GRID, 'py-3.5')}>
-                            <span className="truncate text-[15px]">
-                                {member.username}
-                                {self && <span className="ml-1.5 text-xs text-ink-faint">나</span>}
-                            </span>
+                                <span className="truncate text-sm text-ink-muted" title={member.email}>
+                                    {member.email}
+                                </span>
 
-                            <span className="truncate text-sm text-ink-muted" title={member.email}>
-                                {member.email}
-                            </span>
+                                <span className="text-sm text-ink-muted">
+                                    {ROLE_LABEL[member.role]}
+                                </span>
 
-                            <span className="text-sm text-ink-muted">
-                                {ROLE_LABEL[member.role]}
-                            </span>
+                                <span className="truncate text-sm text-ink-muted">
+                                    {member.department || '미지정'}
+                                </span>
 
-                            <span className="truncate text-sm text-ink-muted">
-                                {member.department || '미지정'}
-                            </span>
+                                <span className="truncate text-right text-sm text-ink-muted">
+                                    {formatDate(member.created_at)}
+                                </span>
 
-                            <span className="truncate text-right text-sm text-ink-muted">
-                                {formatDate(member.created_at)}
-                            </span>
-
-                            {/* 본인 제외 */}
-                            <button
-                                type="button"
-                                onClick={() => confirmDeactivate(member.id, member.username)}
-                                disabled={self || mePending || deactivate.isPending}
-                                aria-label={`${member.username} 퇴사 처리`}
-                                title={self ? '본인은 퇴사 처리할 수 없습니다' : '퇴사 처리'}
-                                className={`justify-self-end hover:text-danger ${ICON_BUTTON}`}
-                            >
-                                <UserMinus size={15} />
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
+                                {/* 본인 제외 */}
+                                <button
+                                    type="button"
+                                    onClick={() => confirmDeactivate(member.id, member.username)}
+                                    disabled={self || mePending || deactivate.isPending}
+                                    aria-label={`${member.username} 퇴사 처리`}
+                                    title={self ? '본인은 퇴사 처리할 수 없습니다' : '퇴사 처리'}
+                                    className={`justify-self-end hover:text-danger ${ICON_BUTTON}`}
+                                >
+                                    <UserMinus size={15} />
+                                </button>
+                            </div>
+                        );
+                    })}
+                </div>
+            </ListFrame>
 
             <p className="mt-4 text-xs text-ink-faint">
                 재직 중인 계정만 표시됩니다

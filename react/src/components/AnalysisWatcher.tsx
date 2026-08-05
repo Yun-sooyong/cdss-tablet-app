@@ -7,9 +7,11 @@ import { getBatches, getJobsByBatch } from '@/api';
 import { qk } from '@/api/keys';
 import { needsReview } from '@/lib/decision';
 import { isBatchTerminal } from '@/lib/jobStatus';
-import { patientBrief } from '@/lib/patient';
+import { patientLabel } from '@/lib/patient';
 
-const POLL_MS = 5000;
+// 진행 중인 배치가 있을 때만 자주 본다. 없으면 감지할 것도 없다
+const BUSY_MS = 5000;
+const IDLE_MS = 60000;
 
 /* 분석 완료 감시 >> 화면과 무관하게 세션 내내 돈다. 완료 시 토스트 */
 export function AnalysisWatcher() {
@@ -43,11 +45,11 @@ export function AnalysisWatcher() {
                 if (!alive) return;
 
                 const review = jobs.filter((j) => needsReview(j.result)).length;
-                const who = batch.patient_summary
-                    ? patientBrief(batch.patient_summary)
-                    : '환자 미연결';
+                const who = patientLabel(batch.patient_summary);
 
-                toast(batch.status === 'failed' ? '분석 실패' : '분석 완료', {
+                const notify = batch.status === 'failed' ? toast.error : toast.success;
+
+                notify(batch.status === 'failed' ? '분석 실패' : '분석 완료', {
                     description:
                         review > 0
                             ? `${who} · ${jobs.length}건 중 확인 필요 ${review}건`
@@ -63,12 +65,23 @@ export function AnalysisWatcher() {
             started.current = true;
         }
 
-        void tick();
-        const id = setInterval(() => void tick(), POLL_MS);
+        let timer : ReturnType<typeof setTimeout>;
+
+        async function loop() {
+            await tick();
+            if (!alive) return;
+
+            timer = setTimeout(
+                () => void loop(),
+                watching.current.size > 0 ? BUSY_MS : IDLE_MS,
+            );
+        }
+
+        void loop();
 
         return () => {
             alive = false;
-            clearInterval(id);
+            clearTimeout(timer);
         };
     }, [navigate, queryClient]);
 
