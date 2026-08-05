@@ -3,7 +3,7 @@ export const qk = {
     me: ['me'] as const,
     staff: ['staff'] as const,
     departments: ['departments'] as const,
-    invitations: ['invitations'] as const,
+    accountRequests: (status? : string) => ['account-requests', status ?? 'all'] as const,
     modelVersions: ['model-versions'] as const,
 
     notifications: ['notifications'] as const,
