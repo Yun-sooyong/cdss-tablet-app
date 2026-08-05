@@ -4,11 +4,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
-from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.common.permissions import get_staff_or_403
+from apps.patients.models import Patient
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion, WorkerHeartbeat
 from .serializers import (
@@ -48,10 +49,11 @@ def with_batch_counts(queryset):
     불러야 했고, 그때마다 BatchDetailView.get의 AuditLog READ가
     쌓이는 문제가 있었다(07 화면 2초 폴링이라 특히 심함).
 
-    needs_review_count = 의료진 확인을 기다리는 job 수 — succeeded뿐
-    아니라 stil_done(sTIL은 끝나서 볼 게 있음, MedGemma 리포트만 대기)도
-    포함 (최일운 확인, 2026-08-05). queued/running/failed는 아직
-    확인 대상이 아니라고 보고 제외했다.
+    needs_review_count = 의료진 확인을 기다리는 job 수. 결과가 나온 job
+    (stil_done/succeeded) 전부가 아니라, 그 중 판정이 ABSTAIN(유보)인
+    것만 센다 — 화면이 말하는 "확인 필요"는 유보된 것뿐이라 결과 나온
+    job 수를 그대로 쓰면 숫자가 안 맞았다 (최일운 요청, 2026-08-05.
+    슬라이드 10장 중 8장 완료·2장 유보면 8이 아니라 2를 원함).
     """
     from .models import Job  # noqa: PLC0415 — 순환 임포트 회피
 
@@ -61,7 +63,8 @@ def with_batch_counts(queryset):
             "images__jobs",
             filter=Q(
                 images__jobs__status__in=[Job.Status.STIL_DONE, Job.Status.SUCCEEDED]
-            ),
+            )
+            & Q(images__jobs__result__decision="ABSTAIN"),
             distinct=True,
         ),
     )
@@ -76,6 +79,17 @@ def get_accessible_batch_or_404(staff, batch_id):
         id=batch_id,
         deleted_at__isnull=True,
     )
+
+
+def get_own_batch_or_404(staff, batch_id):
+    """본인 batch만. get_object_or_404를 그대로 쓰면 DRF 기본 문구
+    "No Batch matches the given query."가 그대로 화면에 뜬다 — 소유자가
+    아닌 배치를 공유하려 할 때 나오는 메시지라 한글로 바꿨다 (최일운
+    요청, 2026-08-05)."""
+    try:
+        return Batch.objects.get(id=batch_id, created_by=staff)
+    except Batch.DoesNotExist:
+        raise NotFound("본인이 만든 배치만 공유할 수 있습니다.") from None
 
 
 class ModelVersionListView(APIView):
@@ -96,8 +110,21 @@ class ModelVersionListView(APIView):
         return Response(ModelVersionSerializer(versions.order_by("name"), many=True).data)
 
 
+DEFAULT_BATCH_LIST_LIMIT = 50
+MAX_BATCH_LIST_LIMIT = 200
+
+
 class BatchListCreateView(APIView):
-    """설계문서 3.2-b — 본인 batch + 공유받은 batch."""
+    """설계문서 3.2-b — 본인 batch + 공유받은 batch.
+
+    목록이 쿼리 파라미터도 페이지네이션도 없이 통째로 내려가서, 배치가
+    1000건을 넘으면 응답 한 번에 다 오고 화면이 1000행을 한꺼번에
+    그리는 문제가 있었다 (최일운 요청, 2026-08-05). ?limit=/?offset=로
+    페이지를 끊고, ?patient=/?status=/?date_from=/?date_to=/?q=로
+    서버 필터·검색을 추가했다. patient.name은 암호화 컬럼이라 DB에서
+    LIKE 검색이 안 되므로, ?q=는 chart_number는 DB에서, name은
+    복호화한 뒤 파이썬에서 부분일치를 확인한다 — 환자 수가 배치 수보다
+    훨씬 적다는 전제."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -105,10 +132,69 @@ class BatchListCreateView(APIView):
     def get(self, request):
         staff = get_staff_or_403(request.user)
         shared_batch_ids = active_shares_for(staff).values_list("batch_id", flat=True)
-        batches = with_batch_counts(Batch.objects).filter(
-            Q(created_by=staff) | Q(id__in=shared_batch_ids), deleted_at__isnull=True
-        ).distinct().order_by("-created_at")
-        return Response(BatchSerializer(batches, many=True).data)
+        batches = (
+            with_batch_counts(Batch.objects)
+            .select_related("patient")
+            .filter(
+                Q(created_by=staff) | Q(id__in=shared_batch_ids),
+                deleted_at__isnull=True,
+            )
+            .distinct()
+        )
+
+        patient_id = request.query_params.get("patient")
+        if patient_id:
+            batches = batches.filter(patient_id=patient_id)
+
+        status_filter = request.query_params.get("status")
+        if status_filter:
+            batches = batches.filter(status=status_filter)
+
+        date_from = request.query_params.get("date_from")
+        if date_from:
+            batches = batches.filter(created_at__date__gte=date_from)
+
+        date_to = request.query_params.get("date_to")
+        if date_to:
+            batches = batches.filter(created_at__date__lte=date_to)
+
+        q = request.query_params.get("q")
+        if q:
+            chart_matched_ids = set(
+                Patient.objects.filter(chart_number__icontains=q).values_list(
+                    "id", flat=True
+                )
+            )
+            name_matched_ids = {
+                p.id
+                for p in Patient.objects.only("id", "name")
+                if q.lower() in (p.name or "").lower()
+            }
+            batches = batches.filter(
+                patient_id__in=chart_matched_ids | name_matched_ids
+            )
+
+        batches = batches.order_by("-created_at")
+        total_count = batches.count()
+
+        try:
+            limit = min(
+                int(request.query_params.get("limit", DEFAULT_BATCH_LIST_LIMIT)),
+                MAX_BATCH_LIST_LIMIT,
+            )
+            offset = int(request.query_params.get("offset", 0))
+        except ValueError:
+            raise ValidationError("limit/offset은 정수여야 합니다.") from None
+
+        page = batches[offset : offset + limit]
+        return Response(
+            {
+                "count": total_count,
+                "limit": limit,
+                "offset": offset,
+                "results": BatchSerializer(page, many=True).data,
+            }
+        )
 
     @extend_schema(request=BatchCreateSerializer, responses=BatchSerializer)
     def post(self, request):
@@ -386,7 +472,7 @@ class BatchShareListCreateView(APIView):
     @extend_schema(responses=AnalysisShareSerializer(many=True))
     def get(self, request, batch_id):
         staff = get_staff_or_403(request.user)
-        batch = get_object_or_404(Batch, id=batch_id, created_by=staff)
+        batch = get_own_batch_or_404(staff, batch_id)
         shares = AnalysisShare.objects.filter(batch=batch).order_by("-created_at")
         return Response(AnalysisShareSerializer(shares, many=True).data)
 
@@ -395,7 +481,7 @@ class BatchShareListCreateView(APIView):
     )
     def post(self, request, batch_id):
         staff = get_staff_or_403(request.user)
-        batch = get_object_or_404(Batch, id=batch_id, created_by=staff)
+        batch = get_own_batch_or_404(staff, batch_id)
 
         serializer = AnalysisShareCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

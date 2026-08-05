@@ -47,6 +47,12 @@ class Batch(BaseModel):
 
     class Meta:
         db_table = "batch"
+        # 목록 정렬·필터가 전부 이 컬럼들을 쓰는데 인덱스가 없었다
+        # (최일운 요청, 2026-08-05 — 배치 1000건 넘어가는 목록 대응).
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["status"]),
+        ]
 
 
 class Image(BaseModel):
@@ -83,6 +89,10 @@ class Job(BaseModel):
 
     class Meta:
         db_table = "job"
+        indexes = [
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["status"]),
+        ]
 
 
 class AnalysisShare(BaseModel):
