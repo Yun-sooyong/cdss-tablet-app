@@ -16,6 +16,7 @@ from apps.staff.models import Staff
 
 from .models import AuditLog, DeviceToken, Invitation, Notification, QRToken, User
 from .serializers import (
+    AuditLogSerializer,
     DeviceTokenSerializer,
     InvitationIssueSerializer,
     InvitationRedeemSerializer,
@@ -204,6 +205,37 @@ class NotificationReadAllView(APIView):
     def post(self, request):
         Notification.objects.filter(user=request.user, is_read=False).update(is_read=True)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AuditLogListView(APIView):
+    """GET /audit-logs — 접근 로그 조회 (최일운 요청, 2026-08-05).
+
+    지금까지 기록(log_access)만 되고 조회 API가 없었다. 누가 어떤
+    환자 정보를 봤는지가 드러나는 민감한 로그라 관리자 권한만 조회
+    가능하게 했다 — 이 범위가 맞는지는 확인 필요(의료진 본인이 자기
+    행위 로그만 보는 것도 허용할지 등). ?patient_id=로 특정 환자
+    기준 조회, ?actor_user_id=로 특정 직원 기준 조회 지원.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=AuditLogSerializer(many=True))
+    def get(self, request):
+        staff = get_staff_or_403(request.user)
+        if staff.role != Staff.Role.ADMIN:
+            raise PermissionDenied("관리자 권한 의료진만 감사 로그를 조회할 수 있습니다.")
+
+        logs = AuditLog.objects.select_related("actor_user").order_by("-created_at")
+
+        patient_id = request.query_params.get("patient_id")
+        if patient_id:
+            logs = logs.filter(patient_id=patient_id)
+
+        actor_user_id = request.query_params.get("actor_user_id")
+        if actor_user_id:
+            logs = logs.filter(actor_user_id=actor_user_id)
+
+        return Response(AuditLogSerializer(logs[:200], many=True).data)
 
 
 class LogoutView(APIView):

@@ -35,3 +35,14 @@ class StaffMeUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Staff
         fields = ["department"]
+
+
+class StaffAdminUpdateSerializer(serializers.ModelSerializer):
+    """관리자가 다른 직원 정보를 수정 (최일운 요청, 2026-08-05). role까지
+    바꿀 수 있는 건 호출자가 관리자로 검증된 뒤라서 자기 자신을 못 바꾸는
+    StaffMeUpdateSerializer보다 범위를 넓혔다. employment_status/resigned_at은
+    여기서 안 다룬다 — DELETE /staff/{id}(비활성화 전용 흐름)가 이미 있다."""
+
+    class Meta:
+        model = Staff
+        fields = ["role", "department"]

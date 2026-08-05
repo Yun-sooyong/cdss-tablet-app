@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.staff.models import Staff
 
-from .models import DeviceToken, Invitation, Notification, QRToken
+from .models import AuditLog, DeviceToken, Invitation, Notification, QRToken
 
 
 class InvitationIssueSerializer(serializers.Serializer):
@@ -69,3 +69,22 @@ class LogoutSerializer(serializers.Serializer):
 class PasswordChangeSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, min_length=8)
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    actor_username = serializers.CharField(source="actor_user.username", read_only=True)
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            "id",
+            "actor_user",
+            "actor_username",
+            "action",
+            "target_table",
+            "target_id",
+            "patient",
+            "ip",
+            "created_at",
+        ]
+        read_only_fields = fields
