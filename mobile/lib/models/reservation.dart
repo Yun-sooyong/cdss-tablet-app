@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-enum ReservationStatus { upcoming, completed, canceled, noShow }
-=======
 enum ReservationStatus { requested, confirmed, changed, canceled, noShow }
 
 extension ReservationStatusLabel on ReservationStatus {
@@ -19,7 +16,6 @@ extension ReservationStatusLabel on ReservationStatus {
     }
   }
 }
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 enum VisitType { first, follow }
 
@@ -36,11 +32,7 @@ extension VisitTypeLabel on VisitType {
 
 class Reservation {
   final String id;
-<<<<<<< HEAD
-  DateTime dateTime; // 일정 수정 가능해야 하니까 final 뺐음
-=======
   DateTime dateTime;
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
   final String hospitalName;
   final String department;
   final String purpose;
@@ -54,12 +46,6 @@ class Reservation {
     required this.department,
     required this.purpose,
     required this.doctorName,
-<<<<<<< HEAD
-    this.status = ReservationStatus.upcoming,
-  });
-
-  bool get isUpcoming => status == ReservationStatus.upcoming;
-=======
     this.status = ReservationStatus.requested,
   });
 
@@ -68,5 +54,4 @@ class Reservation {
           status == ReservationStatus.confirmed ||
           status == ReservationStatus.changed) &&
       dateTime.isAfter(DateTime.now());
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 }

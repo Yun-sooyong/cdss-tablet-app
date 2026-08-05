@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 class Diagnosis {
   final String nameKo;
   final bool isPrimary;
@@ -13,31 +11,20 @@ class Diagnosis {
   }
 }
 
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 class Visit {
   final String id;
   final DateTime date;
   final String department;
-<<<<<<< HEAD
-  final String memo; // 병명/진료 사유
-  final String? doctorName;
-=======
   final String memo; // 목록 화면 검색·표시용 (진단명 우선, 없으면 note)
   final String note; // 의료진이 남긴 원본 메모 — 상세화면에서 항상 이걸 보여줌
   final String? doctorName;
   final List<Diagnosis> diagnoses;
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
   Visit({
     required this.id,
     required this.date,
     required this.department,
     required this.memo,
-<<<<<<< HEAD
-    this.doctorName,
-  });
-}
-=======
     required this.note,
     this.doctorName,
     this.diagnoses = const [],
@@ -62,4 +49,3 @@ class Visit {
     );
   }
 }
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d

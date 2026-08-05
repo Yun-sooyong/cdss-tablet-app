@@ -6,19 +6,6 @@ class DocumentDetailScreen extends StatelessWidget {
 
   const DocumentDetailScreen({super.key, required this.reservation});
 
-  String _statusLabel(ReservationStatus status) {
-    switch (status) {
-      case ReservationStatus.upcoming:
-        return '접수됨';
-      case ReservationStatus.completed:
-        return '발급 완료';
-      case ReservationStatus.canceled:
-        return '취소됨';
-      default:
-        return '알 수 없음';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final title = reservation.purpose.replaceFirst('서류 발급 · ', '');
@@ -45,7 +32,7 @@ class DocumentDetailScreen extends StatelessWidget {
                     _DetailRow(label: '진료과', value: reservation.department),
                     _DetailRow(label: '담당의', value: reservation.doctorName),
                     _DetailRow(
-                        label: '상태', value: _statusLabel(reservation.status)),
+                        label: '상태', value: reservation.status.label),
                   ],
                 ),
               ),

@@ -4,11 +4,8 @@ import '../services/medication_service.dart';
 import '../theme/app_colors.dart';
 import 'weekly_medication_history_screen.dart';
 import '../services/notification_service.dart';
-<<<<<<< HEAD
-=======
 import '../utils/top_banner.dart';
 import '../widgets/loading_spinner.dart';
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
 
 class MedicationScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -43,13 +40,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
     if (saved == true) {
       await widget.notificationService.scheduleDailyDoseReminders(_doses);
       if (!mounted) return;
-<<<<<<< HEAD
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('알림 시간이 변경되었습니다.')),
-      );
-=======
       showTopBanner(context, '알림 시간이 변경되었습니다.');
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     }
   }
 
@@ -77,11 +68,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-<<<<<<< HEAD
-      return const Center(child: CircularProgressIndicator());
-=======
       return const Center(child: LoadingSpinner());
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
     }
 
     final now = DateTime.now();
@@ -256,11 +243,7 @@ class _DoseTimeSettingsSheetState extends State<_DoseTimeSettingsSheet> {
       ),
       child: _isLoading
           ? const SizedBox(
-<<<<<<< HEAD
-              height: 120, child: Center(child: CircularProgressIndicator()))
-=======
               height: 120, child: Center(child: LoadingSpinner(size: 36)))
->>>>>>> 4bf4cf3c8ad4123992d564a8f598ba516127f66d
           : Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
