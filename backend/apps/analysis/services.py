@@ -28,6 +28,17 @@ def build_mask_read_url(job) -> str | None:
     return generate_signed_url(f"masks/{job.id}.png", method="GET")
 
 
+def build_original_read_url(image) -> str:
+    """원본 슬라이드 이미지 조회용 서명 URL(GET).
+
+    업로드용 서명 URL(PUT)은 있었는데 다시 불러와서 보는 용도(GET)가
+    빠져있었다 — 최일운·윤수용 요청, 2026-08-05. storage_key 자체는
+    GCS 버킷 안의 키 문자열일 뿐이라 브라우저/앱에서 직접 열 수 없다.
+    mask_url과 달리 상태 제약 없이 업로드 직후부터 항상 유효하다.
+    """
+    return generate_signed_url(image.storage_key, method="GET")
+
+
 def create_image_with_upload_url(batch, filename: str):
     """batch에 이미지 레코드를 만들고 업로드 URL을 발급한다.
 

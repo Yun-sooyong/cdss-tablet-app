@@ -5,7 +5,7 @@ from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Staff
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion
-from .services import build_mask_read_url
+from .services import build_mask_read_url, build_original_read_url
 
 
 class ModelVersionSerializer(serializers.ModelSerializer):
@@ -59,12 +59,17 @@ class BatchCreateSerializer(serializers.Serializer):
 
 
 class ImageSerializer(serializers.ModelSerializer):
+    # storage_key는 GCS 안의 키 문자열일 뿐 직접 열 수 있는 URL이 아니라서
+    # 조회용 서명 URL을 따로 내려준다 (최일운 요청, 2026-08-05).
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Image
         fields = [
             "id",
             "batch",
             "storage_key",
+            "image_url",
             "original_filename",
             "captured_at",
             "width",
@@ -72,6 +77,9 @@ class ImageSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+    def get_image_url(self, obj) -> str:
+        return build_original_read_url(obj)
 
 
 class ImageUploadRequestSerializer(serializers.Serializer):
@@ -103,6 +111,7 @@ class JobSerializer(serializers.ModelSerializer):
 
     patient_summary = serializers.SerializerMethodField()
     image_summary = ImageSummarySerializer(source="image", read_only=True)
+    original_url = serializers.SerializerMethodField()
     mask_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -111,6 +120,7 @@ class JobSerializer(serializers.ModelSerializer):
             "id",
             "image",
             "image_summary",
+            "original_url",
             "model_version",
             "status",
             "result",
@@ -128,6 +138,9 @@ class JobSerializer(serializers.ModelSerializer):
         if patient is None:
             return None
         return PatientSummarySerializer(patient).data
+
+    def get_original_url(self, obj) -> str:
+        return build_original_read_url(obj.image)
 
     def get_mask_url(self, obj) -> str | None:
         return build_mask_read_url(obj)
