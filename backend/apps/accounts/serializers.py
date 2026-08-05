@@ -29,6 +29,15 @@ class InvitationRedeemSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, min_length=8)
 
 
+class AccountRequestCreateSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=50)
+    email = serializers.EmailField()
+    requested_role = serializers.ChoiceField(choices=Staff.Role.choices)
+    requested_department = serializers.CharField(
+        max_length=100, required=False, allow_blank=True, default=""
+    )
+
+
 class QRTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = QRToken
