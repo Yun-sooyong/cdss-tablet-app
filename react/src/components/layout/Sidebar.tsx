@@ -11,6 +11,7 @@ import { UploadIndicator } from '@/components/upload/UploadIndicator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { APP_NAME } from '@/lib/app';
 import { needsReview } from '@/lib/decision';
+import { unreadIn } from '@/lib/notification';
 import { ROLE_LABEL } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 import type { NavGroup } from './nav';
@@ -193,7 +194,8 @@ function NavList({
 
     const count = {
         review: jobs?.filter((job) => needsReview(job.result)).length ?? 0,
-        unread: notifications?.filter((n) => !n.is_read).length ?? 0,
+        // 배지와 알림 화면이 같은 것을 세야 한다
+        unread: unreadIn(notifications, tone === 'admin' ? 'admin' : 'clinical'),
     };
 
     return (
