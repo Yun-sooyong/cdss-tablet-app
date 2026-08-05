@@ -5,6 +5,7 @@ from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Staff
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion
+from .services import build_mask_read_url
 
 
 class ModelVersionSerializer(serializers.ModelSerializer):
@@ -85,6 +86,7 @@ class JobSerializer(serializers.ModelSerializer):
     환자 맥락이 붙는다."""
 
     patient_summary = serializers.SerializerMethodField()
+    mask_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -94,6 +96,7 @@ class JobSerializer(serializers.ModelSerializer):
             "model_version",
             "status",
             "result",
+            "mask_url",
             "error_message",
             "patient_summary",
             "started_at",
@@ -107,6 +110,9 @@ class JobSerializer(serializers.ModelSerializer):
         if patient is None:
             return None
         return PatientSummarySerializer(patient).data
+
+    def get_mask_url(self, obj) -> str | None:
+        return build_mask_read_url(obj)
 
 
 class JobCreateSerializer(serializers.Serializer):

@@ -139,6 +139,20 @@ backend는 `result`를 **덮어쓰지 않고 기존 값에 병합(merge)** 한�
 작성 중" 같은 중간 상태 UI가 필요하다. `finished_at`은 `succeeded`/`failed`
 에서만 채워지고 `stil_done`에서는 비어있다 — 진행 중임을 이걸로 구분 가능.
 
+## 3.1 마스크 이미지 업로드 (2026-08-05 추가)
+
+워커가 GCS에 결과 마스크 이미지를 **직접** 업로드한다 (콜백에 base64로
+싣지 않음).
+
+- **경로**: `masks/{job_id}.png` — job_id로 결정되는 고정 경로라 `result`
+  JSON에 별도 키로 담아 보낼 필요 없음.
+- **쓰기 권한**: `worker-gcs-reader@...`에 `masks/` prefix 한정
+  `roles/storage.objectCreator` 추가함 (`uploads/`는 여전히 읽기 전용).
+- backend는 `Job.status`가 `stil_done` 또는 `succeeded`일 때만
+  `JobSerializer.mask_url`에 서명된 GET URL을 내려준다 — 그 이전 상태에서
+  올린 파일이 없으면 프론트가 404를 보게 되니, 마스크 업로드가
+  **`stil_done` 콜백 전에** 끝나 있어야 한다.
+
 ## 4. INTERNAL_API_TOKEN
 
 `backend/.env`와 `worker/.env`의 `INTERNAL_API_TOKEN` 값이 동일해야 한다.

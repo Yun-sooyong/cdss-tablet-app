@@ -1,50 +1,31 @@
 import uuid
 
-from django.conf import settings
 from django.utils import timezone
+
+from apps.common.gcs import generate_signed_url
 
 
 def build_upload_url(storage_key: str) -> str:
-    """이미지 업로드용 서명 URL 발급.
+    """이미지 업로드용 서명 URL(PUT) 발급."""
+    return generate_signed_url(
+        storage_key, method="PUT", content_type="application/octet-stream"
+    )
 
-    settings.GCS_BUCKET이 비어있으면(로컬 등 GCS 미설정 환경) mock URL을
-    돌려준다. Cloud Run은 JSON 키 파일이 없으므로(조직 정책으로 서비스
-    계정 키 발급이 막혀있음 — worker/INTERFACE.md 2절과 동일한 이유),
-    IAM SignBlob API로 서명한다. 이 서비스 계정 자신에게
-    roles/iam.serviceAccountTokenCreator 권한이 있어야 동작한다.
+
+def build_mask_read_url(job) -> str | None:
+    """분석 결과 마스크 이미지 조회용 서명 URL(GET).
+
+    검모님 워커가 마스크를 masks/{job_id}.png 경로에 직접 업로드하기로
+    확정 (2026-08-05) — job_id로 결정되는 경로라 result JSON에 키를
+    별도로 담아 보낼 필요가 없다. sTIL 단계(stil_done)부터 파일이 있을
+    수 있으므로 대기/실패 상태에서는 URL을 만들지 않는다(있지도 않은
+    파일에 서명해봐야 프론트가 괜히 404만 본다).
     """
-    if not settings.GCS_BUCKET:
-        return f"https://mock-upload.local/{storage_key}"
+    from .models import Job  # noqa: PLC0415 — 순환 임포트 회피
 
-    from datetime import timedelta  # noqa: PLC0415
-
-    import google.auth  # noqa: PLC0415
-    from google.auth import iam  # noqa: PLC0415
-    from google.auth.transport import requests as gauth_requests  # noqa: PLC0415
-    from google.cloud import storage  # noqa: PLC0415
-    from google.oauth2 import service_account  # noqa: PLC0415
-
-    credentials, _ = google.auth.default()
-    auth_request = gauth_requests.Request()
-    credentials.refresh(auth_request)
-
-    signer = iam.Signer(auth_request, credentials, credentials.service_account_email)
-    signing_credentials = service_account.Credentials(
-        signer,
-        credentials.service_account_email,
-        token_uri="https://oauth2.googleapis.com/token",
-    )
-
-    client = storage.Client(credentials=credentials)
-    blob = client.bucket(settings.GCS_BUCKET).blob(storage_key)
-
-    return blob.generate_signed_url(
-        version="v4",
-        expiration=timedelta(minutes=15),
-        method="PUT",
-        content_type="application/octet-stream",
-        credentials=signing_credentials,
-    )
+    if job.status not in (Job.Status.STIL_DONE, Job.Status.SUCCEEDED):
+        return None
+    return generate_signed_url(f"masks/{job.id}.png", method="GET")
 
 
 def create_image_with_upload_url(batch, filename: str):
