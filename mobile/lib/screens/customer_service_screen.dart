@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-// TODO: 실제 병원 연락처/주소/운영시간/문의 이메일로 교체 필요
-const _kHospitalPhone = '02-1234-5678';
-const _kHospitalAddress = '서울시 어딘가 123';
-const _kHospitalHours = '평일 09:00 - 18:00 (점심시간 12:00 - 13:00, 주말/공휴일 휴진)';
-const _kInquiryEmail = 'support@example.com';
+import '../constants/hospital_info.dart';
 
 class _FaqItem {
   final String question;
@@ -71,25 +66,25 @@ class CustomerServiceScreen extends StatelessWidget {
                 ListTile(
                   leading: Icon(Icons.call_outlined, color: primary),
                   title: const Text('전화 문의'),
-                  subtitle: const Text(_kHospitalPhone),
+                  subtitle: const Text(kHospitalPhone),
                   onTap: () => _launch(
-                      context, Uri(scheme: 'tel', path: _kHospitalPhone)),
+                      context, Uri(scheme: 'tel', path: kHospitalPhone)),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: Icon(Icons.location_on_outlined, color: primary),
                   title: const Text('오시는 길'),
-                  subtitle: const Text(_kHospitalAddress),
+                  subtitle: const Text(kHospitalAddress),
                   onTap: () => _launch(
                     context,
-                    Uri.parse('https://maps.google.com/?q=$_kHospitalAddress'),
+                    Uri.parse('https://maps.google.com/?q=$kHospitalAddress'),
                   ),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: Icon(Icons.access_time_outlined, color: primary),
                   title: const Text('운영시간'),
-                  subtitle: const Text(_kHospitalHours),
+                  subtitle: const Text(kHospitalHours),
                 ),
               ],
             ),
@@ -106,19 +101,19 @@ class CustomerServiceScreen extends StatelessWidget {
                   title: const Text('전화로 문의하기'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _launch(
-                      context, Uri(scheme: 'tel', path: _kHospitalPhone)),
+                      context, Uri(scheme: 'tel', path: kHospitalPhone)),
                 ),
                 const Divider(height: 1),
                 ListTile(
                   leading: Icon(Icons.email_outlined, color: primary),
                   title: const Text('이메일로 문의하기'),
-                  subtitle: const Text(_kInquiryEmail),
+                  subtitle: const Text(kInquiryEmail),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _launch(
                     context,
                     Uri(
                       scheme: 'mailto',
-                      path: _kInquiryEmail,
+                      path: kInquiryEmail,
                       queryParameters: {'subject': 'V-Tree 문의'},
                     ),
                   ),

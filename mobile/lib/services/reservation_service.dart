@@ -6,12 +6,12 @@ import 'api_client.dart';
 class ReservationService {
   final _client = ApiClient.instance;
 
-  static const List<String> documentTypes = [
-    '처방전',
-    '진단서',
-    '진료확인서',
-    '보험용 서류',
-    '기타'
+  // 백엔드 Reservation.DocumentType 중 NONE(해당 없음)을 뺀, 실제로 신청 가능한 서류 종류.
+  static const List<ReservationDocumentType> documentTypes = [
+    ReservationDocumentType.medicalCertificate,
+    ReservationDocumentType.opinion,
+    ReservationDocumentType.visitConfirmation,
+    ReservationDocumentType.prescriptionReissue,
   ];
 
   List<Department>? _departmentsCache;
@@ -61,7 +61,9 @@ class ReservationService {
         dateTime: DateTime.parse(json['scheduled_at'] as String),
         hospitalName: '서울내과',
         department: nameByCode[code] ?? code,
-        purpose: '',
+        reason: json['reason'] as String? ?? '',
+        documentType:
+            ReservationDocumentTypeX.fromApi(json['document_type'] as String?),
         doctorName: json['staff'] != null ? '배정됨' : '배정 예정',
         status: _statusFromString(json['status'] as String),
       );
@@ -82,7 +84,9 @@ class ReservationService {
 
   Future<List<Reservation>> fetchDocumentRequests() async {
     final all = await _fetchAll();
-    return all.where((r) => r.purpose.startsWith('서류 발급')).toList()
+    return all
+        .where((r) => r.documentType != ReservationDocumentType.none)
+        .toList()
       ..sort((a, b) => b.dateTime.compareTo(a.dateTime));
   }
 
@@ -107,7 +111,8 @@ class ReservationService {
     required DateTime dateTime,
     required String hospitalName,
     required String department, // 화면에서 고른 진료과 '이름' (예: '내과')
-    required String purpose,
+    String reason = '',
+    ReservationDocumentType documentType = ReservationDocumentType.none,
   }) async {
     final departments = await fetchDepartments();
     final match = departments.where((d) => d.name == department);
@@ -117,6 +122,8 @@ class ReservationService {
     final res = await _client.post('/api/v1/patients/me/reservations/', body: {
       'department': match.first.code,
       'scheduled_at': dateTime.toIso8601String(),
+      'reason': reason,
+      'document_type': documentType.apiValue,
     });
     if (res.statusCode != 201) throw Exception('예약 신청에 실패했어요.');
   }

@@ -39,7 +39,7 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
   final _symptomController = TextEditingController();
   Visit? _lastVisit;
   bool _loadingLastVisit = false;
-  String? _documentType;
+  ReservationDocumentType? _documentType;
 
   bool _isSubmitting = false;
 
@@ -126,9 +126,10 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
     return _documentType != null;
   }
 
+  // 확인 단계에 보여주기만 하는 요약 텍스트 — 서버로는 reason/documentType이 따로 감.
   String get _purposeText => _category == _VisitPurposeCategory.consult
       ? '진료 · ${_visitType!.label} · ${_symptomController.text.trim()}'
-      : '서류 발급 · $_documentType';
+      : '서류 발급 · ${_documentType!.label}';
 
   Future<void> _submit() async {
     setState(() => _isSubmitting = true);
@@ -139,7 +140,12 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
         dateTime: dateTime,
         hospitalName: '서울내과',
         department: _selectedDepartment!.name,
-        purpose: _purposeText,
+        reason: _category == _VisitPurposeCategory.consult
+            ? '${_visitType!.label} · ${_symptomController.text.trim()}'
+            : '',
+        documentType: _category == _VisitPurposeCategory.document
+            ? _documentType!
+            : ReservationDocumentType.none,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -431,12 +437,12 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
             onChanged: (_) => setState(() {}),
           ),
         ] else ...[
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<ReservationDocumentType>(
             value: _documentType,
             decoration: const InputDecoration(
                 labelText: '서류 종류', border: OutlineInputBorder()),
             items: documentTypes
-                .map((d) => DropdownMenuItem(value: d, child: Text(d)))
+                .map((d) => DropdownMenuItem(value: d, child: Text(d.label)))
                 .toList(),
             onChanged: (v) => setState(() => _documentType = v),
           ),

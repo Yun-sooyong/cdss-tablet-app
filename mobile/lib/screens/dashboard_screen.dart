@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/auth_service.dart';
 import '../services/medication_service.dart';
 import '../services/visit_service.dart';
 import '../services/reservation_service.dart';
+import '../services/streak_service.dart';
 import '../models/dose.dart';
 import '../models/reservation.dart';
+import '../services/notification_feed_service.dart';
+import '../constants/hospital_info.dart';
 import '../widgets/loading_spinner.dart';
+import 'notifications_screen.dart';
 import 'dart:math';
 
 class DashboardScreen extends StatefulWidget {
@@ -53,12 +58,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ];
   late final String _subtitleMessage;
 
+  static const List<String> _healthTips = [
+    '하루 물 8잔, 신진대사와 컨디션 관리에 도움이 돼요.',
+    '식후 30분 가벼운 산책은 소화와 혈당 조절에 좋아요.',
+    '창문을 열고 5분만 환기해도 실내 공기가 훨씬 맑아져요.',
+    '잠들기 1시간 전 화면을 멀리하면 수면의 질이 좋아져요.',
+    '하루 10분 스트레칭은 근육 긴장을 풀어주고 순환을 도와요.',
+    '카페인은 오후 3시 이후엔 되도록 줄이는 게 숙면에 좋아요.',
+    '앉아 있는 시간이 길다면 1시간마다 잠깐씩 일어나 움직여보세요.',
+    '깊게 숨을 들이쉬는 것만으로도 스트레스 완화에 도움이 돼요.',
+  ];
+  late final String _healthTip;
+
+  int? _streak;
+
   @override
   void initState() {
     super.initState();
     _subtitleMessage =
         _subtitleMessages[Random().nextInt(_subtitleMessages.length)];
+    _healthTip = _healthTips[Random().nextInt(_healthTips.length)];
+    StreakService.instance.recordVisitAndGetStreak().then((streak) {
+      if (!mounted) return;
+      setState(() => _streak = streak);
+    });
     _load();
+  }
+
+  Future<void> _callHospital(BuildContext context) async {
+    final ok = await launchUrl(Uri(scheme: 'tel', path: kHospitalPhone));
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('연결할 수 있는 앱을 찾지 못했어요.')),
+      );
+    }
   }
 
   Future<void> _load() async {
@@ -144,13 +177,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ],
                         ),
                       ),
+                      if (_streak != null && _streak! > 1)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('🌱', style: TextStyle(fontSize: 13)),
+                              const SizedBox(width: 4),
+                              Text('$_streak일째',
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: colorScheme.primary)),
+                            ],
+                          ),
+                        ),
                       IconButton(
                         icon: const Icon(Icons.notifications_none),
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('알림함은 아직 준비 중이에요.')),
-                          );
-                        },
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => NotificationsScreen(
+                                  service: NotificationFeedService())),
+                        ),
                       ),
                     ],
                   ),
@@ -270,6 +324,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: widget.onOpenQr,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 20),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: colorScheme.primary.withOpacity(0.15),
+                            child: Icon(Icons.eco_outlined,
+                                color: colorScheme.primary, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('오늘의 건강 팁',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold, fontSize: 14)),
+                                const SizedBox(height: 4),
+                                Text(_healthTip,
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: colorScheme.onSurfaceVariant,
+                                        height: 1.4)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Card(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () => _callHospital(context),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 18,
+                              backgroundColor: colorScheme.surfaceContainerHighest,
+                              child: Icon(Icons.local_hospital_outlined,
+                                  color: colorScheme.primary, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(kHospitalName,
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold, fontSize: 14)),
+                                  const SizedBox(height: 2),
+                                  Text(kHospitalHours,
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: colorScheme.onSurfaceVariant)),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.call_outlined,
+                                color: colorScheme.primary, size: 20),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
