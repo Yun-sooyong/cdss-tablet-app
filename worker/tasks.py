@@ -30,7 +30,11 @@ def run_job(self, job_id, image_key, conformal_q, model_version_id=None, model_n
     """
     send_heartbeat(WORKER_NAME)
     model_for_mosec = model_name or model_version_id
-    print(f"[run_job] 시작 — job_id={job_id}, model_name={model_name}, model_version_id={model_version_id}")
+    # image_key도 함께 남긴다 — 나중에 "이 결과가 어느 이미지였지?"를 로그만
+    # 보고 알 수 있어야 조사할 때 헤매지 않는다 (2026-08-05, immune 0% 조사 때
+    # 이게 없어서 image_key를 찾느라 한참 돌아갔다).
+    print(f"[run_job] 시작 — job_id={job_id}, image_key={image_key}, "
+          f"model_name={model_name}, model_version_id={model_version_id}")
 
     try:
         if conformal_q is None:

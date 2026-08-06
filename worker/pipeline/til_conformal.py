@@ -26,6 +26,7 @@ ALPHA = 0.10            # 90% 커버리지 목표
 
 # 인덱스 순서 = 클래스 인덱스 (0~4). 255=ignore는 구성비 분모에서 제외한다.
 CLASS_NAMES = ["tumor", "stroma", "immune", "necrosis", "other"]
+IGNORE_IDX = 255
 
 
 def stil_from_pred(pred: np.ndarray) -> Optional[float]:
@@ -68,6 +69,37 @@ def stil_from_mc_stack(mc_stack: np.ndarray) -> dict:
     }
 
 
+def consensus_mask(mc_stack: np.ndarray) -> np.ndarray:
+    """MC 스택 (N,H,W) -> 다수결(consensus) 마스크 (H,W).
+
+    각 픽셀에서 20회차가 투표해 가장 표를 많이 받은 클래스로 정한다. 실제
+    클래스 득표가 과반에 못 미치는 픽셀(즉 절반 이상이 255였던 픽셀)은
+    IGNORE_IDX로 남긴다.
+
+    ⚠️ 이 함수는 Mosec 쪽 inference.consensus_mask()와 같은 로직이다 — 프론트엔드
+       오버레이 PNG도 같은 방식으로 만들어지므로, 화면에 보이는 마스크와
+       여기서 나오는 구성비·시각화가 전부 같은 한 장을 가리키게 된다.
+       (2026-08-05: MedGemma에 mc_stack[0](랜덤 1회차)을 보여줘서 리포트 문장과
+        수치가 어긋나던 문제를 잡으면서 공용 함수로 뽑았다.)
+    """
+    if mc_stack.ndim != 3:
+        raise ValueError(f"mc_stack은 (N, H, W) 3차원이어야 함. got {mc_stack.shape}")
+
+    n_pass = mc_stack.shape[0]
+    votes = np.zeros((len(CLASS_NAMES),) + mc_stack.shape[1:], dtype=np.uint16)
+    # 회차를 하나씩 훑으며 누적한다. 클래스별로 (N,H,W)를 통째로 비교하면
+    # 임시 배열이 입력만큼 커져 Cloud Run Job 메모리 한도를 넘길 수 있다.
+    for k in range(n_pass):
+        frame = mc_stack[k]
+        for idx in range(len(CLASS_NAMES)):
+            votes[idx] += (frame == idx)
+
+    valid = votes.sum(axis=0) * 2 > n_pass
+    consensus = votes.argmax(axis=0).astype(np.uint8)
+    consensus[~valid] = IGNORE_IDX
+    return consensus
+
+
 def class_composition(mc_stack: np.ndarray) -> Optional[dict]:
     """MC 스택의 **다수결(consensus) 마스크**에서 클래스별 구성비(%)를 산출.
 
@@ -84,25 +116,12 @@ def class_composition(mc_stack: np.ndarray) -> Optional[dict]:
     Returns:
         {"tumor": 42.1, "stroma": 34.2, ...} — 유효 픽셀이 없으면 None
     """
-    if mc_stack.ndim != 3:
-        raise ValueError(f"mc_stack은 (N, H, W) 3차원이어야 함. got {mc_stack.shape}")
-
-    n_pass = mc_stack.shape[0]
-    votes = np.zeros((len(CLASS_NAMES),) + mc_stack.shape[1:], dtype=np.uint16)
-    # 회차를 하나씩 훑으며 누적한다. 클래스별로 (N,H,W)를 통째로 비교하면
-    # 임시 배열이 입력만큼 커져 Cloud Run Job 메모리 한도를 넘길 수 있다.
-    for k in range(n_pass):
-        frame = mc_stack[k]
-        for idx in range(len(CLASS_NAMES)):
-            votes[idx] += (frame == idx)
-
-    # 실제 클래스 득표가 과반인 픽셀만 유효 — 과반이 255면 ignore로 본다
-    valid = votes.sum(axis=0) * 2 > n_pass
+    consensus = consensus_mask(mc_stack)
+    valid = consensus != IGNORE_IDX
     n_valid_px = int(valid.sum())
     if n_valid_px == 0:
         return None
 
-    consensus = votes.argmax(axis=0)
     counts = np.bincount(consensus[valid], minlength=len(CLASS_NAMES))
     return {
         name: round(float(c) / n_valid_px * 100.0, 1)
