@@ -73,6 +73,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         Padding(
@@ -80,7 +81,7 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
           child: Row(
             children: [
               PopupMenuButton<VisitSearchField>(
-                icon: const Icon(Icons.filter_list),
+                icon: Icon(Icons.filter_list, color: colorScheme.primary),
                 tooltip: '${_fieldLabel(_field)}로 검색 중',
                 onSelected: (f) {
                   setState(() => _field = f);
@@ -95,15 +96,15 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                 child: TextField(
                   controller: _searchController,
                   decoration: InputDecoration(
-                    hintText: '${_fieldLabel(_field)} 검색',
-                    border: const OutlineInputBorder(),
+                    hintText: '${_fieldLabel(_field)} 검색 (예: 요통, 감기)',
+                    prefixIcon: const Icon(Icons.search, size: 20),
                     isDense: true,
                   ),
                   onSubmitted: (_) => _load(),
                 ),
               ),
               IconButton(
-                  icon: const Icon(Icons.calendar_today),
+                  icon: Icon(Icons.calendar_today, color: colorScheme.primary),
                   onPressed: _pickDate,
                   tooltip: '날짜로 필터'),
               if (_filterDate != null)
@@ -120,10 +121,10 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
         if (_isLoading)
           const Expanded(child: Center(child: LoadingSpinner()))
         else if (_visits.isEmpty)
-          const Expanded(
+          Expanded(
               child: Center(
-                  child:
-                      Text('진료 기록이 없어', style: TextStyle(color: Colors.grey))))
+                  child: Text('진료 기록이 없어',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant))))
         else
           Expanded(
             child: ListView.builder(
@@ -134,12 +135,18 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      child: Icon(Icons.health_and_safety_outlined,
+                          color: colorScheme.primary, size: 20),
+                    ),
                     title: Text(v.memo),
                     subtitle: Text(
                         '${v.department}${v.doctorName != null ? ' · ${v.doctorName}' : ''}'),
                     trailing: Text(
                       '${v.date.year}.${v.date.month.toString().padLeft(2, '0')}.${v.date.day.toString().padLeft(2, '0')}',
-                      style: const TextStyle(color: Colors.grey),
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
                     ),
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => VisitDetailScreen(visit: v)),

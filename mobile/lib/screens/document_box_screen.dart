@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/reservation.dart';
 import '../services/reservation_service.dart';
-import '../theme/app_colors.dart';
 import 'document_detail_screen.dart';
 
 class DocumentBoxScreen extends StatefulWidget {
@@ -34,14 +33,15 @@ class _DocumentBoxScreenState extends State<DocumentBoxScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('문서함')),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _documents.isEmpty
-              ? const Center(
-                  child:
-                      Text('신청한 서류가 없어요', style: TextStyle(color: Colors.grey)))
+              ? Center(
+                  child: Text('신청한 서류가 없어요',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant)))
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
                   itemCount: _documents.length,
@@ -50,12 +50,18 @@ class _DocumentBoxScreenState extends State<DocumentBoxScreen> {
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
-                        leading: Icon(Icons.description_outlined,
-                            color: AppColors.primary),
+                        leading: CircleAvatar(
+                          radius: 20,
+                          backgroundColor: colorScheme.surfaceContainerHighest,
+                          child: Icon(Icons.description_outlined,
+                              color: colorScheme.primary, size: 20),
+                        ),
                         title: Text(r.purpose.replaceFirst('서류 발급 · ', '')),
                         subtitle: Text(
                             '${r.dateTime.year}.${r.dateTime.month}.${r.dateTime.day} · ${r.department} · ${r.doctorName}'),
-                        trailing: Text(r.status.name),
+                        trailing: Text(r.status.label,
+                            style:
+                                TextStyle(color: colorScheme.onSurfaceVariant)),
                         onTap: () {
                           Navigator.push(
                             context,

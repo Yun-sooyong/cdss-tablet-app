@@ -101,6 +101,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('회원가입')),
       body: SafeArea(
@@ -137,7 +138,8 @@ class _SignupScreenState extends State<SignupScreen> {
                   _path == _SignupPath.newPatient
                       ? '병원 진료 이력이 없다면 이거예요. 새로 환자 정보를 등록해요.'
                       : '접수처에서 미리 등록된 환자번호가 있다면 이거예요. 기존 기록에 계정만 연결해요.',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: TextStyle(
+                      fontSize: 12, color: colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 20),
                 TextFormField(
@@ -235,7 +237,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!, style: const TextStyle(color: Colors.red)),
+                  Text(_error!, style: TextStyle(color: colorScheme.error)),
                 ],
                 const SizedBox(height: 20),
                 SizedBox(

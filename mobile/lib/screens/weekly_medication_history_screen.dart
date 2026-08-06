@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/dose.dart';
 import '../services/medication_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 
 class WeeklyMedicationHistoryScreen extends StatefulWidget {
@@ -47,6 +46,8 @@ class _WeeklyMedicationHistoryScreenState
               itemCount: _records.length,
               itemBuilder: (context, i) {
                 final record = _records[i];
+                final colorScheme = Theme.of(context).colorScheme;
+                final primary = colorScheme.primary;
                 final label =
                     '${dayLabels[record.date.weekday % 7]}요일 · ${record.date.month}.${record.date.day}';
                 if (record.doses.isEmpty) {
@@ -55,8 +56,8 @@ class _WeeklyMedicationHistoryScreenState
                     child: ListTile(
                       title: Text(label,
                           style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: const Text('아직 기록 없음',
-                          style: TextStyle(color: Colors.grey)),
+                      subtitle: Text('아직 기록 없음',
+                          style: TextStyle(color: colorScheme.onSurfaceVariant)),
                     ),
                   );
                 }
@@ -74,8 +75,8 @@ class _WeeklyMedicationHistoryScreenState
                                   ? Icons.check_circle
                                   : Icons.error_outline,
                               color: record.allTaken
-                                  ? AppColors.primary
-                                  : Colors.grey,
+                                  ? primary
+                                  : colorScheme.onSurfaceVariant,
                               size: 20,
                             ),
                             const SizedBox(width: 8),
@@ -93,8 +94,8 @@ class _WeeklyMedicationHistoryScreenState
                                     d.taken ? Icons.check : Icons.close,
                                     size: 16,
                                     color: d.taken
-                                        ? AppColors.primary
-                                        : Colors.grey,
+                                        ? primary
+                                        : colorScheme.onSurfaceVariant,
                                   ),
                                   const SizedBox(width: 6),
                                   Text('${d.time.label} · ${d.medicationName}'),

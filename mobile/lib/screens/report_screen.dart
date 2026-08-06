@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/dose.dart';
 import '../services/medication_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 
 const _kWeekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
@@ -45,10 +44,10 @@ class _ReportScreenState extends State<ReportScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final textSecondary =
-        isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final surface = colorScheme.surface;
+    final textSecondary = colorScheme.onSurfaceVariant;
+    final primary = colorScheme.primary;
 
     return Scaffold(
       appBar: AppBar(title: const Text('리포트')),
@@ -80,9 +79,9 @@ class _ReportScreenState extends State<ReportScreen> {
                                   value: _rate,
                                   strokeWidth: 6,
                                   backgroundColor:
-                                      AppColors.primary.withOpacity(0.15),
-                                  valueColor: const AlwaysStoppedAnimation(
-                                      AppColors.primary),
+                                      primary.withOpacity(0.15),
+                                  valueColor:
+                                      AlwaysStoppedAnimation(primary),
                                 ),
                               ),
                               Text('${(_rate * 100).round()}%',
@@ -154,9 +153,7 @@ class _ReportScreenState extends State<ReportScreen> {
                             record.allTaken
                                 ? Icons.check_circle
                                 : Icons.radio_button_unchecked,
-                            color: record.allTaken
-                                ? AppColors.primary
-                                : textSecondary,
+                            color: record.allTaken ? primary : textSecondary,
                             size: 20,
                           ),
                         ],

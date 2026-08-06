@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 import 'main_shell.dart';
 import 'signup_screen.dart';
+import '../services/push_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final AuthService authService;
@@ -49,6 +49,8 @@ class _LoginScreenState extends State<LoginScreen> {
         _idController.text.trim(),
         _passwordController.text,
       );
+      PushNotificationService.instance
+          .registerDeviceToken(); // await 안 함 — 권한 팝업 기다리다 화면전환 늦어질 필요 없음
       await _goToShell();
     } catch (e) {
       if (!mounted) return;
@@ -67,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -79,8 +82,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   Image.asset('assets/images/vtree_login_logo.png', width: 140),
                   const SizedBox(height: 4),
-                  const Text('건강을 더 가까이',
-                      style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  Text('건강을 더 가까이',
+                      style: TextStyle(
+                          fontSize: 13, color: colorScheme.onSurfaceVariant)),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _idController,
@@ -129,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
-                    Text(_error!, style: const TextStyle(color: Colors.red)),
+                    Text(_error!, style: TextStyle(color: colorScheme.error)),
                   ],
                   const SizedBox(height: 16),
                   SizedBox(

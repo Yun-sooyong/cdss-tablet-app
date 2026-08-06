@@ -5,7 +5,6 @@ import '../services/visit_service.dart';
 import '../services/reservation_service.dart';
 import '../services/qr_service.dart';
 import '../services/notification_service.dart';
-import '../theme/app_colors.dart';
 import 'dashboard_screen.dart';
 import 'medication_screen.dart';
 import 'visit_history_screen.dart';
@@ -48,6 +47,7 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final screens = [
       DashboardScreen(
         authService: widget.authService,
@@ -128,8 +128,9 @@ class _MainShellState extends State<MainShell> {
                   height: 64,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color:
-                        _index == 2 ? AppColors.primary : AppColors.secondary,
+                    color: _index == 2
+                        ? colorScheme.primary
+                        : colorScheme.secondary,
                     boxShadow: const [
                       BoxShadow(
                           color: Colors.black26,
@@ -162,7 +163,8 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.primary : Colors.grey;
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
     return InkWell(
       onTap: onTap,
       child: Column(

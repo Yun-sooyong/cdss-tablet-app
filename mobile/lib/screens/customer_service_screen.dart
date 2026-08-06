@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../theme/app_colors.dart';
 
 // TODO: 실제 병원 연락처/주소/운영시간/문의 이메일로 교체 필요
-const _kHospitalPhone = '02-0000-0000';
+const _kHospitalPhone = '02-1234-5678';
 const _kHospitalAddress = '서울시 어딘가 123';
 const _kHospitalHours = '평일 09:00 - 18:00 (점심시간 12:00 - 13:00, 주말/공휴일 휴진)';
 const _kInquiryEmail = 'support@example.com';
@@ -57,6 +56,7 @@ class CustomerServiceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
       appBar: AppBar(title: const Text('고객센터')),
       body: ListView(
@@ -69,8 +69,7 @@ class CustomerServiceScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading:
-                      const Icon(Icons.call_outlined, color: AppColors.primary),
+                  leading: Icon(Icons.call_outlined, color: primary),
                   title: const Text('전화 문의'),
                   subtitle: const Text(_kHospitalPhone),
                   onTap: () => _launch(
@@ -78,8 +77,7 @@ class CustomerServiceScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.location_on_outlined,
-                      color: AppColors.primary),
+                  leading: Icon(Icons.location_on_outlined, color: primary),
                   title: const Text('오시는 길'),
                   subtitle: const Text(_kHospitalAddress),
                   onTap: () => _launch(
@@ -88,11 +86,10 @@ class CustomerServiceScreen extends StatelessWidget {
                   ),
                 ),
                 const Divider(height: 1),
-                const ListTile(
-                  leading: Icon(Icons.access_time_outlined,
-                      color: AppColors.primary),
-                  title: Text('운영시간'),
-                  subtitle: Text(_kHospitalHours),
+                ListTile(
+                  leading: Icon(Icons.access_time_outlined, color: primary),
+                  title: const Text('운영시간'),
+                  subtitle: const Text(_kHospitalHours),
                 ),
               ],
             ),
@@ -105,8 +102,7 @@ class CustomerServiceScreen extends StatelessWidget {
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.phone_in_talk_outlined,
-                      color: AppColors.primary),
+                  leading: Icon(Icons.phone_in_talk_outlined, color: primary),
                   title: const Text('전화로 문의하기'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => _launch(
@@ -114,8 +110,7 @@ class CustomerServiceScreen extends StatelessWidget {
                 ),
                 const Divider(height: 1),
                 ListTile(
-                  leading: const Icon(Icons.email_outlined,
-                      color: AppColors.primary),
+                  leading: Icon(Icons.email_outlined, color: primary),
                   title: const Text('이메일로 문의하기'),
                   subtitle: const Text(_kInquiryEmail),
                   trailing: const Icon(Icons.chevron_right),
@@ -149,8 +144,11 @@ class CustomerServiceScreen extends StatelessWidget {
                       expandedCrossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(item.answer,
-                            style: const TextStyle(
-                                color: Colors.grey, height: 1.5)),
+                            style: TextStyle(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant,
+                                height: 1.5)),
                       ],
                     ),
                   ],

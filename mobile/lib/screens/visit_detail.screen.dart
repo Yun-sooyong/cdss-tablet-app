@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/visit.dart';
-import '../theme/app_colors.dart';
 
 class VisitDetailScreen extends StatelessWidget {
   final Visit visit;
@@ -9,6 +8,7 @@ class VisitDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('진료 상세')),
       body: SingleChildScrollView(
@@ -23,7 +23,7 @@ class VisitDetailScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${visit.department}${visit.doctorName != null ? ' · ${visit.doctorName}' : ''}',
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 20),
             if (visit.diagnoses.isNotEmpty) ...[
@@ -33,10 +33,18 @@ class VisitDetailScreen extends StatelessWidget {
               ...visit.diagnoses.map((d) => Card(
                     margin: const EdgeInsets.only(bottom: 8),
                     child: ListTile(
-                      leading: Icon(
-                        d.isPrimary ? Icons.star : Icons.circle_outlined,
-                        color: d.isPrimary ? AppColors.primary : Colors.grey,
-                        size: 20,
+                      leading: CircleAvatar(
+                        radius: 18,
+                        backgroundColor: d.isPrimary
+                            ? colorScheme.primary.withOpacity(0.15)
+                            : colorScheme.surfaceContainerHighest,
+                        child: Icon(
+                          d.isPrimary ? Icons.star : Icons.circle_outlined,
+                          color: d.isPrimary
+                              ? colorScheme.primary
+                              : colorScheme.onSurfaceVariant,
+                          size: 18,
+                        ),
                       ),
                       title: Text(d.nameKo),
                       subtitle: d.isPrimary ? const Text('주 진단') : null,
@@ -50,7 +58,9 @@ class VisitDetailScreen extends StatelessWidget {
             Text(
               visit.note.isNotEmpty ? visit.note : '남겨진 메모가 없어요',
               style: TextStyle(
-                  color: visit.note.isNotEmpty ? null : Colors.grey),
+                  color: visit.note.isNotEmpty
+                      ? null
+                      : colorScheme.onSurfaceVariant),
             ),
           ],
         ),

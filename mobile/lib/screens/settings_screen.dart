@@ -92,7 +92,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: const Text('취소')),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('탈퇴', style: TextStyle(color: Colors.red)),
+            child: Text('탈퇴',
+                style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
         ],
       ),
@@ -168,6 +169,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final error = Theme.of(context).colorScheme.error;
     return Scaffold(
       appBar: AppBar(title: const Text('설정')),
       body: _isLoading
@@ -257,16 +259,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const Divider(),
                 ListTile(
-                  leading: const Icon(Icons.logout, color: Colors.red),
-                  title:
-                      const Text('로그아웃', style: TextStyle(color: Colors.red)),
+                  leading: Icon(Icons.logout, color: error),
+                  title: Text('로그아웃', style: TextStyle(color: error)),
                   onTap: _confirmLogout,
                 ),
                 ListTile(
-                  leading: const Icon(Icons.person_remove_outlined,
-                      color: Colors.red),
-                  title:
-                      const Text('회원 탈퇴', style: TextStyle(color: Colors.red)),
+                  leading: Icon(Icons.person_remove_outlined, color: error),
+                  title: Text('회원 탈퇴', style: TextStyle(color: error)),
                   onTap: _confirmDeleteAccount,
                 ),
               ],

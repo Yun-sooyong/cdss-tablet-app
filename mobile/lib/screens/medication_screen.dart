@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/dose.dart';
 import '../services/medication_service.dart';
-import '../theme/app_colors.dart';
 import 'weekly_medication_history_screen.dart';
 import '../services/notification_service.dart';
 import '../utils/top_banner.dart';
 import '../widgets/loading_spinner.dart';
 import 'prescription_info_screen.dart';
+import 'dose_time_settings_screen.dart';
 
 class MedicationScreen extends StatefulWidget {
   final MedicationService medicationService;
@@ -32,17 +32,18 @@ class _MedicationScreenState extends State<MedicationScreen> {
   }
 
   Future<void> _openDoseTimeSettings() async {
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (_) => _DoseTimeSettingsSheet(
-          notificationService: widget.notificationService),
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DoseTimeSettingsScreen(
+          notificationService: widget.notificationService,
+          doses: _doses,
+        ),
+      ),
     );
-    if (saved == true) {
-      await widget.notificationService.scheduleDailyDoseReminders(_doses);
-      if (!mounted) return;
-      showTopBanner(context, '알림 시간이 변경되었습니다.');
-    }
+    // 설정 화면 안에서 바뀔 때마다 이미 바로 저장됐으니, 나왔을 때 최신 값으로 알림만 다시 걸면 됨.
+    await widget.notificationService.scheduleDailyDoseReminders(_doses);
+    if (!mounted) return;
+    showTopBanner(context, '알림 설정이 반영되었어요.');
   }
 
   void _openPrescriptions() {
@@ -88,6 +89,7 @@ class _MedicationScreenState extends State<MedicationScreen> {
       return const Center(child: LoadingSpinner());
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     final DoseItem? nextDose = _doses.where((d) => !d.taken).isNotEmpty
         ? _doses.firstWhere((d) => !d.taken)
         : null;
@@ -115,8 +117,9 @@ class _MedicationScreenState extends State<MedicationScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('다음 복용',
-                            style: TextStyle(fontSize: 13, color: Colors.grey)),
+                        Text('다음 복용',
+                            style: TextStyle(
+                                fontSize: 13, color: colorScheme.onSurfaceVariant)),
                         const SizedBox(height: 8),
                         Text(
                             nextDose != null
@@ -145,8 +148,29 @@ class _MedicationScreenState extends State<MedicationScreen> {
           const Text('오늘 복용',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          ..._doses.map((dose) =>
-              _DoseTile(dose: dose, onTaken: () => _toggleTaken(dose))),
+          if (_doses.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text('오늘 복용할 약이 없어요',
+                  style: TextStyle(color: colorScheme.onSurfaceVariant)),
+            )
+          else
+            ...DoseTime.values.expand((doseTime) {
+              final group = _doses.where((d) => d.time == doseTime).toList();
+              if (group.isEmpty) return <Widget>[];
+              return [
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  child: Text(doseTime.label,
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurfaceVariant)),
+                ),
+                ...group.map((dose) =>
+                    _DoseTile(dose: dose, onTaken: () => _toggleTaken(dose))),
+              ];
+            }),
         ],
       ),
     );
@@ -166,6 +190,8 @@ class _AdherenceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (adherence.rate * 100).round();
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -191,9 +217,8 @@ class _AdherenceCard extends StatelessWidget {
                             child: CircularProgressIndicator(
                               value: adherence.rate,
                               strokeWidth: 8,
-                              backgroundColor: Colors.grey.shade200,
-                              valueColor: const AlwaysStoppedAnimation(
-                                  AppColors.primary),
+                              backgroundColor: colorScheme.surfaceContainerHighest,
+                              valueColor: AlwaysStoppedAnimation(primary),
                             ),
                           ),
                           Text('$percent%',
@@ -203,9 +228,11 @@ class _AdherenceCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
+                    Text(
                         '이번 주 복약률', // 목업엔 '이번 달'이지만 실데이터가 주간(WeeklyAdherence)이라 정직하게 뒀어
-                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ],
                 ),
               ),
@@ -219,18 +246,18 @@ class _AdherenceCard extends StatelessWidget {
               child: InkWell(
                 onTap: onOpenPrescriptions,
                 borderRadius: BorderRadius.circular(12),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.description_outlined,
-                          color: AppColors.primary, size: 18),
-                      SizedBox(width: 6),
-                      Flexible(
+                          color: primary, size: 18),
+                      const SizedBox(width: 6),
+                      const Flexible(
                           child:
                               Text('처방 내역', overflow: TextOverflow.ellipsis)),
-                      Icon(Icons.chevron_right, size: 18),
+                      const Icon(Icons.chevron_right, size: 18),
                     ],
                   ),
                 ),
@@ -251,110 +278,27 @@ class _DoseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         onTap: onTaken,
-        leading: Icon(
-          dose.taken ? Icons.check_circle : Icons.circle_outlined,
-          color: dose.taken ? AppColors.primary : Colors.grey,
+        leading: CircleAvatar(
+          radius: 20,
+          backgroundColor: dose.taken
+              ? colorScheme.primary.withOpacity(0.15)
+              : colorScheme.surfaceContainerHighest,
+          child: Icon(
+            Icons.medication_outlined,
+            color: dose.taken ? colorScheme.primary : colorScheme.onSurfaceVariant,
+            size: 20,
+          ),
         ),
-        title: Text('${dose.time.label} · ${dose.medicationName}'),
+        title: Text(dose.medicationName),
         trailing: dose.taken
-            ? const Text('복용완료',
-                style: TextStyle(color: Colors.grey, fontSize: 12))
-            : null,
+            ? Icon(Icons.check_circle, color: colorScheme.primary, size: 20)
+            : Icon(Icons.schedule, color: colorScheme.onSurfaceVariant, size: 20),
       ),
-    );
-  }
-}
-
-class _DoseTimeSettingsSheet extends StatefulWidget {
-  final NotificationService notificationService;
-
-  const _DoseTimeSettingsSheet({required this.notificationService});
-
-  @override
-  State<_DoseTimeSettingsSheet> createState() => _DoseTimeSettingsSheetState();
-}
-
-class _DoseTimeSettingsSheetState extends State<_DoseTimeSettingsSheet> {
-  Map<DoseTime, TimeOfDay> _times = {};
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final times = await widget.notificationService.loadDoseTimes();
-    if (!mounted) return;
-    setState(() {
-      _times = times;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _pickTime(DoseTime doseTime) async {
-    final current = _times[doseTime] ?? const TimeOfDay(hour: 9, minute: 0);
-    final picked = await showTimePicker(context: context, initialTime: current);
-    if (picked == null) return;
-    setState(() => _times[doseTime] = picked);
-  }
-
-  Future<void> _save() async {
-    for (final entry in _times.entries) {
-      await widget.notificationService.saveDoseTime(entry.key, entry.value);
-    }
-    if (!mounted) return;
-    Navigator.of(context).pop(true);
-  }
-
-  String _fmt(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 20,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-      ),
-      child: _isLoading
-          ? const SizedBox(
-              height: 120, child: Center(child: LoadingSpinner(size: 36)))
-          : Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('알림 시간 설정',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 16),
-                ...DoseTime.values.map((doseTime) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(doseTime.label),
-                      trailing: OutlinedButton(
-                        onPressed: () => _pickTime(doseTime),
-                        child: Text(_fmt(_times[doseTime] ??
-                            const TimeOfDay(hour: 9, minute: 0))),
-                      ),
-                    )),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: _save,
-                    child: const Text('저장'),
-                  ),
-                ),
-              ],
-            ),
     );
   }
 }

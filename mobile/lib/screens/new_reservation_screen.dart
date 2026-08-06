@@ -4,7 +4,6 @@ import '../models/reservation.dart';
 import '../models/visit.dart';
 import '../services/reservation_service.dart';
 import '../services/visit_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 
 enum _VisitPurposeCategory { consult, document }
@@ -76,7 +75,8 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
               .map((d) => ListTile(
                     title: Text(d.name),
                     trailing: d.code == _selectedDepartment?.code
-                        ? const Icon(Icons.check, color: AppColors.primary)
+                        ? Icon(Icons.check,
+                            color: Theme.of(context).colorScheme.primary)
                         : null,
                     onTap: () => Navigator.of(context).pop(d),
                   ))
@@ -259,8 +259,10 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
         const Text('시간을 선택해주세요',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
         const SizedBox(height: 4),
-        const Text('모든 시간은 30분 단위로 예약됩니다.',
-            style: TextStyle(fontSize: 12, color: Colors.grey)),
+        Text('모든 시간은 30분 단위로 예약됩니다.',
+            style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         if (_loadingSlots)
           const Padding(
@@ -268,8 +270,9 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
             child: Center(child: LoadingSpinner()),
           )
         else if (_slots.isEmpty)
-          const Text('이 진료과는 예약 가능한 시간이 없어요',
-              style: TextStyle(color: Colors.grey))
+          Text('이 진료과는 예약 가능한 시간이 없어요',
+              style:
+                  TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant))
         else ...[
           const Text('오전', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
@@ -303,27 +306,28 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
       childAspectRatio: 2.4,
       children: slots.map((slot) {
         final selected = _selectedTime?.time == slot.time;
+        final colorScheme = Theme.of(context).colorScheme;
         if (!slot.available) {
           return OutlinedButton(
             onPressed: null,
             style: OutlinedButton.styleFrom(
-              backgroundColor: Colors.grey.shade100,
-              side: BorderSide(color: Colors.grey.shade300),
+              backgroundColor: colorScheme.surfaceContainerHighest,
+              side: BorderSide(color: colorScheme.outline),
             ),
             child: Text(
               slot.time,
               style: TextStyle(
-                  color: Colors.grey.shade400,
+                  color: colorScheme.onSurfaceVariant,
                   decoration: TextDecoration.lineThrough),
             ),
           );
         }
+        final primary = colorScheme.primary;
         return OutlinedButton(
           onPressed: () => setState(() => _selectedTime = slot),
           style: OutlinedButton.styleFrom(
-            backgroundColor: selected ? AppColors.primary : null,
-            side: BorderSide(
-                color: selected ? AppColors.primary : Colors.grey.shade300),
+            backgroundColor: selected ? primary : null,
+            side: BorderSide(color: selected ? primary : colorScheme.outline),
           ),
           child: Text(slot.time,
               style: TextStyle(color: selected ? Colors.white : null)),
@@ -388,7 +392,7 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
               )
             else if (_lastVisit != null)
               Card(
-                color: Theme.of(context).dividerColor,
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 child: Padding(
                   padding: const EdgeInsets.all(12),
                   child: Column(
@@ -401,14 +405,19 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
                       Text(
                           '${_lastVisit!.date.year}.${_lastVisit!.date.month}.${_lastVisit!.date.day} · ${_lastVisit!.department}'),
                       Text(_lastVisit!.memo,
-                          style: const TextStyle(color: Colors.grey)),
+                          style: TextStyle(
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ],
                   ),
                 ),
               )
             else
-              const Text('이 진료과의 이전 방문 기록이 없어요',
-                  style: TextStyle(color: Colors.grey, fontSize: 12)),
+              Text('이 진료과의 이전 방문 기록이 없어요',
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12)),
           ],
           const SizedBox(height: 12),
           TextField(
@@ -494,7 +503,9 @@ class _NewReservationScreenState extends State<NewReservationScreen> {
         children: [
           SizedBox(
               width: 72,
-              child: Text(label, style: const TextStyle(color: Colors.grey))),
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant))),
           Expanded(
               child: Text(value,
                   style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -519,22 +530,24 @@ class _SelectedChipRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: colorScheme.outline),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.primary),
+          Icon(icon, color: colorScheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(label,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    style: TextStyle(
+                        fontSize: 12, color: colorScheme.onSurfaceVariant)),
                 Text(value,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
               ],
@@ -556,6 +569,8 @@ class _StepIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final primary = colorScheme.primary;
     return Row(
       children: List.generate(_labels.length * 2 - 1, (i) {
         if (i.isOdd) {
@@ -565,7 +580,7 @@ class _StepIndicator extends StatelessWidget {
             child: Container(
               height: 2,
               margin: const EdgeInsets.only(bottom: 18),
-              color: done ? AppColors.primary : Colors.grey.shade300,
+              color: done ? primary : colorScheme.outline,
             ),
           );
         }
@@ -575,12 +590,12 @@ class _StepIndicator extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 14,
-              backgroundColor:
-                  isActiveOrDone ? AppColors.primary : Colors.grey.shade300,
+              backgroundColor: isActiveOrDone ? primary : colorScheme.outline,
               child: Text('${step + 1}',
                   style: TextStyle(
-                      color:
-                          isActiveOrDone ? Colors.white : Colors.grey.shade600,
+                      color: isActiveOrDone
+                          ? Colors.white
+                          : colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.bold,
                       fontSize: 12)),
             ),
@@ -588,8 +603,9 @@ class _StepIndicator extends StatelessWidget {
             Text(_labels[step],
                 style: TextStyle(
                     fontSize: 11,
-                    color:
-                        step == currentStep ? AppColors.primary : Colors.grey,
+                    color: step == currentStep
+                        ? primary
+                        : colorScheme.onSurfaceVariant,
                     fontWeight: step == currentStep
                         ? FontWeight.bold
                         : FontWeight.normal)),

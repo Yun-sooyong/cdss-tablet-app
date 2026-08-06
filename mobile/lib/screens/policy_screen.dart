@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 class PolicySection {
   final String title;
@@ -53,6 +52,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: Text(widget.title)),
       body: SingleChildScrollView(
@@ -63,7 +63,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: colorScheme.outline),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -71,7 +71,7 @@ class _PolicyScreenState extends State<PolicyScreen> {
                 children: [
                   Text('${widget.title} ${widget.version}',
                       style: const TextStyle(fontWeight: FontWeight.bold)),
-                  const Icon(Icons.expand_more, color: Colors.grey),
+                  Icon(Icons.expand_more, color: colorScheme.onSurfaceVariant),
                 ],
               ),
             ),
@@ -92,8 +92,9 @@ class _PolicyScreenState extends State<PolicyScreen> {
               const SizedBox(height: 12),
               Text(widget.intro, style: const TextStyle(height: 1.6)),
               const SizedBox(height: 20),
-              const Text('아래 항목을 선택 시 해당 내용으로 이동합니다.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey)),
+              Text('아래 항목을 선택 시 해당 내용으로 이동합니다.',
+                  style: TextStyle(
+                      fontSize: 12, color: colorScheme.onSurfaceVariant)),
               const SizedBox(height: 8),
               ...List.generate(
                 widget.sections.length,
@@ -102,7 +103,8 @@ class _PolicyScreenState extends State<PolicyScreen> {
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Text('${i + 1}. ${widget.sections[i].title}',
-                        style: const TextStyle(color: AppColors.primary)),
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary)),
                   ),
                 ),
               ),

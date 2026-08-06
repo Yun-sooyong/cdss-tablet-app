@@ -128,6 +128,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
       return const Center(child: LoadingSpinner());
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
@@ -137,7 +138,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (_upcoming.isEmpty)
-            const Text('다가오는 예약이 없어', style: TextStyle(color: Colors.grey))
+            Text('다가오는 예약이 없어',
+                style: TextStyle(color: colorScheme.onSurfaceVariant))
           else
             ..._upcoming.map((r) => _UpcomingCard(
                   reservation: r,
@@ -149,7 +151,8 @@ class _ReservationScreenState extends State<ReservationScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           if (_past.isEmpty)
-            const Text('지난 예약이 없어', style: TextStyle(color: Colors.grey))
+            Text('지난 예약이 없어',
+                style: TextStyle(color: colorScheme.onSurfaceVariant))
           else
             ..._past.map((r) {
               const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
@@ -173,7 +176,11 @@ class _ReservationScreenState extends State<ReservationScreen> {
               onPressed: _openNewReservation,
               icon: const Icon(Icons.add),
               label: const Text('새 예약'),
-              style: OutlinedButton.styleFrom(shape: const StadiumBorder()),
+              style: OutlinedButton.styleFrom(
+                shape: const StadiumBorder(),
+                side: BorderSide(color: colorScheme.primary),
+                foregroundColor: colorScheme.primary,
+              ),
             ),
           ),
         ],
@@ -194,11 +201,12 @@ class _UpcomingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final d = reservation.dateTime;
     const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
     final weekday = weekdayLabels[d.weekday - 1];
     return Card(
-      color: Colors.blue.shade50,
+      color: colorScheme.surfaceContainerHighest,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -211,7 +219,7 @@ class _UpcomingCard extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               '${reservation.hospitalName} · ${reservation.department} · ${reservation.doctorName}',
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: colorScheme.onSurfaceVariant),
             ),
             const SizedBox(height: 12),
             Row(
