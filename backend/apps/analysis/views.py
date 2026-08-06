@@ -146,6 +146,12 @@ class BatchListCreateView(APIView):
         if patient_id:
             batches = batches.filter(patient_id=patient_id)
 
+        # ?shared=true — 본인이 만든 배치 제외하고 "나한테 공유된 것"만.
+        # 위에서 이미 본인+공유받은 걸로 좁혀놨으니, id__in=shared_batch_ids로
+        # 한 번 더 좁히면 교집합(=공유받은 것만)이 된다.
+        if request.query_params.get("shared", "").lower() == "true":
+            batches = batches.filter(id__in=shared_batch_ids)
+
         status_filter = request.query_params.get("status")
         if status_filter:
             batches = batches.filter(status=status_filter)
