@@ -56,8 +56,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     '오늘 컨디션은 어떠세요?',
     '작은 습관이 큰 변화를 만들어요.',
   ];
-  late final String _subtitleMessage;
-
+  // late final 대신 필드 초기화 시점에 바로 값을 넣는다 — late 필드는 핫 리로드로 새
+  // 필드가 추가된 기존 화면 인스턴스에서 initState()가 다시 안 불려서
+  // LateInitializationError가 나는 경우가 있음(핫 리스타트 전까지).
   static const List<String> _healthTips = [
     '하루 물 8잔, 신진대사와 컨디션 관리에 도움이 돼요.',
     '식후 30분 가벼운 산책은 소화와 혈당 조절에 좋아요.',
@@ -68,16 +69,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     '앉아 있는 시간이 길다면 1시간마다 잠깐씩 일어나 움직여보세요.',
     '깊게 숨을 들이쉬는 것만으로도 스트레스 완화에 도움이 돼요.',
   ];
-  late final String _healthTip;
+
+  final String _subtitleMessage =
+      _subtitleMessages[Random().nextInt(_subtitleMessages.length)];
+  final String _healthTip = _healthTips[Random().nextInt(_healthTips.length)];
 
   int? _streak;
 
   @override
   void initState() {
     super.initState();
-    _subtitleMessage =
-        _subtitleMessages[Random().nextInt(_subtitleMessages.length)];
-    _healthTip = _healthTips[Random().nextInt(_healthTips.length)];
     StreakService.instance.recordVisitAndGetStreak().then((streak) {
       if (!mounted) return;
       setState(() => _streak = streak);
