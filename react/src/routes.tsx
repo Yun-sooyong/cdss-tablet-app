@@ -10,9 +10,10 @@ import SessionShell from '@/components/layout/SessionShell';
 
 const AbstainReviewPage = lazy(() => import('@/pages/AbstainReviewPage'));
 const CaseListPage = lazy(() => import('@/pages/CaseListPage'));
-const ChatPage = lazy(() => import('@/pages/ChatPage'));
 const DashboardPage = lazy(() => import('@/pages/DashboardPage'));
 const NotificationsPage = lazy(() => import('@/pages/NotificationsPage'));
+const PrescriptionsPage = lazy(() => import('@/pages/PrescriptionsPage'));
+const VisitsPage = lazy(() => import('@/pages/VisitsPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const ResultDetailPage = lazy(() => import('@/pages/ResultDetailPage'));
 const ResultSummaryPage = lazy(() => import('@/pages/ResultSummaryPage'));
@@ -51,8 +52,9 @@ export default function AppRoutes() {
                     <Route path="/review" element={<AbstainReviewPage />} />
                     <Route path="/batches/:batchId" element={<ResultSummaryPage />} />
                     <Route path="/results/:jobId" element={<ResultDetailPage />} />
+                    <Route path="/visits" element={<VisitsPage />} />
+                    <Route path="/prescriptions" element={<PrescriptionsPage />} />
                     <Route path="/sharing" element={<SharingPage />} />
-                    <Route path="/chat" element={<ChatPage />} />
                     <Route path="/notifications" element={<NotificationsPage />} />
                     <Route path="/profile" element={<ProfilePage />} />
                     <Route path="*" element={<NotFoundPage />} />
