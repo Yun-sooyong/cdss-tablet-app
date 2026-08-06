@@ -1,0 +1,54 @@
+rules_version = '2';
+
+// 채팅 전용 Firestore 규칙. 로그인 자체는 Django JWT를 쓰지만, 여기 접근은
+// backend가 발급한 Firebase 커스텀 토큰으로 signInWithCustomToken() 한
+// 뒤의 request.auth.uid(=staff.id)로 판단한다 (POST /api/v1/chat/firebase-token/,
+// apps/chat/views.py 참고). 환자 식별정보는 여기 전혀 들어오지 않는다 —
+// attached_batch_id는 UUID뿐이라 실제 이름/차트 정보는 조회 시 backend가
+// 별도로 조인해서 보여줘야 한다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(roomData) {
+      return signedIn() && request.auth.uid in roomData.member_ids;
+    }
+
+    match /chat_rooms/{roomId} {
+      allow read: if isMember(resource.data);
+
+      allow create: if signedIn()
+        && request.resource.data.created_by == request.auth.uid
+        && request.auth.uid in request.resource.data.member_ids
+        && request.resource.data.room_type in ['direct', 'group'];
+
+      // 멤버 추가/방 정보 수정 등은 별도 필드 검증 없이 "기존 멤버만" 허용
+      // — 세부 규칙(누가 초대할 수 있는지 등)은 화면 붙이면서 좁혀나간다.
+      allow update: if isMember(resource.data);
+      allow delete: if false; // 방은 soft delete 정책이 없다 — 물리 삭제 금지
+
+      match /messages/{messageId} {
+        allow read: if isMember(get(/databases/$(database)/documents/chat_rooms/$(roomId)).data);
+
+        allow create: if isMember(get(/databases/$(database)/documents/chat_rooms/$(roomId)).data)
+          && request.resource.data.sender_id == request.auth.uid;
+
+        // 본인 메시지만, deleted_at 필드만 고칠 수 있게(소프트 삭제) — 나머지
+        // 필드(body 등) 수정은 막는다.
+        allow update: if resource.data.sender_id == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted_at']);
+
+        allow delete: if false;
+      }
+
+      match /reads/{uid} {
+        allow read: if isMember(get(/databases/$(database)/documents/chat_rooms/$(roomId)).data);
+        allow write: if uid == request.auth.uid
+          && isMember(get(/databases/$(database)/documents/chat_rooms/$(roomId)).data);
+      }
+    }
+  }
+}

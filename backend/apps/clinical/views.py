@@ -2,10 +2,12 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.common.permissions import get_patient_or_404
+from apps.common.permissions import get_patient_or_404, get_staff_or_403
+from apps.staff.models import Staff
 
 from .models import (
     DoseLog,
@@ -21,6 +23,7 @@ from .serializers import (
     DrugSerializer,
     MedicationLogCreateSerializer,
     PrescriptionSerializer,
+    ReservationConfirmSerializer,
     ReservationCreateSerializer,
     ReservationRescheduleSerializer,
     ReservationSerializer,
@@ -120,6 +123,67 @@ class ReservationDetailView(APIView):
         reservation = self._get_reservation(request, reservation_id)
         reservation.status = Reservation.Status.CANCELED
         reservation.save(update_fields=["status", "updated_at"])
+        return Response(ReservationSerializer(reservation).data)
+
+
+class StaffReservationListView(APIView):
+    """GET /reservations/ — 의료진용 예약 목록 (정다희, 2026-08-05 —
+    "CONFIRMED 하는 API도 있어야지" 요청으로 예약 확정 API와 같이 추가.
+    이게 없으면 확정할 예약 자체를 찾을 방법이 없었음).
+
+    ?status=, ?department= 필터 지원. 담당 배정 전(REQUESTED)이라
+    특정 의료진 소유 개념이 없어서, 활성 직원이면 전체 조회 가능하게
+    했다 — 접수 담당이 누구든 볼 수 있어야 하는 화면이라고 판단."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=ReservationSerializer(many=True))
+    def get(self, request):
+        get_staff_or_403(request.user)
+
+        qs = Reservation.objects.select_related("patient", "department").order_by(
+            "scheduled_at"
+        )
+
+        status_param = request.query_params.get("status")
+        if status_param:
+            qs = qs.filter(status=status_param)
+
+        department_param = request.query_params.get("department")
+        if department_param:
+            qs = qs.filter(department_id=department_param)
+
+        return Response(ReservationSerializer(qs, many=True).data)
+
+
+class ReservationConfirmView(APIView):
+    """POST /reservations/{id}/confirm/ — 예약 확정 + 담당 의료진 배정.
+
+    staff_id를 안 주면 호출한 의료진 본인이 담당으로 배정된다. 확정되는
+    순간 apps/clinical/signals.py가 환자한테 푸시 알림을 보낸다."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=ReservationConfirmSerializer, responses=ReservationSerializer)
+    def post(self, request, reservation_id):
+        requester = get_staff_or_403(request.user)
+        reservation = get_object_or_404(Reservation, id=reservation_id)
+
+        serializer = ReservationConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        staff_id = serializer.validated_data.get("staff_id")
+
+        assigned_staff = requester
+        if staff_id and staff_id != requester.id:
+            assigned_staff = get_object_or_404(Staff, id=staff_id)
+
+        if reservation.status == Reservation.Status.CANCELED:
+            raise ValidationError("취소된 예약은 확정할 수 없습니다.")
+
+        reservation.status = Reservation.Status.CONFIRMED
+        reservation.staff = assigned_staff
+        reservation.save(update_fields=["status", "staff", "updated_at"])
+
         return Response(ReservationSerializer(reservation).data)
 
 
@@ -271,3 +335,27 @@ class MedicationLogCreateView(APIView):
             defaults={"is_taken": True, "taken_at": timezone.now()},
         )
         return Response(DoseLogSerializer(log).data, status=status.HTTP_201_CREATED)
+
+
+class MedicationLogDeleteView(APIView):
+    """DELETE /medications/logs/{schedule_id}/ — 복용 체크 취소.
+
+    DoseLog는 BaseModel이 아니라 deleted_at도 없는 단순 체크 상태라(
+    진료기록 본체가 아니라 "먹었다/안먹었다" 토글) soft delete 규칙
+    대상이 아니다. row 자체를 지운다. schedule_id를 키로 받는 이유는
+    POST /medications/logs가 이미 schedule_id로 받고 있어서 대칭을
+    맞춘 것 — 프론트가 log의 id를 별도로 들고 있을 필요가 없다.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=None, responses=None)
+    def delete(self, request, schedule_id):
+        patient = get_patient_or_404(request.user)
+        schedule = get_object_or_404(
+            DoseSchedule,
+            id=schedule_id,
+            prescription_drug__prescription__visit__patient=patient,
+        )
+        DoseLog.objects.filter(schedule=schedule).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

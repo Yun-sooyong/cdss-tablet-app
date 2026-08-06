@@ -5,6 +5,7 @@ from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Staff
 
 from .models import AnalysisShare, Batch, Image, Job, ModelVersion
+from .services import build_mask_read_url, build_original_read_url
 
 
 class ModelVersionSerializer(serializers.ModelSerializer):
@@ -30,6 +31,10 @@ class BatchSerializer(serializers.ModelSerializer):
     이미 됨) 별도 권한 분기는 필요 없다."""
 
     patient_summary = PatientSummarySerializer(source="patient", read_only=True)
+    # with_batch_counts()로 annotate된 값 — 이 값 없이 만든 쿼리셋으로
+    # 직렬화하면 AttributeError가 난다 (최일운 요청, 2026-08-05).
+    image_count = serializers.IntegerField(read_only=True)
+    needs_review_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Batch
@@ -38,6 +43,8 @@ class BatchSerializer(serializers.ModelSerializer):
             "patient",
             "patient_summary",
             "status",
+            "image_count",
+            "needs_review_count",
             "created_by",
             "created_at",
             "updated_at",
@@ -52,12 +59,17 @@ class BatchCreateSerializer(serializers.Serializer):
 
 
 class ImageSerializer(serializers.ModelSerializer):
+    # storage_key는 GCS 안의 키 문자열일 뿐 직접 열 수 있는 URL이 아니라서
+    # 조회용 서명 URL을 따로 내려준다 (최일운 요청, 2026-08-05).
+    image_url = serializers.SerializerMethodField()
+
     class Meta:
         model = Image
         fields = [
             "id",
             "batch",
             "storage_key",
+            "image_url",
             "original_filename",
             "captured_at",
             "width",
@@ -66,6 +78,9 @@ class ImageSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+    def get_image_url(self, obj) -> str:
+        return build_original_read_url(obj)
+
 
 class ImageUploadRequestSerializer(serializers.Serializer):
     original_filename = serializers.CharField(max_length=255)
@@ -73,9 +88,28 @@ class ImageUploadRequestSerializer(serializers.Serializer):
 
 class ImageUploadResponseSerializer(ImageSerializer):
     upload_url = serializers.URLField()
+    # 실제 PUT 요청에 이 값 그대로 Content-Type 헤더로 보내야 서명이 맞다
+    # (2026-08-05 — 예전엔 항상 application/octet-stream으로 고정 서명해서
+    # 업로드된 이미지가 그 타입으로 저장되고, 나중에 다시 불러올 때
+    # 브라우저/Flutter가 이미지로 렌더링을 거부하는 문제가 있었음).
+    upload_content_type = serializers.CharField()
 
     class Meta(ImageSerializer.Meta):
-        fields = ImageSerializer.Meta.fields + ["upload_url"]
+        fields = ImageSerializer.Meta.fields + ["upload_url", "upload_content_type"]
+        read_only_fields = fields
+
+
+class ImageSummarySerializer(serializers.ModelSerializer):
+    """job 응답에 끼워 넣는 최소 이미지 정보 — image가 UUID만 있어서 화면에
+    파일명 대신 UUID 앞 8자가 뜨던 문제 (최일운 요청, 2026-08-05).
+
+    batch를 추가한다 — 결과 상세 화면의 브레드크럼이 배치를 되찾고
+    (최일운 요청, 2026-08-05), GET /analysis/jobs/ 결과를 배치별로 묶어
+    with_batch_counts() 없이도 배치당 확인 필요 수를 셀 수 있다."""
+
+    class Meta:
+        model = Image
+        fields = ["id", "original_filename", "batch"]
         read_only_fields = fields
 
 
@@ -85,15 +119,21 @@ class JobSerializer(serializers.ModelSerializer):
     환자 맥락이 붙는다."""
 
     patient_summary = serializers.SerializerMethodField()
+    image_summary = ImageSummarySerializer(source="image", read_only=True)
+    original_url = serializers.SerializerMethodField()
+    mask_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
         fields = [
             "id",
             "image",
+            "image_summary",
+            "original_url",
             "model_version",
             "status",
             "result",
+            "mask_url",
             "error_message",
             "patient_summary",
             "started_at",
@@ -107,6 +147,12 @@ class JobSerializer(serializers.ModelSerializer):
         if patient is None:
             return None
         return PatientSummarySerializer(patient).data
+
+    def get_original_url(self, obj) -> str:
+        return build_original_read_url(obj.image)
+
+    def get_mask_url(self, obj) -> str | None:
+        return build_mask_read_url(obj)
 
 
 class JobCreateSerializer(serializers.Serializer):

@@ -1,50 +1,52 @@
+import mimetypes
 import uuid
 
 from django.conf import settings
 from django.utils import timezone
 
+from apps.common.gcs import generate_signed_url
 
-def build_upload_url(storage_key: str) -> str:
-    """이미지 업로드용 서명 URL 발급.
 
-    settings.GCS_BUCKET이 비어있으면(로컬 등 GCS 미설정 환경) mock URL을
-    돌려준다. Cloud Run은 JSON 키 파일이 없으므로(조직 정책으로 서비스
-    계정 키 발급이 막혀있음 — worker/INTERFACE.md 2절과 동일한 이유),
-    IAM SignBlob API로 서명한다. 이 서비스 계정 자신에게
-    roles/iam.serviceAccountTokenCreator 권한이 있어야 동작한다.
+def build_upload_url(storage_key: str, content_type: str = "application/octet-stream") -> str:
+    """이미지 업로드용 서명 URL(PUT) 발급.
+
+    content_type을 서명에 그대로 묶기 때문에, 클라이언트가 실제 PUT
+    요청에서 이 값과 정확히 같은 Content-Type 헤더를 보내야 한다(안
+    맞으면 403). GCS는 업로드 시 받은 content-type을 그대로 저장하고
+    나중에 GET할 때도 그걸 돌려주므로, 여기서 실제 이미지 타입을
+    보내지 않으면(예: 예전처럼 고정값 application/octet-stream) 원본
+    이미지를 다시 불러올 때 브라우저/Flutter가 이미지로 렌더링을
+    거부하는 문제가 생긴다 (2026-08-05, 태블릿 화면 원본 로딩 실패로
+    발견 — 응답의 upload_content_type 필드를 그대로 PUT 헤더에 써야 함).
     """
-    if not settings.GCS_BUCKET:
-        return f"https://mock-upload.local/{storage_key}"
+    return generate_signed_url(storage_key, method="PUT", content_type=content_type)
 
-    from datetime import timedelta  # noqa: PLC0415
 
-    import google.auth  # noqa: PLC0415
-    from google.auth import iam  # noqa: PLC0415
-    from google.auth.transport import requests as gauth_requests  # noqa: PLC0415
-    from google.cloud import storage  # noqa: PLC0415
-    from google.oauth2 import service_account  # noqa: PLC0415
+def build_mask_read_url(job) -> str | None:
+    """분석 결과 마스크 이미지 조회용 서명 URL(GET).
 
-    credentials, _ = google.auth.default()
-    auth_request = gauth_requests.Request()
-    credentials.refresh(auth_request)
+    검모님 워커가 마스크를 masks/{job_id}.png 경로에 직접 업로드하기로
+    확정 (2026-08-05) — job_id로 결정되는 경로라 result JSON에 키를
+    별도로 담아 보낼 필요가 없다. sTIL 단계(stil_done)부터 파일이 있을
+    수 있으므로 대기/실패 상태에서는 URL을 만들지 않는다(있지도 않은
+    파일에 서명해봐야 프론트가 괜히 404만 본다).
+    """
+    from .models import Job  # noqa: PLC0415 — 순환 임포트 회피
 
-    signer = iam.Signer(auth_request, credentials, credentials.service_account_email)
-    signing_credentials = service_account.Credentials(
-        signer,
-        credentials.service_account_email,
-        token_uri="https://oauth2.googleapis.com/token",
-    )
+    if job.status not in (Job.Status.STIL_DONE, Job.Status.SUCCEEDED):
+        return None
+    return generate_signed_url(f"masks/{job.id}.png", method="GET")
 
-    client = storage.Client(credentials=credentials)
-    blob = client.bucket(settings.GCS_BUCKET).blob(storage_key)
 
-    return blob.generate_signed_url(
-        version="v4",
-        expiration=timedelta(minutes=15),
-        method="PUT",
-        content_type="application/octet-stream",
-        credentials=signing_credentials,
-    )
+def build_original_read_url(image) -> str:
+    """원본 슬라이드 이미지 조회용 서명 URL(GET).
+
+    업로드용 서명 URL(PUT)은 있었는데 다시 불러와서 보는 용도(GET)가
+    빠져있었다 — 최일운·윤수용 요청, 2026-08-05. storage_key 자체는
+    GCS 버킷 안의 키 문자열일 뿐이라 브라우저/앱에서 직접 열 수 없다.
+    mask_url과 달리 상태 제약 없이 업로드 직후부터 항상 유효하다.
+    """
+    return generate_signed_url(image.storage_key, method="GET")
 
 
 def create_image_with_upload_url(batch, filename: str):
@@ -58,10 +60,11 @@ def create_image_with_upload_url(batch, filename: str):
     from .models import Image  # noqa: PLC0415 — 순환 임포트 회피
 
     storage_key = f"uploads/{batch.id}/{uuid.uuid4()}_{filename}"
+    content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     image = Image.objects.create(
         batch=batch, storage_key=storage_key, original_filename=filename
     )
-    return image, build_upload_url(storage_key)
+    return image, build_upload_url(storage_key, content_type=content_type), content_type
 
 
 def apply_job_result(job, status, result=None, error_message=""):
