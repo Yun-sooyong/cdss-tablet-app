@@ -1,9 +1,6 @@
 import type { BatchStatus, JobStatus } from "@/api/types";
 
 /* Job Status Utilities */
-export const isTerminal = (status : JobStatus) : boolean =>
-    status === 'succeeded' || status === 'failed';
-
 export const isBatchTerminal = (status : BatchStatus) : boolean =>
     status === 'done' || status === 'failed';
 
