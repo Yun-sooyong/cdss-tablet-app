@@ -34,6 +34,12 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # DRF 기본값(True)은 DecimalField를 JSON 문자열("1.00")로 내보낸다.
+    # Flutter가 `json['dose_per_take'] as num`으로 읽어서 문자열이면
+    # 그 자리에서 예외가 난다 (수용님, 2026-08-06, 급함) — JSON 숫자로
+    # 내려가게 끈다. 이 프로젝트에서 DecimalField는 dose_per_take
+    # 하나뿐이라 영향 범위 작음.
+    "COERCE_DECIMAL_TO_STRING": False,
 }
 
 SPECTACULAR_SETTINGS = {
