@@ -1,6 +1,6 @@
-import { CircleAlert } from 'lucide-react';
+import { ArrowRight, CircleAlert } from 'lucide-react';
 
-import type {Decision, JobStatus, BatchStatus} from '@/api/types';
+import type {Decision, JobReview, JobStatus, BatchStatus} from '@/api/types';
 import {Badge} from '@/components/ui/badge';
 import {DECISION_LABEL} from '@/lib/decision'
 import {BATCH_STATUS_LABEL, JOB_STATUS_LABEL} from '@/lib/jobStatus'
@@ -32,6 +32,39 @@ export function DecisionBadge({
             {decision === 'ABSTAIN' && <CircleAlert />}
             {DECISION_LABEL[decision]}
         </Badge>
+    );
+}
+
+export function ConfirmedDecision({
+    decision,
+    review,
+    className,
+} : {
+    decision : Decision;
+    review : JobReview;
+    className? : string;
+}) {
+    return (
+        <span className={cn('flex flex-wrap items-center gap-1.5', className)}>
+            <Badge
+                variant="outline"
+                className="h-auto border-border px-2 py-0.5 text-[13px] text-ink-faint line-through decoration-ink-faint/60"
+            >
+                {DECISION_LABEL[decision]}
+            </Badge>
+
+            <ArrowRight size={13} className="shrink-0 text-ink-faint" />
+
+            <Badge
+                variant="outline"
+                className={cn(
+                    'h-auto px-2.5 py-1 text-sm font-medium',
+                    DECISION_STYLE[review.decision],
+                )}
+            >
+                {DECISION_LABEL[review.decision]} · 확정
+            </Badge>
+        </span>
     );
 }
 

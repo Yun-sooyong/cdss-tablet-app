@@ -11,7 +11,7 @@ import { BUTTON_QUIET } from '@/components/form';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { IntervalBar } from '@/components/IntervalBar';
 import { Empty, Failed, Pending } from '@/components/QueryState';
-import { DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
+import { ConfirmedDecision, DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
 import { stalledBatchIds, useUploads } from '@/components/upload/context';
 import { CUTOFF, toIntervalView } from '@/lib/decision';
 import type { IntervalView } from '@/lib/decision';
@@ -177,7 +177,15 @@ function SlideRow({
                 </span>
 
                 <span className="flex justify-end">
-                    <DecisionBadge decision={row.result.decision} />
+                    {row.job.review ? (
+                        <ConfirmedDecision
+                            decision={row.result.decision}
+                            review={row.job.review}
+                            className="justify-end"
+                        />
+                    ) : (
+                        <DecisionBadge decision={row.result.decision} />
+                    )}
                 </span>
             </Link>
         );

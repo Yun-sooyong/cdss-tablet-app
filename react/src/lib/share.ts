@@ -1,9 +1,4 @@
-import type { AnalysisShare, SharePermission } from '@/api/types';
-
-export const PERMISSION_LABEL : Record<SharePermission, string> = {
-    read: '읽기',
-    comment: '댓글',
-};
+import type { AnalysisShare } from '@/api/types';
 
 export type ShareState = 'live' | 'expired' | 'revoked';
 

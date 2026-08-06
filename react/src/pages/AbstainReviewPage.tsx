@@ -1,15 +1,18 @@
 // 09 판정 유보 검증함
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
-import { getLatestJobs } from '@/api';
+import { createJobReview, getLatestJobs, getMe } from '@/api';
 import { qk } from '@/api/keys';
-import type { Job, JobResult } from '@/api/types';
+import type { Job, JobResult, ReviewDecision } from '@/api/types';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { ClinicalNotice } from '@/components/ClinicalNotice';
+import { BUTTON_PRIMARY, FIELD_INPUT } from '@/components/form';
 import { IntervalBar } from '@/components/IntervalBar';
 import { Empty, Failed, Pending } from '@/components/QueryState';
-import { DecisionBadge } from '@/components/StatusBadge';
+import { ConfirmedDecision, DecisionBadge } from '@/components/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import {
     Sheet,
@@ -18,8 +21,10 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import type { IntervalView } from '@/lib/decision';
-import { CUTOFF, toIntervalView } from '@/lib/decision';
+import { CUTOFF, DECISION_LABEL, toIntervalView } from '@/lib/decision';
+import { formatShort } from '@/lib/format';
 import { patientLabel, patientLabelFull } from '@/lib/patient';
+import { cn } from '@/lib/utils';
 
 interface Row {
     job : Job;
@@ -62,7 +67,7 @@ export default function AbstainReviewPage() {
     if (jobs.isError) return <Failed error={jobs.error} onRetry={() => void jobs.refetch()} />;
 
     const rows = buildRows(jobs.data);
-    const reviewCount = rows.filter((r) => r.view.crossesCutoff).length;
+    const reviewCount = rows.filter((r) => needsReview(r.job)).length;
     const selected = rows.find((r) => r.job.id === selectedId) ?? null;
 
     return (
@@ -142,7 +147,15 @@ function SlideRows({
                     </span>
 
                     <span className="flex justify-end">
-                        <DecisionBadge decision={row.result.decision} />
+                        {row.job.review ? (
+                            <ConfirmedDecision
+                                decision={row.result.decision}
+                                review={row.job.review}
+                                className="justify-end"
+                            />
+                        ) : (
+                            <DecisionBadge decision={row.result.decision} />
+                        )}
                     </span>
                 </button>
             ))}
@@ -183,7 +196,14 @@ function CardLayout({
                                         {row.filename}
                                     </span>
                                 </span>
-                                <DecisionBadge decision={row.result.decision} />
+                                {row.job.review ? (
+                                    <ConfirmedDecision
+                                        decision={row.result.decision}
+                                        review={row.job.review}
+                                    />
+                                ) : (
+                                    <DecisionBadge decision={row.result.decision} />
+                                )}
                             </div>
 
                             <div className="font-mono text-3xl tabular-nums">
@@ -215,6 +235,95 @@ function CardLayout({
     );
 }
 
+const REVIEW_OPTIONS : ReviewDecision[] = ['LOW', 'HIGH'];
+
+function ReviewSection({ job } : { job : Job }) {
+    const queryClient = useQueryClient();
+
+    const { data: me } = useQuery({ queryKey: qk.me, queryFn: getMe });
+
+    const [decision, setDecision] = useState<ReviewDecision>('LOW');
+    const [reason, setReason] = useState('');
+
+    const confirm = useMutation({
+        mutationFn: () => createJobReview(job.id, { decision, reason: reason.trim() }),
+        onSuccess: (review) => {
+            void queryClient.invalidateQueries({ queryKey: qk.latestJobs });
+            void queryClient.invalidateQueries({ queryKey: qk.batches });
+            void queryClient.invalidateQueries({ queryKey: qk.job(job.id) });
+            setReason('');
+            toast.success(`${DECISION_LABEL[review.decision]}으로 확정했습니다`);
+        },
+        onError: (err : Error) =>
+            toast.error('확정하지 못했습니다', { description: err.message }),
+    });
+
+    if (job.review) {
+        return (
+            <div className="rounded-lg border border-border p-3">
+                <p className="mb-2 text-xs text-ink-muted">
+                    {formatShort(job.review.created_at)} 확정
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {job.review.reason}
+                </p>
+            </div>
+        );
+    }
+
+    // 서버도 role=doctor만 받는다 (403)
+    if (me?.role !== 'doctor') {
+        return (
+            <p className="rounded-lg border border-border p-3 text-sm text-ink-muted">
+                확정은 의사만 할 수 있습니다
+            </p>
+        );
+    }
+
+    return (
+        <div className="rounded-lg border border-border p-3">
+            <p className="mb-2 text-xs text-ink-muted">판정 확정</p>
+
+            <div className="mb-3 flex items-center gap-0.5 rounded-md border border-border p-0.5">
+                {REVIEW_OPTIONS.map((d) => (
+                    <button
+                        key={d}
+                        type="button"
+                        onClick={() => setDecision(d)}
+                        aria-pressed={decision === d}
+                        className={cn(
+                            'flex h-8 flex-1 items-center justify-center rounded text-sm transition-colors',
+                            decision === d
+                                ? 'bg-surface-raised font-medium text-ink shadow-sm'
+                                : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink',
+                        )}
+                    >
+                        {DECISION_LABEL[d]}
+                    </button>
+                ))}
+            </div>
+
+            <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                rows={3}
+                placeholder="판단 근거를 남겨 주세요"
+                aria-label="판단 근거"
+                className={`${FIELD_INPUT} h-auto resize-y py-2 leading-relaxed`}
+            />
+
+            <button
+                type="button"
+                onClick={() => confirm.mutate()}
+                disabled={!reason.trim() || confirm.isPending}
+                className={`mt-3 w-full ${BUTTON_PRIMARY}`}
+            >
+                {DECISION_LABEL[decision]}으로 확정
+            </button>
+        </div>
+    );
+}
+
 function DetailSheet({
     row,
     onClose,
@@ -241,7 +350,14 @@ function DetailSheet({
 
                         {/* 값 · 구간 · 판정. 나머지는 08 결과 상세 */}
                         <div className="space-y-6 px-4 pb-6">
-                            <DecisionBadge decision={row.result.decision} />
+                            {row.job.review ? (
+                                <ConfirmedDecision
+                                    decision={row.result.decision}
+                                    review={row.job.review}
+                                />
+                            ) : (
+                                <DecisionBadge decision={row.result.decision} />
+                            )}
 
                             <div>
                                 <div className="font-mono text-4xl tabular-nums">
@@ -263,6 +379,8 @@ function DetailSheet({
                                     <span>{row.result.upper.toFixed(1)}</span>
                                 </div>
                             </div>
+
+                            <ReviewSection job={row.job} />
 
                             <Link
                                 to={`/results/${row.job.id}`}

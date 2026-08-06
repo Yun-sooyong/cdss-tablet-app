@@ -14,6 +14,8 @@ import type {
     Paginated,
     ImageUpload,
     Job,
+    JobReview,
+    JobReviewCreate,
     ModelVersion,
     PasswordChange,
     PatientCreate,
@@ -151,6 +153,13 @@ export const getJobsByBatch = async (batchId : string) : Promise<Job[]> =>
 // 결과 상세 페이지
 export const getJob = (id : string) : Promise<Job> =>
     get<Job>(`/api/v1/analysis/jobs/${id}/`);
+
+// 판정 유보 검증함 >> 병리의가 ABSTAIN을 LOW/HIGH로 확정한다
+export const createJobReview = (
+    jobId : string,
+    body : JobReviewCreate,
+) : Promise<JobReview> =>
+    post<JobReview>(`/api/v1/analysis/jobs/${jobId}/review/`, body);
 
 // 분석 등록 페이지 >> 모델 선택
 export const getActiveModelVersions = () : Promise<ModelVersion[]> =>
