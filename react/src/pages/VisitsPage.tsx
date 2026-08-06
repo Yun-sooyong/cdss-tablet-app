@@ -69,8 +69,20 @@ export default function VisitsPage() {
     );
 }
 
+// 이름·전화번호는 암호화 컬럼이라 서버가 부분 검색을 못 한다.
+// 부분 입력이 되는 건 차트번호뿐이고 나머지는 정확히 맞아야 찾힌다
+const SEARCH_MODES = [
+    { value: 'chart', label: '차트번호' },
+    { value: 'phone', label: '전화번호' },
+    { value: 'name', label: '이름 + 생년월일' },
+] as const;
+
+type SearchMode = (typeof SEARCH_MODES)[number]['value'];
+
 function PatientPicker({ onPick } : { onPick : (p : PatientSummary) => void }) {
+    const [mode, setMode] = useState<SearchMode>('chart');
     const [draft, setDraft] = useState('');
+    const [birthDate, setBirthDate] = useState('');
     const [q, setQ] = useState('');
 
     useEffect(() => {
@@ -78,31 +90,93 @@ function PatientPicker({ onPick } : { onPick : (p : PatientSummary) => void }) {
         return () => clearTimeout(id);
     }, [draft]);
 
+    // 이름은 생년월일이 같이 있어야 조회가 성립한다
+    const ready = mode === 'name' ? !!q && !!birthDate : !!q;
+    const params =
+        mode === 'chart'
+            ? { chartNumber: q }
+            : mode === 'phone'
+              ? { phone: q }
+              : { name: q, birthDate };
+
     const results = useQuery({
-        queryKey: qk.patientSearch(q),
-        queryFn: () => searchPatients({ chartNumber: q }),
-        enabled: !!q,
+        queryKey: qk.patientSearch(`${mode}:${q}:${birthDate}`),
+        queryFn: () => searchPatients(params),
+        enabled: ready,
     });
+
+    function switchMode(next : SearchMode) {
+        setMode(next);
+        setDraft('');
+        setBirthDate('');
+        setQ('');
+    }
 
     return (
         <div>
-            <label className="block">
-                <span className="mb-1.5 block text-xs text-ink-muted">환자</span>
-                <span className="relative block">
-                    <Search
-                        size={15}
-                        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
-                    />
-                    <input
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        placeholder="차트번호"
-                        className={`${FIELD_INPUT} pl-9`}
-                    />
-                </span>
-            </label>
+            <div className="mb-3 flex w-fit items-center gap-0.5 rounded-md border border-border p-0.5">
+                {SEARCH_MODES.map((m) => (
+                    <button
+                        key={m.value}
+                        type="button"
+                        onClick={() => switchMode(m.value)}
+                        aria-pressed={mode === m.value}
+                        className={cn(
+                            'flex h-8 items-center rounded px-3 text-sm transition-colors',
+                            mode === m.value
+                                ? 'bg-surface-raised font-medium text-ink shadow-sm'
+                                : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink',
+                        )}
+                    >
+                        {m.label}
+                    </button>
+                ))}
+            </div>
 
-            {results.isSuccess && (
+            <div className={cn('gap-3', mode === 'name' && 'grid md:grid-cols-2')}>
+                <label className="block">
+                    <span className="mb-1.5 block text-xs text-ink-muted">
+                        {mode === 'chart' ? '차트번호' : mode === 'phone' ? '전화번호' : '이름'}
+                    </span>
+                    <span className="relative block">
+                        <Search
+                            size={15}
+                            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+                        />
+                        <input
+                            value={draft}
+                            onChange={(e) => setDraft(e.target.value)}
+                            placeholder={
+                                mode === 'chart'
+                                    ? '일부만 입력해도 됩니다'
+                                    : mode === 'phone'
+                                      ? '010-0000-0000'
+                                      : '홍길동'
+                            }
+                            className={`${FIELD_INPUT} pl-9`}
+                        />
+                    </span>
+                </label>
+
+                {mode === 'name' && (
+                    <label className="block">
+                        <span className="mb-1.5 block text-xs text-ink-muted">생년월일</span>
+                        <input
+                            type="date"
+                            value={birthDate}
+                            onChange={(e) => setBirthDate(e.target.value)}
+                            className={FIELD_INPUT}
+                        />
+                    </label>
+                )}
+            </div>
+
+            <p className="mt-2 text-xs text-ink-faint">
+                차트번호는 일부만 입력해도 찾습니다. 전화번호와 이름·생년월일은
+                정확히 일치해야 합니다 — 개인정보가 암호화돼 있어 부분 검색이 안 됩니다
+            </p>
+
+            {ready && results.isSuccess && (
                 <div className="mt-2 divide-y divide-border rounded-md border border-border">
                     {results.data.length === 0 ? (
                         <p className="px-3 py-6 text-center text-sm text-ink-faint">
