@@ -1,0 +1,17 @@
+name: shared
+description: "VitaTree 공유 패키지 — theme / api / models / auth. mobile·tablet 공용."
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ^3.12.2
+
+# 의존성 추가는 mobile/tablet 양쪽에 영향을 준다. 추가 시 서로 공지할 것.
+# (루트 README 6절 — shared/pubspec.yaml은 윤수용·서정은 공동 소유)
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
