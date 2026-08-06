@@ -1,15 +1,9 @@
-import type { AccountRequestStatus, EmploymentStatus, Role, Staff } from '@/api/types';
+import type { AccountRequestStatus, Role, Staff } from '@/api/types';
 
 export const ROLE_LABEL : Record<Role, string> = {
     doctor: '의사',
     nurse: '간호사',
     admin: '관리자',
-};
-
-export const EMPLOYMENT_LABEL : Record<EmploymentStatus, string> = {
-    active: '재직',
-    leave: '휴직',
-    resigned: '퇴사',
 };
 
 // staffBrief >> 아이디 · 소속

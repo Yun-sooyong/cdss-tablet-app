@@ -17,10 +17,6 @@ export const DECISION_LABEL : Record<Decision, string> = {
 export const needsReview = (job : Pick<Job, 'result' | 'review'>) : boolean =>
     job.result?.decision === 'ABSTAIN' && !job.review;
 
-// finalDecision 
-export const finalDecision = (job : Pick<Job, 'result' | 'review'>) : Decision | null =>
-    job.review?.decision ?? job.result?.decision ?? null;
-
 /* Interval */
 export interface IntervalView {
     value : number;
