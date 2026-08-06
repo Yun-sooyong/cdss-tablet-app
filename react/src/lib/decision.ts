@@ -1,4 +1,4 @@
-import type { Decision, JobResult } from '@/api/types';
+import type { Decision, Job, JobResult } from '@/api/types';
 
 /* Cutoff */
 export const CUTOFF = 50;
@@ -13,8 +13,13 @@ export const DECISION_LABEL : Record<Decision, string> = {
 
 
 /* Review */
-export const needsReview = (result : JobResult | null) : boolean =>
-    result?.decision === 'ABSTAIN';
+
+export const needsReview = (job : Pick<Job, 'result' | 'review'>) : boolean =>
+    job.result?.decision === 'ABSTAIN' && !job.review;
+
+// finalDecision 
+export const finalDecision = (job : Pick<Job, 'result' | 'review'>) : Decision | null =>
+    job.review?.decision ?? job.result?.decision ?? null;
 
 /* Interval */
 export interface IntervalView {

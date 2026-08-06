@@ -14,7 +14,6 @@ import { BatchStatusBadge } from '@/components/StatusBadge';
 import { formatShort } from '@/lib/format';
 import { BATCH_STATUS_LABEL } from '@/lib/jobStatus';
 import { patientBrief } from '@/lib/patient';
-import { PERMISSION_LABEL } from '@/lib/share';
 import { ROLE_LABEL, staffBrief } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 
@@ -48,8 +47,12 @@ export default function CaseListPage() {
 
     // 필터·검색은 서버가 한다. 페이지를 끊는 순간 클라이언트 필터는 이 페이지만 보게 된다
     const batches = useQuery({
-        queryKey: qk.batchList({ status, q }),
-        queryFn: () => getBatches({ status: status === 'all' ? undefined : status, q: q || undefined }),
+        queryKey: qk.batchList({ status, q, shared: sharedOnly }),
+        queryFn: () => getBatches({
+            status: status === 'all' ? undefined : status,
+            q: q || undefined,
+            shared: sharedOnly || undefined,
+        }),
     });
 
     // 소유자만 공유할 수 있다 >> created_by가 곧 공유한 사람
@@ -66,11 +69,11 @@ export default function CaseListPage() {
     const staffById = new Map<string, Staff>((staff ?? []).map((s) => [s.id, s]));
     const sharedWithMe = (batch : Batch) : boolean => !!me && batch.created_by !== me.id;
 
-    // 권한·받은 시각은 배치가 아니라 공유에 붙어 있다
+    // 의견·받은 시각은 배치가 아니라 공유에 붙어 있다
     const { data: shares } = useQuery({ queryKey: qk.sharesIn, queryFn: getSharesToMe });
     const shareByBatch = new Map((shares ?? []).map((s) => [s.batch, s]));
 
-    // sharedLabel >> 보낸 사람 · 진료과. 권한과 시각은 툴팁으로
+    // sharedLabel >> 보낸 사람 · 진료과. 받은 시각은 툴팁으로
     function sharedLabel(batch : Batch) : { text : string; title : string } {
         const from = staffById.get(batch.created_by);
         const share = shareByBatch.get(batch.id);
@@ -78,21 +81,21 @@ export default function CaseListPage() {
         const who = from ? staffBrief(from) : batch.created_by.slice(0, 8);
         const detail = [
             from && ROLE_LABEL[from.role],
-            share && `${PERMISSION_LABEL[share.permission]} 권한`,
             share && `${formatShort(share.created_at)} 받음`,
         ].filter(Boolean);
 
         return { text: who, title: [who, ...detail].join(' · ') };
     }
 
+    const opinionOf = (batch : Batch) : string =>
+        sharedWithMe(batch) ? (shareByBatch.get(batch.id)?.opinion ?? '') : '';
+
     // 서버가 정렬·필터를 끝낸 목록. 슬라이드 수와 확인 필요 수도 응답에 들어 있다
-    const matched = (batches.data?.results ?? [])
-        .filter((batch) => !sharedOnly || sharedWithMe(batch))
-        .map((batch) => ({
-            batch,
-            slides: batch.image_count,
-            review: batch.needs_review_count,
-        }));
+    const matched = (batches.data?.results ?? []).map((batch) => ({
+        batch,
+        slides: batch.image_count,
+        review: batch.needs_review_count,
+    }));
 
     const total = batches.data?.count ?? 0;
     // 서버가 끊어 준 페이지보다 전체가 많으면 알린다
@@ -151,7 +154,7 @@ export default function CaseListPage() {
                 </button>
 
                 <span className="ml-auto text-[15px] text-ink-muted">
-                    {batches.isSuccess ? `${sharedOnly ? matched.length : total}건` : ''}
+                    {batches.isSuccess ? `${total}건` : ''}
                 </span>
             </div>
 
@@ -245,6 +248,15 @@ export default function CaseListPage() {
                                 <span className="text-right text-sm text-ink-muted">
                                     {formatShort(row.batch.created_at)}
                                 </span>
+
+                                {opinionOf(row.batch) && (
+                                    <span
+                                        title={opinionOf(row.batch)}
+                                        className="col-span-full mt-1.5 truncate text-[13px] text-ink-muted"
+                                    >
+                                        {opinionOf(row.batch)}
+                                    </span>
+                                )}
                             </Link>
                         ))}
                     </div>

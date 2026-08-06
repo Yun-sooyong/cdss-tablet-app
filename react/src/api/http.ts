@@ -186,12 +186,12 @@ export const putFile = (
 
 // query
 export const query = (
-    params : Record<string, string | number | undefined>,
+    params : Record<string, string | number | boolean | undefined>,
 ) : string => {
     const search = new URLSearchParams();
 
     for (const [key, value] of Object.entries(params)) {
-        // 0은 유효한 값이다. offset=0을 떨어뜨리지 않게 undefined만 거른다
+        // undefined만 거름
         if (value !== undefined && value !== '') search.set(key, String(value));
     }
 

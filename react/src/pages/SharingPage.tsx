@@ -14,21 +14,22 @@ import {
     revokeShare,
 } from '@/api';
 import { qk } from '@/api/keys';
-import type { Batch, SharePermission, Staff } from '@/api/types';
+import type { Batch, Staff } from '@/api/types';
 import { BUTTON_PRIMARY, FIELD_INPUT } from '@/components/form';
 import { ListFrame } from '@/components/ListFrame';
 import { Empty, Failed, Pending } from '@/components/QueryState';
 import { StateBadge } from '@/components/StateBadge';
 import { formatShort } from '@/lib/format';
 import { patientLabel } from '@/lib/patient';
-import { PERMISSION_LABEL, SHARE_STATE_LABEL, shareState } from '@/lib/share';
+import { SHARE_STATE_LABEL, shareState } from '@/lib/share';
 import { staffBrief } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid min-w-[46rem] grid-cols-[minmax(9rem,1.6fr)_minmax(7rem,1fr)_4rem_5rem_6rem_3.5rem] items-center gap-x-5';
+    'grid min-w-[52rem] grid-cols-[minmax(9rem,1.3fr)_minmax(7rem,0.9fr)_minmax(10rem,1.8fr)_5rem_6rem_3.5rem] items-center gap-x-5';
 
-const PERMISSION_OPTIONS : SharePermission[] = ['read', 'comment'];
+// 서버가 opinion을 200자로 자른다
+const OPINION_MAX = 200;
 
 // days 0 >> 만료 없음
 const EXPIRY_OPTIONS = [
@@ -66,14 +67,21 @@ export default function SharingPage() {
 
     // 서버가 소유자만 공유를 허용한다. 공유받은 배치를 고르면 404가 난다
     const mine = (batches ?? []).filter((b) => b.created_by === me?.id);
+
+    // 담당의는 LOW/HIGH만 받는다. 기권은 병리의가 확정한 뒤에야 넘어간다
+    // needs_review_count >> 아직 확정되지 않은 ABSTAIN 수 (서버 집계)
+    const shareable = mine.filter(
+        (b) => b.status === 'done' && b.needs_review_count === 0,
+    );
+    const held = mine.length - shareable.length;
     const staffById = new Map<string, Staff>((staff ?? []).map((s) => [s.id, s]));
     const batchById = new Map<string, Batch>((batches ?? []).map((b) => [b.id, b]));
 
     const batchId = searchParams.get('batch') ?? '';
-    const ownsPicked = mine.some((b) => b.id === batchId);
+    const ownsPicked = shareable.some((b) => b.id === batchId);
 
     const [targetId, setTargetId] = useState('');
-    const [permission, setPermission] = useState<SharePermission>('read');
+    const [opinion, setOpinion] = useState('');
     const [days, setDays] = useState(0);
     const [error, setError] = useState('');
 
@@ -90,12 +98,13 @@ export default function SharingPage() {
         mutationFn: () =>
             createShare(batchId, {
                 shared_to: targetId,
-                permission,
+                opinion: opinion.trim(),
                 expires_at: expiresAt(days),
             }),
         onSuccess: (share) => {
             void queryClient.invalidateQueries({ queryKey: qk.sharesOut });
             setTargetId('');
+            setOpinion('');
             setError('');
             toast.success('공유했습니다', {
                 description: `${labelOf(batchById.get(share.batch), share.batch)} → ${
@@ -135,18 +144,24 @@ export default function SharingPage() {
                                 className={FIELD_INPUT}
                             >
                                 <option value="">
-                                    {mine.length === 0 ? '공유할 케이스가 없습니다' : '선택하세요'}
+                                    {shareable.length === 0
+                                        ? '공유할 케이스가 없습니다'
+                                        : '선택하세요'}
                                 </option>
-                                {mine.map((batch) => (
+                                {shareable.map((batch) => (
                                     <option key={batch.id} value={batch.id}>
                                         {labelOf(batch)}
                                     </option>
                                 ))}
                             </select>
 
-                            {mine.length === 0 && (
+                            {mine.length === 0 ? (
                                 <span className="mt-1.5 block text-xs text-ink-faint">
                                     내가 등록한 케이스만 공유할 수 있습니다
+                                </span>
+                            ) : held > 0 && (
+                                <span className="mt-1.5 block text-xs text-ink-faint">
+                                    판정이 끝나지 않은 {held}건은 공유할 수 없습니다
                                 </span>
                             )}
                         </label>
@@ -170,21 +185,26 @@ export default function SharingPage() {
                             </select>
                         </label>
 
-                        <label className="block">
-                            <span className="mb-1.5 block text-xs text-ink-muted">권한</span>
-                            <select
-                                value={permission}
-                                onChange={(e) =>
-                                    setPermission(e.target.value as SharePermission)
-                                }
-                                className={FIELD_INPUT}
-                            >
-                                {PERMISSION_OPTIONS.map((p) => (
-                                    <option key={p} value={p}>
-                                        {PERMISSION_LABEL[p]}
-                                    </option>
-                                ))}
-                            </select>
+                        <label className="block md:col-span-2">
+                            <span className="mb-1.5 flex items-baseline justify-between text-xs text-ink-muted">
+                                <span>의견 (선택)</span>
+                                <span
+                                    className={cn(
+                                        'font-mono tabular-nums',
+                                        opinion.length === OPINION_MAX && 'text-danger',
+                                    )}
+                                >
+                                    {opinion.length}/{OPINION_MAX}
+                                </span>
+                            </span>
+                            <textarea
+                                value={opinion}
+                                onChange={(e) => setOpinion(e.target.value)}
+                                maxLength={OPINION_MAX}
+                                rows={3}
+                                placeholder="받는 사람이 함께 볼 메모를 남길 수 있습니다"
+                                className={`${FIELD_INPUT} h-auto resize-y py-2 leading-relaxed`}
+                            />
                         </label>
 
                         <label className="block">
@@ -234,7 +254,7 @@ export default function SharingPage() {
                         <>
                             <span>케이스</span>
                             <span>받는 사람</span>
-                            <span>권한</span>
+                            <span>의견</span>
                             <span>상태</span>
                             <span className="text-right">보낸 시각</span>
                             <span />
@@ -278,8 +298,14 @@ export default function SharingPage() {
                                             {target ? staffBrief(target) : '알 수 없음'}
                                         </span>
 
-                                        <span className="text-sm text-ink-muted">
-                                            {PERMISSION_LABEL[share.permission]}
+                                        <span
+                                            className={cn(
+                                                'truncate text-sm',
+                                                share.opinion ? 'text-ink-muted' : 'text-ink-faint',
+                                            )}
+                                            title={share.opinion || undefined}
+                                        >
+                                            {share.opinion || '없음'}
                                         </span>
 
                                         <span>

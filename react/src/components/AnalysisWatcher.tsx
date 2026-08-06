@@ -44,7 +44,7 @@ export function AnalysisWatcher() {
                 const jobs = await getJobsByBatch(batch.id).catch(() => []);
                 if (!alive) return;
 
-                const review = jobs.filter((j) => needsReview(j.result)).length;
+                const review = jobs.filter((j) => needsReview(j)).length;
                 const who = patientLabel(batch.patient_summary);
 
                 const notify = batch.status === 'failed' ? toast.error : toast.success;
