@@ -11,7 +11,7 @@ export const qk = {
     // batches >> 무효화용 접두사. 아래 목록·상세 키가 전부 이 아래 붙는다
     batches: ['batches'] as const,
     // batchList >> 필터마다 캐시가 갈린다. 서버가 걸러 주므로 조건이 키에 들어가야 한다
-    batchList: (params : { status? : string; q? : string } = {}) =>
+    batchList: (params : { status? : string; q? : string; shared? : boolean } = {}) =>
         ['batches', 'list', params] as const,
     batch: (id : string) => ['batches', id] as const,
     jobsByBatch: (id : string) => ['batches', id, 'jobs'] as const,

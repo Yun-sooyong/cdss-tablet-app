@@ -199,7 +199,7 @@ function NavList({
     });
 
     const count = {
-        review: jobs?.filter((job) => needsReview(job.result)).length ?? 0,
+        review: jobs?.filter((job) => needsReview(job)).length ?? 0,
         // 배지와 알림 화면이 같은 것을 세야 한다
         unread: unreadIn(notifications, tone === 'admin' ? 'admin' : 'clinical'),
         requests: requests?.length ?? 0,

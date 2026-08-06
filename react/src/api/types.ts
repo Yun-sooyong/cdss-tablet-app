@@ -44,7 +44,7 @@ export interface JobResult {
     medgemma_report? : MedgemmaReport;
 }
 
-// Paginated >> 배치 목록이 이 봉투로 온다. limit 기본 50 · 최대 200
+// Paginated >> 최대 200자 (서버)
 export interface Paginated<T> {
     count : number;
     limit : number;
@@ -56,6 +56,8 @@ export interface BatchQuery {
     status? : BatchStatus;
     q? : string;
     patient? : string;
+    // shared >> 공유 받은거만 필터링
+    shared? : boolean;
     date_from? : string;
     date_to? : string;
     limit? : number;
@@ -95,6 +97,22 @@ export interface ImageUpload {
     upload_content_type : string;
 }
 
+export type ReviewDecision = Exclude<Decision, 'ABSTAIN'>;
+
+// 확정해도 Job.result는 워커 것이라 그대로 남는다
+export interface JobReview {
+    id : string;
+    decision : ReviewDecision;
+    reason : string;
+    reviewed_by : string;
+    created_at : string;
+}
+
+export interface JobReviewCreate {
+    decision : ReviewDecision;
+    reason : string;
+}
+
 export interface Job {
     id : string;
     image : string;
@@ -103,6 +121,8 @@ export interface Job {
     model_version : string;
     status : JobStatus;
     result : JobResult | null;
+    // 번복하면 최신 1건만 온다
+    review : JobReview | null;
     mask_url : string | null;
     patient_summary : PatientSummary | null;
     error_message : string;
@@ -191,7 +211,7 @@ export interface AccountRequestApprove {
     department? : string;
 }
 
-// AccountRequestApproved >> 승인 응답에만 평문 비밀번호가 실린다. 다시 조회할 수 없다
+// AccountRequestApproved 
 export interface AccountRequestApproved {
     username : string;
     temporary_password : string;
@@ -216,14 +236,13 @@ export interface AppNotification {
 
 /* 공유 >> /api/v1/analysis/batches/{id}/shares · /api/v1/analysis/shares/{id} */
 
-export type SharePermission = 'read' | 'comment';
-
 export interface AnalysisShare {
     id : string;
     batch : string;
     shared_by : string;
     shared_to : string;
-    permission : SharePermission;
+    // 서버가 200자로 자른다
+    opinion : string;
     expires_at : string | null;
     // revoked_at >> 회수는 물리 삭제 X
     revoked_at : string | null;
@@ -232,6 +251,6 @@ export interface AnalysisShare {
 
 export interface AnalysisShareCreate {
     shared_to : string;
-    permission? : SharePermission;
+    opinion? : string;
     expires_at? : string | null;
 }

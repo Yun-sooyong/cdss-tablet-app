@@ -140,7 +140,7 @@ export default function UploadPage() {
                                     <input
                                         value={query}
                                         onChange={(e) => setQuery(e.target.value)}
-                                        placeholder="차트번호"
+                                        placeholder="환자 검색 (전화번호, 차트번호, 이름)"
                                         aria-label="차트번호로 환자 검색"
                                         className={`${FIELD_INPUT} pl-9`}
                                     />
