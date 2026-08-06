@@ -112,7 +112,7 @@ export default function UploadPage() {
                     <Section step={1} title="환자" done={!!patient}>
                         {patient ? (
                             <div className="flex items-center justify-between gap-4 rounded-md border border-border bg-brand-soft/40 px-4 py-3">
-                                <span className="text-[15px]">{patientFull(patient)}</span>
+                                <span className="text-base">{patientFull(patient)}</span>
                                 <button
                                     type="button"
                                     onClick={() => setPatient(null)}
@@ -177,7 +177,7 @@ export default function UploadPage() {
                                                     key={p.id}
                                                     type="button"
                                                     onClick={() => setPatient(p)}
-                                                    className="block w-full px-4 py-3 text-left text-[15px] transition-colors hover:bg-brand-soft/50"
+                                                    className="block w-full px-4 py-3 text-left text-base transition-colors hover:bg-brand-soft/50"
                                                 >
                                                     {patientFull(p)}
                                                 </button>
@@ -208,7 +208,7 @@ export default function UploadPage() {
                             )}
                         >
                             <UploadCloud size={28} className="mx-auto mb-2 text-ink-faint" />
-                            <p className="text-[15px]">파일을 끌어다 놓거나 클릭해서 선택</p>
+                            <p className="text-base">파일을 끌어다 놓거나 클릭해서 선택</p>
                             <p className="mt-1 text-xs text-ink-faint">PNG · JPG · TIFF</p>
 
                             <input

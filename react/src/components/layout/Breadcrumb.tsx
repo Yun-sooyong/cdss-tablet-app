@@ -38,7 +38,8 @@ export default function Breadcrumb() {
         enabled: !!jobId,
     });
 
-    const batchId = batchMatch?.params.batchId;
+    // 결과 상세에서는 job이 가리키는 배치를 따라간다
+    const batchId = batchMatch?.params.batchId ?? job?.image_summary?.batch;
     const { data: batch } = useQuery({
         queryKey: qk.batch(batchId ?? ''),
         queryFn: () => getBatchDetail(batchId!),
@@ -60,12 +61,13 @@ export default function Breadcrumb() {
             return [CASES, batchCrumb(batchMatch.params.batchId)];
         }
 
-        // job 응답에 batch가 없어 배치 크럼을 못 만든다. image_summary.batch가 오면 복구
         if (jobId) {
-            return [
-                CASES,
-                { label: job?.image_summary?.original_filename ?? jobId.slice(0, 8) },
-            ];
+            const parent = job?.image_summary?.batch;
+            const leaf = {
+                label: job?.image_summary?.original_filename ?? jobId.slice(0, 8),
+            };
+
+            return parent ? [CASES, batchCrumb(parent), leaf] : [CASES, leaf];
         }
 
         const nav = NAV_ITEMS.find((item) => item.to === pathname);
@@ -106,7 +108,7 @@ export default function Breadcrumb() {
                 </nav>
             )}
 
-            <h1 className="truncate text-[17px] font-bold tracking-tight text-ink">
+            <h1 className="truncate text-lg font-bold tracking-tight text-ink">
                 {current?.label ?? APP_NAME}
             </h1>
         </div>

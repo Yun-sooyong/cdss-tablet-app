@@ -20,6 +20,7 @@ import type {
     PasswordChange,
     PatientCreate,
     PatientSummary,
+    Role,
     Staff,
     StaffMeUpdate,
     TokenPair,
@@ -103,6 +104,12 @@ export const changePassword = (body : PasswordChange) : Promise<void> =>
 // 관리 콘솔 구성원 · 공유 보내기 페이지
 export const getStaff = () : Promise<Staff[]> => get<Staff[]>('/api/v1/staff/');
 
+// 관리 콘솔 구성원 페이지 >> 관리자만. 본인 직군은 여기서도 못 바꾼다
+export const updateStaff = (
+    id : string,
+    body : { role? : Role; department? : string },
+) : Promise<Staff> => patch<Staff>(`/api/v1/staff/${id}/`, body);
+
 // 관리 콘솔 구성원 페이지
 export const deactivateStaff = (id : string) : Promise<Staff> =>
     del<Staff>(`/api/v1/staff/${id}/`);
@@ -165,7 +172,7 @@ export const createJobReview = (
 export const getActiveModelVersions = () : Promise<ModelVersion[]> =>
     get<ModelVersion[]>('/api/v1/analysis/model-versions/');
 
-// getModelVersions >> 비활성 포함 조회가 없어 활성만 온다. 예전 모델은 이름이 비는다
+// getModelVersions >> 비활성 포함 조회가 없어 활성만 온다.
 export const getModelVersions = getActiveModelVersions;
 
 // 분석 등록 페이지
@@ -190,7 +197,7 @@ export const startBatch = (batchId : string, modelVersionId? : string) : Promise
         model_version_id: modelVersionId,
     });
 
-// 배치 요약 · 결과 상세 페이지 >> 같은 이미지로 job을 하나 더 만든다
+// 배치 요약 · 결과 상세 페이지 >> 같은 이미지로 job을 하나 더 만듬
 export const retryJob = (imageId : string, modelVersionId? : string) : Promise<Job> =>
     post<Job>(`/api/v1/analysis/images/${imageId}/jobs/`, {
         model_version_id: modelVersionId,
