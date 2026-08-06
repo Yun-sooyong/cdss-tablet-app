@@ -5,9 +5,10 @@ import {
     Building2,
     LayoutDashboard,
     List,
-    MessageSquare,
+    Pill,
     ScanEye,
     Share2,
+    Stethoscope,
     Upload,
     User,
     UserPlus,
@@ -41,11 +42,15 @@ export const NAV_GROUPS : NavGroup[] = [
         ],
     },
     {
-        title: '협업',
+        title: '진료',
         items: [
-            { to: '/sharing', label: '공유', icon: Share2 },
-            { to: '/chat', label: '메시지', icon: MessageSquare },
+            { to: '/visits', label: '진료 기록', icon: Stethoscope },
+            { to: '/prescriptions', label: '처방', icon: Pill },
         ],
+    },
+    {
+        title: '협업',
+        items: [{ to: '/sharing', label: '공유', icon: Share2 }],
     },
     {
         title: '개인',

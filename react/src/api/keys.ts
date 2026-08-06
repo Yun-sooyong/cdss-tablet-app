@@ -23,4 +23,9 @@ export const qk = {
 
     patients: ['patients'] as const,
     patientSearch: (query : string) => ['patients', 'search', query] as const,
+
+    diseaseSearch: (query : string) => ['diseases', query] as const,
+    drugSearch: (query : string) => ['drugs', query] as const,
+    visits: (patientId : string) => ['visits', patientId] as const,
+    prescriptions: (visitId : string) => ['prescriptions', visitId] as const,
 };

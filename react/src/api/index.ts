@@ -11,7 +11,13 @@ import type {
     BatchDetail,
     BatchQuery,
     Department,
+    Disease,
+    Drug,
     Paginated,
+    Prescription,
+    PrescriptionCreate,
+    Visit,
+    VisitCreate,
     ImageUpload,
     Job,
     JobReview,
@@ -122,16 +128,30 @@ export const getDepartments = () : Promise<Department[]> =>
 /* 환자 */
 
 // 분석 등록 페이지
+// 이름·전화번호는 암호화 컬럼이라 해시로 정확히 일치하는 것만 찾힌다.
+// 부분 검색이 되는 키는 차트번호뿐이다
 export const searchPatients = ({
     chartNumber,
+    phone,
+    name,
+    birthDate,
 } : {
     chartNumber? : string;
+    phone? : string;
+    name? : string;
+    birthDate? : string;
 }) : Promise<PatientSummary[]> => {
-    if (!chartNumber) return Promise.resolve([]);
+    const params = chartNumber
+        ? { chart_number: chartNumber }
+        : phone
+          ? { phone }
+          : name && birthDate
+            ? { name, birth_date: birthDate }
+            : null;
 
-    return get<PatientSummary[]>(
-        `/api/v1/patients/search/${query({ chart_number: chartNumber })}`,
-    );
+    if (!params) return Promise.resolve([]);
+
+    return get<PatientSummary[]>(`/api/v1/patients/search/${query(params)}`);
 };
 
 // 분석 등록 페이지 >> 워크인 등록
@@ -202,6 +222,36 @@ export const retryJob = (imageId : string, modelVersionId? : string) : Promise<J
     post<Job>(`/api/v1/analysis/images/${imageId}/jobs/`, {
         model_version_id: modelVersionId,
     });
+
+
+/* 진료 */
+
+// 진료 기록 · 처방 페이지 >> 두 글자 미만이면 서버가 빈 목록을 준다
+export const searchDiseases = (q : string) : Promise<Disease[]> =>
+    q.trim().length < 2
+        ? Promise.resolve([])
+        : get<Disease[]>(`/api/v1/diseases/${query({ q: q.trim() })}`);
+
+export const searchDrugs = (q : string) : Promise<Drug[]> =>
+    q.trim().length < 2
+        ? Promise.resolve([])
+        : get<Drug[]>(`/api/v1/drugs/${query({ q: q.trim() })}`);
+
+// 진료 기록 페이지
+export const getVisits = (patientId : string) : Promise<Visit[]> =>
+    get<Visit[]>(`/api/v1/visits/${query({ patient: patientId })}`);
+
+export const createVisit = (body : VisitCreate) : Promise<Visit> =>
+    post<Visit>('/api/v1/visits/', body);
+
+// 처방 페이지
+export const getPrescriptions = (
+    params : { visit? : string; patient? : string },
+) : Promise<Prescription[]> =>
+    get<Prescription[]>(`/api/v1/prescriptions/${query({ ...params })}`);
+
+export const createPrescription = (body : PrescriptionCreate) : Promise<Prescription> =>
+    post<Prescription>('/api/v1/prescriptions/', body);
 
 
 /* 계정 요청 */

@@ -255,3 +255,77 @@ export interface AnalysisShareCreate {
     opinion? : string;
     expires_at? : string | null;
 }
+
+
+/* 진료 >> /api/v1/visits · /api/v1/prescriptions */
+
+// 표준코드 테이블이라 pk가 UUID가 아니라 코드다
+export interface Disease {
+    code : string;
+    name_ko : string;
+    name_en : string;
+}
+
+export interface Drug {
+    code : string;
+    product_name : string;
+    ingredient : string;
+    unit : string;
+}
+
+export interface Diagnosis {
+    id : string;
+    disease : Disease;
+    is_primary : boolean;
+}
+
+export interface Visit {
+    id : string;
+    patient : string;
+    staff : string | null;
+    // staff·department는 식별자로 온다. 사람이 읽을 이름은 _name 쪽
+    staff_name : string | null;
+    department : string | null;
+    department_name : string | null;
+    visited_at : string;
+    note : string;
+    diagnoses : Diagnosis[];
+    created_at : string;
+}
+
+export interface VisitCreate {
+    patient : string;
+    department? : string | null;
+    visited_at? : string;
+    note? : string;
+    diagnoses? : { disease : string; is_primary? : boolean }[];
+}
+
+export interface PrescriptionDrug {
+    id : string;
+    drug : Drug;
+    dose_per_take : number;
+    times_per_day : number;
+    total_days : number;
+}
+
+export interface Prescription {
+    id : string;
+    visit : string;
+    staff : string | null;
+    prescribed_at : string;
+    file_url : string | null;
+    drugs : PrescriptionDrug[];
+    created_at : string;
+}
+
+export interface PrescriptionCreate {
+    visit : string;
+    prescribed_at? : string;
+    drugs : {
+        drug : string;
+        dose_per_take : number;
+        times_per_day : number;
+        total_days : number;
+    }[];
+}
