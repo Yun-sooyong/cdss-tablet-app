@@ -497,7 +497,7 @@ class BatchShareListCreateView(APIView):
             batch=batch,
             shared_by=staff,
             shared_to=data["shared_to"],
-            permission=data["permission"],
+            opinion=data["opinion"],
             expires_at=data["expires_at"],
         )
 
