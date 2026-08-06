@@ -41,7 +41,10 @@ class DoseItem {
     String medicationName,
     double? remainingPercent,
   ) {
-    final scheduledAt = DateTime.parse(json['scheduled_at'] as String);
+    // 서버는 UTC로 내려줘("...Z"). .hour를 바로 읽으면 UTC 기준 시간으로 아침/점심/저녁을
+    // 나눠버리게 되니까, 파싱하자마자 .toLocal()로 한국 시간으로 바꾼 다음에 써야 해.
+    final scheduledAt =
+        DateTime.parse(json['scheduled_at'] as String).toLocal();
     return DoseItem(
       id: json['id'] as String,
       date: scheduledAt,

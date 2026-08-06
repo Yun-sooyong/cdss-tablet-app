@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../theme/app_colors.dart';
 import 'edit_profile_screen.dart';
 
 class MyInfoScreen extends StatefulWidget {
@@ -31,8 +30,8 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final colorScheme = Theme.of(context).colorScheme;
+    final surface = colorScheme.surface;
     final patient = widget.authService.currentPatient;
 
     return Scaffold(
@@ -67,14 +66,14 @@ class _MyInfoScreenState extends State<MyInfoScreen> {
             child: OutlinedButton(
               onPressed: _goEdit,
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.primary),
+                side: BorderSide(color: colorScheme.primary),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8)),
               ),
-              child: const Text(
+              child: Text(
                 '정보 수정',
                 style: TextStyle(
-                    color: AppColors.primary, fontWeight: FontWeight.bold),
+                    color: colorScheme.primary, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -129,7 +128,9 @@ class _InfoRow extends StatelessWidget {
         children: [
           SizedBox(
               width: 80,
-              child: Text(label, style: const TextStyle(color: Colors.grey))),
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant))),
           Expanded(child: Text(value, style: TextStyle(color: valueColor))),
         ],
       ),

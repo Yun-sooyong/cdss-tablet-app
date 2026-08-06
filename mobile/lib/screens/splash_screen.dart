@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
 import 'login_screen.dart';
 import 'main_shell.dart';
+import '../services/push_notification_service.dart';
 
 class SplashScreen extends StatefulWidget {
   final AuthService authService;
@@ -50,6 +51,9 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _checkAuthAndNavigate() async {
     final stopwatch = Stopwatch()..start();
     final isLoggedIn = await widget.authService.tryAutoLogin();
+    if (isLoggedIn) {
+      PushNotificationService.instance.registerDeviceToken();
+    }
 
     const minDisplayMs = 2500;
     final elapsed = stopwatch.elapsedMilliseconds;
@@ -92,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen> {
                       '건강한 오늘, 더 나은 내일',
                       style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.primary,
+                        color: AppColors.lightPrimary,
                         letterSpacing: 0.5,
                       ),
                     ),
@@ -103,7 +107,8 @@ class _SplashScreenState extends State<SplashScreen> {
                         style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 4),
                     const Text('잠시만 기다려주세요.',
-                        style: TextStyle(color: Colors.grey, fontSize: 12)),
+                        style: TextStyle(
+                            color: AppColors.lightTextSecondary, fontSize: 12)),
                   ],
                 ),
               ),
@@ -255,7 +260,7 @@ class _LeafRingLoaderState extends State<_LeafRingLoader>
               style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: AppColors.primary),
+                  color: AppColors.lightPrimary),
             ),
           ),
         ],

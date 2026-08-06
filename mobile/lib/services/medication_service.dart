@@ -8,8 +8,8 @@ class MedicationService {
 
   Future<List<DoseItem>> _fetchAllDoses({DateTime? from, DateTime? to}) async {
     final query = <String, String>{};
-    if (from != null) query['from'] = from.toIso8601String();
-    if (to != null) query['to'] = to.toIso8601String();
+    if (from != null) query['from'] = from.toUtc().toIso8601String();
+    if (to != null) query['to'] = to.toUtc().toIso8601String();
 
     final res = await _client.get(
       '/api/v1/patients/me/medications/schedule/',
@@ -22,7 +22,12 @@ class MedicationService {
     final doses = <DoseItem>[];
     for (final group in data) {
       final drugName = group['drug']['product_name'] as String;
-      final remainingPercent = (group['remaining_percent'] as num?)?.toDouble();
+      final rawRemaining = group['remaining_percent'];
+      final remainingPercent = rawRemaining == null
+          ? null
+          : (rawRemaining is String
+              ? double.parse(rawRemaining)
+              : (rawRemaining as num).toDouble());
       final schedules = group['schedules'] as List<dynamic>;
       for (final s in schedules) {
         doses.add(DoseItem.fromScheduleJson(

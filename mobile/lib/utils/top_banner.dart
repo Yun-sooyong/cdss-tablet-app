@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 // 화면 상단에 둥근 사각형 카드로 잠깐 떴다 사라지는 알림 배너.
 // 기본 SnackBar(하단, 각진 검정 바) 대신 이걸 쓴다.
@@ -51,7 +50,7 @@ class _TopBannerCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, color: AppColors.primary),
+            Icon(icon, color: Theme.of(context).colorScheme.primary),
             const SizedBox(width: 10),
             Expanded(child: Text(message, style: const TextStyle(fontWeight: FontWeight.w600))),
           ],

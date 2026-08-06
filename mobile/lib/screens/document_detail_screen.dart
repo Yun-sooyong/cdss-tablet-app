@@ -42,6 +42,10 @@ class DocumentDetailScreen extends StatelessWidget {
               width: double.infinity,
               height: 48,
               child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                ),
                 icon: const Icon(Icons.download_outlined),
                 label: const Text('문서 다운로드'),
                 onPressed: () {
@@ -72,7 +76,9 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
               width: 70,
-              child: Text(label, style: const TextStyle(color: Colors.grey))),
+              child: Text(label,
+                  style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant))),
           Expanded(
               child: Text(value,
                   style: const TextStyle(fontWeight: FontWeight.w600))),

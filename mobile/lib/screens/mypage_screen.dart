@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/medication_service.dart';
 import '../services/reservation_service.dart';
-import '../theme/app_colors.dart';
 import 'settings_screen.dart';
 import 'prescription_info_screen.dart';
 import 'document_box_screen.dart';
@@ -104,6 +103,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final patient = widget.authService.currentPatient;
     final name = patient?.name ?? '환자';
     final initial = name.isNotEmpty ? name.substring(0, 1) : '?';
@@ -139,7 +139,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                           child: Row(children: [
                             CircleAvatar(
                                 radius: 28,
-                                backgroundColor: AppColors.primary,
+                                backgroundColor: colorScheme.primary,
                                 child: Text(initial,
                                     style: const TextStyle(
                                         color: Colors.white, fontSize: 20))),
@@ -152,8 +152,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                           fontSize: 18,
                                           fontWeight: FontWeight.bold)),
                                   const SizedBox(height: 4),
-                                  const Text('건강한 하루 보내세요',
-                                      style: TextStyle(color: Colors.grey)),
+                                  Text('건강한 하루 보내세요',
+                                      style: TextStyle(
+                                          color: colorScheme.onSurfaceVariant)),
                                 ]),
                           ]))),
                   const SizedBox(height: 12),
@@ -228,8 +229,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     _MenuTile(
                         icon: Icons.logout,
                         label: '로그아웃',
-                        iconColor: Colors.red,
-                        labelColor: Colors.red,
+                        iconColor: colorScheme.error,
+                        labelColor: colorScheme.error,
                         onTap: _confirmLogout),
                   ])),
                 ],
@@ -254,7 +255,8 @@ class _MenuTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: iconColor ?? AppColors.primary),
+      leading:
+          Icon(icon, color: iconColor ?? Theme.of(context).colorScheme.primary),
       title: Text(label, style: TextStyle(color: labelColor)),
       trailing: const Icon(Icons.chevron_right, size: 20),
       onTap: onTap,
@@ -286,6 +288,7 @@ class _SummaryLinkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -303,17 +306,18 @@ class _SummaryLinkCard extends StatelessWidget {
                             strokeWidth: 4,
                             backgroundColor: Theme.of(context).dividerColor,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                                AppColors.primary),
+                                colorScheme.primary),
                           ),
                         )
-                      : Icon(leadingIcon, color: AppColors.primary),
+                      : Icon(leadingIcon, color: colorScheme.primary),
                   const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(leadingLabel,
-                          style: const TextStyle(
-                              color: Colors.grey, fontSize: 12)),
+                          style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 12)),
                       Text(leadingValue,
                           style: const TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
@@ -331,7 +335,7 @@ class _SummaryLinkCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 child: Row(
                   children: [
-                    Icon(trailingIcon, color: AppColors.primary),
+                    Icon(trailingIcon, color: colorScheme.primary),
                     const SizedBox(width: 8),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

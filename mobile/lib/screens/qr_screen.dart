@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../services/qr_service.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 
 class QrScreen extends StatefulWidget {
@@ -62,6 +61,7 @@ class _QrScreenState extends State<QrScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(title: const Text('환자 확인용 QR')),
       body: Center(
@@ -72,10 +72,15 @@ class _QrScreenState extends State<QrScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Text(
+                      '진료 접수 시 QR코드를 보여주세요.',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                    const SizedBox(height: 20),
                     Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
-                        side: BorderSide(color: Theme.of(context).dividerColor),
+                        side: BorderSide(color: colorScheme.outline),
                       ),
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -87,15 +92,26 @@ class _QrScreenState extends State<QrScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Text(
-                      _token!.isExpired
-                          ? '유효시간이 만료되었어요'
-                          : '유효시간 ${_fmt(_token!.remaining)}',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _token!.isExpired ? Colors.red : null,
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time,
+                            size: 18,
+                            color: _token!.isExpired
+                                ? colorScheme.error
+                                : colorScheme.onSurfaceVariant),
+                        const SizedBox(width: 6),
+                        Text(
+                          _token!.isExpired
+                              ? '유효시간이 만료되었어요'
+                              : '유효시간 ${_fmt(_token!.remaining)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _token!.isExpired ? colorScheme.error : null,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
@@ -103,6 +119,10 @@ class _QrScreenState extends State<QrScreen> {
                       height: 48,
                       child: OutlinedButton(
                         onPressed: _reissue,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: colorScheme.primary),
+                          foregroundColor: colorScheme.primary,
+                        ),
                         child: const Text('재발급'),
                       ),
                     ),

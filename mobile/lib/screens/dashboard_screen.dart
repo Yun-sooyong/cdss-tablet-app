@@ -5,7 +5,6 @@ import '../services/visit_service.dart';
 import '../services/reservation_service.dart';
 import '../models/dose.dart';
 import '../models/reservation.dart';
-import '../theme/app_colors.dart';
 import '../widgets/loading_spinner.dart';
 import 'dart:math';
 
@@ -100,6 +99,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final patient = widget.authService.currentPatient;
     final name = patient?.name ?? '환자';
     final initial = name.isNotEmpty ? name.substring(0, 1) : '환';
@@ -119,10 +119,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor: AppColors.secondary,
+                        backgroundColor: colorScheme.secondary,
                         child: Text(initial,
-                            style: const TextStyle(
-                                color: AppColors.primary,
+                            style: TextStyle(
+                                color: colorScheme.primary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16)),
                       ),
@@ -139,7 +139,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 style: const TextStyle(fontSize: 13)),
                             Text(_subtitleMessage,
                                 style: TextStyle(
-                                    fontSize: 13, color: Colors.grey)),
+                                    fontSize: 13,
+                                    color: colorScheme.onSurfaceVariant)),
                           ],
                         ),
                       ),
@@ -164,14 +165,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             bottom: 0,
                             child: Icon(Icons.eco,
                                 size: 64,
-                                color: AppColors.primary.withOpacity(0.12)),
+                                color: colorScheme.primary.withOpacity(0.12)),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('오늘 복용',
+                              Text('오늘 복용',
                                   style: TextStyle(
-                                      fontSize: 13, color: Colors.grey)),
+                                      fontSize: 13,
+                                      color: colorScheme.onSurfaceVariant)),
                               const SizedBox(height: 8),
                               Text(
                                 nextDose != null
@@ -211,9 +213,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('다음 예약',
+                                  Text('다음 예약',
                                       style: TextStyle(
-                                          fontSize: 13, color: Colors.grey)),
+                                          fontSize: 13,
+                                          color: colorScheme.onSurfaceVariant)),
                                   const SizedBox(height: 4),
                                   Text(
                                     _fmtReservationDate(
@@ -224,14 +227,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   Text(
                                     '${_nextReservation!.hospitalName} · ${_nextReservation!.department}',
-                                    style: const TextStyle(
-                                        fontSize: 13, color: Colors.grey),
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: colorScheme.onSurfaceVariant),
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.calendar_today,
-                                color: AppColors.primary),
+                            Icon(Icons.calendar_today,
+                                color: colorScheme.primary),
                           ],
                         ),
                       ),
@@ -280,24 +284,27 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: taken
-            ? AppColors.primary.withOpacity(0.12)
-            : Colors.grey.withOpacity(0.15),
+            ? colorScheme.primary.withOpacity(0.12)
+            : colorScheme.onSurfaceVariant.withOpacity(0.15),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(taken ? Icons.check_circle : Icons.schedule,
-              size: 16, color: taken ? AppColors.primary : Colors.grey),
+              size: 16,
+              color: taken ? colorScheme.primary : colorScheme.onSurfaceVariant),
           const SizedBox(width: 4),
           Text(taken ? '복용 완료' : '복용 예정',
               style: TextStyle(
                   fontSize: 12,
-                  color: taken ? AppColors.primary : Colors.grey,
+                  color:
+                      taken ? colorScheme.primary : colorScheme.onSurfaceVariant,
                   fontWeight: FontWeight.bold)),
         ],
       ),
@@ -315,9 +322,9 @@ class _DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
     return Material(
-      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      color: colorScheme.surfaceContainerHighest,
       borderRadius: BorderRadius.circular(12),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -325,7 +332,7 @@ class _DashboardCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: AppColors.primary, size: 26),
+            Icon(icon, color: colorScheme.primary, size: 26),
             const SizedBox(height: 8),
             Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
           ],

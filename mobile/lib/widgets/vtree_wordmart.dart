@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 
 class VTreeWordmark extends StatelessWidget {
   final double fontSize;
@@ -17,7 +16,7 @@ class VTreeWordmark extends StatelessWidget {
             fontFamily: 'CormorantGaramond',
             fontWeight: FontWeight.w300,
             fontSize: fontSize,
-            color: AppColors.primary,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
         Positioned(

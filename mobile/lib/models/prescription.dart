@@ -15,10 +15,19 @@ class PrescribedDrug {
 
   factory PrescribedDrug.fromJson(Map<String, dynamic> json) {
     final drug = json['drug'] as Map<String, dynamic>;
+    final rawDose = json['dose_per_take'];
+    final dosePerTake =
+        rawDose is String ? double.parse(rawDose) : (rawDose as num).toDouble();
+    final rawRemaining = json['remaining_percent'];
+    final remainingPercent = rawRemaining == null
+        ? null
+        : (rawRemaining is String
+            ? double.parse(rawRemaining)
+            : (rawRemaining as num).toDouble());
     return PrescribedDrug(
       productName: drug['product_name'] as String,
       unit: drug['unit'] as String,
-      dosePerTake: (json['dose_per_take'] as num).toDouble(),
+      dosePerTake: dosePerTake,
       timesPerDay: json['times_per_day'] as int,
       totalDays: json['total_days'] as int,
     );
