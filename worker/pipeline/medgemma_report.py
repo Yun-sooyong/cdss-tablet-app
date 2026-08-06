@@ -35,11 +35,16 @@ SYSTEM_PROMPT = """당신은 유방암 병리를 판독하는 전문의입니다
   "~을 고려해볼 수 있다" 같은 조심스러운 표현을 쓰고, 존재를 확인할 수 없는
   구체적 수치·문헌은 언급하지 마세요.
 - 확실하지 않은 내용은 추측해서 쓰지 마세요.
+- 🔴 조직 구성비·sTIL 같은 **수치는 사용자 메시지에 주어진 값이 확정값**입니다.
+  첨부 이미지를 눈대중으로 보고 비율을 다시 추정하거나, 주어진 수치와 다른
+  값을 말하지 마세요. 이미지는 "어느 부위에 무엇이 몰려 있는지"(공간적 분포)를
+  볼 때만 쓰고, 비율 자체는 주어진 숫자를 그대로 신뢰하세요.
 
 {
-  "segmentation_summary": "첨부 이미지의 조직 유형별 구성을 서술하되, 종양 대비
-    면역세포 비중이 어떤지, 괴사 조직이 눈에 띄는지 등 구성 요소 간의 관계까지
-    포함해 설명하세요 (3~4문장).",
+  "segmentation_summary": "주어진 조직 구성비 수치를 기준으로, 종양 대비 면역세포
+    비중이 어떤지·괴사 조직이 두드러지는지 등 구성 요소 간의 관계를 설명하세요.
+    여기에 더해 첨부 이미지에서 읽을 수 있는 공간적 분포(면역세포가 종양 경계에
+    몰려 있는지, 전체에 흩어져 있는지 등)를 덧붙이세요 (3~4문장).",
   "findings": "sTIL 수치·예측구간·판정 결과를 그대로 옮겨적지 말고, 다음을
     포함해 해석하세요: (1) 이 sTIL 수준이 위 조직 구성비와 일관되는지, (2) 예측
     구간 폭이 넓다면 그것이 판정 신뢰도에 시사하는 바, (3) 판정이 ABSTAIN(기권)
@@ -54,6 +59,8 @@ SYSTEM_PROMPT = """당신은 유방암 병리를 판독하는 전문의입니다
 }"""
 
 # 클래스 인덱스는 til_conformal.py와 동일한 컨벤션 (0=tumor .. 4=other, 255=ignore)
+# ⚠️ Mosec 쪽 inference._MASK_CLASS_COLORS와 같은 값이어야 한다 — 프론트엔드
+#    오버레이와 MedGemma가 보는 그림의 색이 달라지면 안 된다.
 CLASS_COLORS = {
     0: (230, 25, 75),    # tumor
     1: (60, 180, 75),    # stroma
@@ -62,21 +69,50 @@ CLASS_COLORS = {
     4: (128, 128, 128),  # other
 }
 
+# 🔴 2026-08-05 추가 — 이게 없으면 MedGemma는 알록달록한 그림만 받고 어떤 색이
+#    무슨 조직인지 몰라서 자기 마음대로 추측한다. 색 해석이 뒤집히면 소견
+#    문장이 통째로 반대가 되므로, 이미지를 보여줄 때 범례를 반드시 같이 준다.
+IMAGE_LEGEND = (
+    "첨부 이미지는 세그멘테이션 결과를 색으로 칠한 것입니다. 색상 범례:\n"
+    "- 빨강: 종양(tumor)\n"
+    "- 초록: 기질(stroma)\n"
+    "- 노랑: 면역세포(immune)\n"
+    "- 파랑: 괴사(necrosis)\n"
+    "- 회색: 기타(other)\n"
+    "- 검정: 판정 불가 영역(분석에서 제외됨)"
+)
+
 
 def _build_visualization(mc_stack: np.ndarray, max_size: int = 512) -> Image.Image:
-    """MC 스택의 대표 마스크(0번째 회차)를 클래스별 색으로 칠해 시각화 이미지로 만든다.
+    """MC 스택의 **다수결(consensus) 마스크**를 클래스별 색으로 칠해 시각화한다.
 
     원본 조직 이미지는 워커가 갖고 있지 않다(Mosec이 GCS에서 직접 읽으므로) —
     대신 이미 갖고 있는 세그멘테이션 결과를 색칠해서 MedGemma에 보여준다.
     원본 크기 그대로 보내면 네트워크/생성 속도가 느려지므로 축소한다.
+
+    🔴 2026-08-05 버그 수정 — 예전에는 mc_stack[0](20회차 중 첫 번째 한 장)을
+       썼다. 그런데 같이 넘기는 수치는 전부 다른 마스크 기준이었다:
+         · stil_value        = 회차별 sTIL의 중앙값
+         · class_composition = 다수결 마스크
+         · 프론트엔드 오버레이 = 다수결 마스크
+       MC Dropout은 회차마다 결과를 일부러 흔드는 기법이라(그 편차가 sigma다)
+       0번 회차는 다수결 결과와 눈에 띄게 다를 수 있다. 그래서 MedGemma가
+       "이미지상 면역세포가 거의 없다"고 쓰는데 수치는 sTIL 60%인 식으로
+       리포트 문장과 수치가 어긋났다. 이제 다수결 마스크로 통일한다.
+
+    ⚠️ 축소는 반드시 NEAREST로 한다. 기본 보간(BICUBIC)은 사진용이라 인접한
+       색을 섞어버리는데, 라벨 색상은 섞으면 어느 클래스도 아닌 가짜 색이
+       된다(빨강 tumor + 노랑 immune 사이에 주황이 생기는 식).
     """
-    frame = mc_stack[0]
+    from pipeline.til_conformal import consensus_mask
+
+    frame = consensus_mask(mc_stack)
     h, w = frame.shape
-    rgb = np.zeros((h, w, 3), dtype=np.uint8)
+    rgb = np.zeros((h, w, 3), dtype=np.uint8)  # 나머지(=IGNORE)는 검정으로 남는다
     for cls, color in CLASS_COLORS.items():
         rgb[frame == cls] = color
     image = Image.fromarray(rgb)
-    image.thumbnail((max_size, max_size))
+    image.thumbnail((max_size, max_size), Image.NEAREST)
     return image
 
 
@@ -90,14 +126,16 @@ def _build_user_text(stats: dict) -> str:
     comp_txt = ""
     if stats.get("class_composition"):
         pairs = " / ".join(f"{k} {v}%" for k, v in stats["class_composition"].items())
-        comp_txt = f"조직 구성비(세그멘테이션 실측): {pairs}\n"
+        comp_txt = f"조직 구성비(확정 실측값): {pairs}\n"
 
     return (
         f"sTIL: {stats['stil_value']}%\n"
         f"90% 예측구간: {stats['lower']}~{stats['upper']}%\n"
         f"50% 컷오프 기준: {decision_txt}\n"
         f"{comp_txt}"
-        f"위 정보와 첨부 이미지를 근거로 JSON을 채우세요."
+        f"\n{IMAGE_LEGEND}\n"
+        f"위 수치를 확정값으로 삼고, 첨부 이미지는 공간적 분포를 볼 때만 "
+        f"참고해서 JSON을 채우세요."
     )
 
 

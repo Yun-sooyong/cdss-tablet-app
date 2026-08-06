@@ -1,4 +1,4 @@
-"""MedGemma 판독 보고서 생성 — Genkit 구조 버전 (실험용, 아직 tasks.py에서 안 씀).
+"""MedGemma 판독 보고서 생성 — Genkit 구조 버전. **현재 tasks.py가 쓰는 경로다.**
 
 medgemma_report.py와 실제 네트워크 호출(clients/mosec.call_medgemma)·프롬프트
 문구는 동일하게 재사용한다. 이 파일이 새로 하는 일은:
@@ -14,9 +14,10 @@ medgemma_report.py와 실제 네트워크 호출(clients/mosec.call_medgemma)·�
    output_schema로 생성)는 Genkit 개념 자체는 맞지만, 실제 설치된 버전에서
    클래스/메서드 이름이 다르면 `pip show genkit` 버전 확인 후 맞춰야 한다.
 
-⚠️ 아직 tasks.py는 이 파일을 부르지 않는다 (medgemma_report.generate_report를
-   계속 씀). 이 파일이 단독으로 검증되면, tasks.py의 import 한 줄만 바꾸면
-   교체된다 — mosec_mock -> mosec 때와 같은 패턴.
+⚠️ medgemma_report.py는 지우면 안 된다 — 이 파일이 그쪽의 SYSTEM_PROMPT,
+   DISCLAIMER, _build_user_text(), _build_visualization()을 그대로 가져다 쓴다.
+   프롬프트 문구를 한 곳에서만 관리하려고 일부러 재사용하는 구조이며,
+   medgemma_report.generate_report()만 안 쓰일 뿐 파일 자체는 살아있다.
 """
 import asyncio
 import base64
@@ -46,9 +47,10 @@ class ReportOutput(BaseModel):
 
     segmentation_summary: str = Field(
         description=(
-            "첨부 이미지의 조직 유형별 구성을 서술하되, 종양 대비 면역세포 "
-            "비중이 어떤지, 괴사 조직이 눈에 띄는지 등 구성 요소 간의 관계까지 "
-            "포함해 설명 (3~4문장, 숫자만 나열하지 말 것)"
+            "주어진 조직 구성비 수치를 기준으로 종양 대비 면역세포 비중·괴사 "
+            "조직 여부 등 구성 요소 간의 관계를 설명하고, 첨부 이미지에서 읽을 "
+            "수 있는 공간적 분포를 덧붙일 것 (3~4문장, 숫자만 나열하지 말 것). "
+            "⚠️ 비율은 주어진 수치가 확정값이며 이미지를 눈대중으로 재추정하지 말 것"
         )
     )
     findings: str = Field(
@@ -197,10 +199,20 @@ def generate_report(stats: dict, mc_stack, job_id: str = "") -> dict:
             "opinion_note": OPINION_NOTE,
             "generation_failed": False,
         }
-    except Exception as exc:  # noqa: BLE001 — 실험용 경로, 실패 사유를 그대로 보고
+    except Exception as exc:  # noqa: BLE001 — 리포트 실패가 job 전체를 죽이면 안 된다
+        # ⚠️ findings/segmentation_summary는 병리의가 화면에서 읽는 필드다.
+        #    파이썬 예외 원문(예: "KeyError: 'output'")이 여기 노출되면 안 되므로,
+        #    사람이 읽을 문장만 넣고 진짜 사유는 워커 로그로만 남긴다.
+        #    sTIL 수치·판정은 이미 계산이 끝나 정상 전달되므로, 리포트가 없어도
+        #    화면의 핵심 정보는 그대로 살아있다는 점을 문구에 담는다.
+        print(f"[medgemma_genkit] ⚠️ 판독 보고서 생성 실패 (job_id={job_id}): "
+              f"{type(exc).__name__}: {exc}")
         return {
-            "segmentation_summary": "(자동 요약 생성 실패 — 수동 확인 필요)",
-            "findings": f"(판독 소견 생성 실패: {exc})",
+            "segmentation_summary": "판독 보고서를 생성하지 못했습니다.",
+            "findings": (
+                "AI 판독 보고서 생성에 실패했습니다. sTIL 수치와 예측구간은 "
+                "정상적으로 계산되었으니 위의 수치를 참고해주세요."
+            ),
             "ai_opinion": "",
             "disclaimer": DISCLAIMER,
             "opinion_note": OPINION_NOTE,

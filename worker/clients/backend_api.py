@@ -19,25 +19,61 @@
    MedGemma 생성은 더 오래 걸려서, sTIL 수치만이라도 먼저 보여주려는 의도다.
 """
 import os
+import time
 
 import requests
 
 BACKEND_API_BASE = os.environ.get("BACKEND_API_BASE", "http://localhost:8000/api/v1")
 INTERNAL_API_TOKEN = os.environ.get("INTERNAL_API_TOKEN", "")
 
+# 콜백 전송 재시도 설정 (2026-08-05).
+# 세그멘테이션+MedGemma까지 몇 분 걸려 만든 결과를, 전송하는 그 순간의
+# 일시적인 네트워크 흔들림 하나로 통째로 날리지 않기 위한 안전장치다.
+CALLBACK_MAX_ATTEMPTS = 3
+CALLBACK_BACKOFF_SEC = 2  # 2초 → 4초 순으로 늘어난다
+
 
 def _callback(job_id: str, status: str, result: dict = None, error_message: str = "") -> None:
+    """접수처에 결과를 보고한다. 전송 실패 시 최대 3번까지 다시 시도한다.
+
+    ⚠️ 재시도하는 건 '전송'뿐이고 GPU 계산을 다시 하는 게 아니다 — 이미 손에
+       들고 있는 결과를 다시 부치기만 하는 거라 비용이 거의 없다.
+    ⚠️ 4xx(주소·토큰·형식이 틀림)는 몇 번을 다시 보내도 똑같이 거절당하므로
+       재시도하지 않고 바로 포기한다. 5xx·연결 실패·타임아웃만 재시도 대상.
+    """
     url = f"{BACKEND_API_BASE}/analysis/jobs/{job_id}/callback/"
     headers = {"X-Internal-Token": INTERNAL_API_TOKEN}
     body = {"status": status, "result": result or {}, "error_message": error_message}
-    try:
-        resp = requests.post(url, json=body, headers=headers, timeout=5)
-        resp.raise_for_status()
-        print(f"[backend_api] 콜백 성공 — status={status}")
-    except requests.exceptions.RequestException as exc:
-        # 접수처가 아직 없거나 응답이 없는 상황 — 이것 때문에 워커 전체가
-        # 멈추면 안 되므로 여기서 예외를 막고 로그만 남긴다.
-        print(f"[backend_api] ⚠️ 콜백 실패(서버 미구현/연결 불가, status={status}): {exc}")
+
+    for attempt in range(1, CALLBACK_MAX_ATTEMPTS + 1):
+        try:
+            resp = requests.post(url, json=body, headers=headers, timeout=10)
+            resp.raise_for_status()
+            if attempt > 1:
+                print(f"[backend_api] 콜백 성공 — status={status} ({attempt}번째 시도에 성공)")
+            else:
+                print(f"[backend_api] 콜백 성공 — status={status}")
+            return
+        except requests.exceptions.HTTPError as exc:
+            code = exc.response.status_code if exc.response is not None else 0
+            if 400 <= code < 500:
+                # 다시 보내도 결과가 같은 실패 — 주소/토큰/본문 형식을 봐야 한다.
+                print(f"[backend_api] ⚠️ 콜백 거절({code}, status={status}) — 재시도해도 같으므로 중단: {exc}")
+                return
+            last_exc = exc
+        except requests.exceptions.RequestException as exc:
+            last_exc = exc
+
+        if attempt < CALLBACK_MAX_ATTEMPTS:
+            wait = CALLBACK_BACKOFF_SEC * attempt  # 2초, 4초
+            print(f"[backend_api] ⚠️ 콜백 실패({attempt}/{CALLBACK_MAX_ATTEMPTS}, {wait}초 후 재시도, "
+                  f"status={status}): {last_exc}")
+            time.sleep(wait)
+
+    # 여기까지 왔으면 세 번 다 실패 — 워커 전체가 멈추면 안 되므로 예외를
+    # 밖으로 던지지는 않되, 결과가 유실됐다는 사실이 로그에서 눈에 띄게 남긴다.
+    print(f"[backend_api] ❌ 콜백 최종 실패 — status={status}, job_id={job_id}. "
+          f"이 작업의 결과는 접수처에 저장되지 않았다: {last_exc}")
 
 
 def report_stil_done(job_id: str, stats: dict) -> None:
