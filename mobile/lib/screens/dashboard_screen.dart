@@ -75,6 +75,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final String _healthTip = _healthTips[Random().nextInt(_healthTips.length)];
 
   int? _streak;
+  final _notificationFeedService = NotificationFeedService();
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
@@ -84,6 +86,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => _streak = streak);
     });
     _load();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    // 안 읽은 개수만 따로 주는 API가 없어서, 목록을 받아서 직접 센다.
+    try {
+      final list = await _notificationFeedService.fetchAll();
+      if (!mounted) return;
+      setState(() =>
+          _unreadNotificationCount = list.where((n) => !n.isRead).length);
+    } catch (_) {
+      // 뱃지 하나 때문에 홈 화면이 막히면 안 되니까 조용히 넘어감.
+    }
+  }
+
+  Future<void> _openNotifications(BuildContext context) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (_) =>
+              NotificationsScreen(service: _notificationFeedService)),
+    );
+    _loadUnreadCount(); // 안에서 읽음 처리했을 수 있으니 뱃지 다시 계산.
   }
 
   Future<void> _callHospital(BuildContext context) async {
@@ -199,13 +223,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ],
                           ),
                         ),
-                      IconButton(
-                        icon: const Icon(Icons.notifications_none),
-                        onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) => NotificationsScreen(
-                                  service: NotificationFeedService())),
-                        ),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.notifications_none),
+                            onPressed: () => _openNotifications(context),
+                          ),
+                          if (_unreadNotificationCount > 0)
+                            Positioned(
+                              right: 4,
+                              top: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 1),
+                                constraints:
+                                    const BoxConstraints(minWidth: 16),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.error,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _unreadNotificationCount > 9
+                                      ? '9+'
+                                      : '$_unreadNotificationCount',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
