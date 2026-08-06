@@ -97,11 +97,11 @@ class Job(BaseModel):
 
 class AnalysisShare(BaseModel):
     """분석 결과 공유. 설계문서 6.7절 — 「본인이 분석한 내용만 표시」와
-    「다른 유저도 확인할 수 있도록 공유」를 동시에 만족시키는 조회 권한 기준."""
+    「다른 유저도 확인할 수 있도록 공유」를 동시에 만족시키는 조회 권한 기준.
 
-    class Permission(models.TextChoices):
-        READ = "read", "읽기"
-        COMMENT = "comment", "댓글"
+    읽기/댓글 권한 구분은 없앴다 — 공유는 항상 조회만 가능하고, 대신
+    공유하는 사람이 그 자리에서 소견(opinion)을 같이 남기는 방식으로
+    바뀌었다 (사용자 요청, 2026-08-06)."""
 
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name="shares")
     shared_by = models.ForeignKey(
@@ -110,9 +110,7 @@ class AnalysisShare(BaseModel):
     shared_to = models.ForeignKey(
         Staff, on_delete=models.CASCADE, related_name="shares_received"
     )
-    permission = models.CharField(
-        max_length=10, choices=Permission.choices, default=Permission.READ
-    )
+    opinion = models.CharField(max_length=200, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)  # NULL이면 무기한
     revoked_at = models.DateTimeField(null=True, blank=True)
 

@@ -173,7 +173,7 @@ class AnalysisShareSerializer(serializers.ModelSerializer):
             "batch",
             "shared_by",
             "shared_to",
-            "permission",
+            "opinion",
             "expires_at",
             "revoked_at",
             "created_at",
@@ -183,8 +183,8 @@ class AnalysisShareSerializer(serializers.ModelSerializer):
 
 class AnalysisShareCreateSerializer(serializers.Serializer):
     shared_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.all())
-    permission = serializers.ChoiceField(
-        choices=AnalysisShare.Permission.choices, default=AnalysisShare.Permission.READ
+    opinion = serializers.CharField(
+        max_length=200, required=False, allow_blank=True, default=""
     )
     expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
 
