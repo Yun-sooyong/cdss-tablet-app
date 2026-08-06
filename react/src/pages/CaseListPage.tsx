@@ -103,7 +103,7 @@ export default function CaseListPage() {
 
     return (
         <div>
-            <div className="mb-6 flex flex-wrap items-center gap-3">
+            <div className="mb-2 flex flex-wrap items-center gap-3">
                 <div className="relative">
                     <Search
                         size={15}
@@ -112,7 +112,7 @@ export default function CaseListPage() {
                     <input
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
-                        placeholder="차트번호 또는 환자명"
+                        placeholder="차트번호 또는 환자 이름"
                         aria-label="환자 검색"
                         className={`${FIELD_INPUT} w-72 pl-9`}
                     />
@@ -153,10 +153,15 @@ export default function CaseListPage() {
                     공유받음만
                 </button>
 
-                <span className="ml-auto text-[15px] text-ink-muted">
+                <span className="ml-auto text-base text-ink-muted">
                     {batches.isSuccess ? `${total}건` : ''}
                 </span>
             </div>
+
+            <p className="mb-6 text-xs text-ink-faint">
+                차트번호와 환자 이름으로 찾습니다. 일부만 입력해도 됩니다 —
+                한 환자의 케이스를 모아 보려면 이름이나 차트번호로 검색하세요
+            </p>
 
             {/* 서버가 한 번에 50건까지만 준다. 나머지가 있다는 걸 숨기지 않는다 */}
             {hidden > 0 && (
@@ -196,7 +201,7 @@ export default function CaseListPage() {
                             >
                                 <span className="flex min-w-0 items-center gap-2">
                                     <span
-                                        className="truncate text-[15px]"
+                                        className="truncate text-base"
                                         title={
                                             row.batch.patient_summary
                                                 ? patientBrief(row.batch.patient_summary)
@@ -218,21 +223,21 @@ export default function CaseListPage() {
                                     {sharedWithMe(row.batch) && (
                                         <span
                                             title={sharedLabel(row.batch).title}
-                                            className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[11px] text-ink-faint"
+                                            className="shrink-0 rounded border border-border px-1.5 py-0.5 text-xs text-ink-faint"
                                         >
                                             공유받음 · {sharedLabel(row.batch).text}
                                         </span>
                                     )}
                                 </span>
 
-                                <span className="text-right font-mono text-[15px] tabular-nums">
+                                <span className="text-right font-mono text-base tabular-nums">
                                     {row.slides ?? '-'}
                                 </span>
 
                                 {/* 0은 흐리게, 1 이상은 눈에 걸리게. 모르면 '-' */}
                                 <span
                                     className={cn(
-                                        'text-right font-mono text-[15px] tabular-nums',
+                                        'text-right font-mono text-base tabular-nums',
                                         row.review
                                             ? 'font-semibold text-decision-abstain'
                                             : 'text-ink-faint',
@@ -252,7 +257,7 @@ export default function CaseListPage() {
                                 {opinionOf(row.batch) && (
                                     <span
                                         title={opinionOf(row.batch)}
-                                        className="col-span-full mt-1.5 truncate text-[13px] text-ink-muted"
+                                        className="col-span-full mt-1.5 truncate text-sm text-ink-muted"
                                     >
                                         {opinionOf(row.batch)}
                                     </span>

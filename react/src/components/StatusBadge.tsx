@@ -48,7 +48,7 @@ export function ConfirmedDecision({
         <span className={cn('flex flex-wrap items-center gap-1.5', className)}>
             <Badge
                 variant="outline"
-                className="h-auto border-border px-2 py-0.5 text-[13px] text-ink-faint line-through decoration-ink-faint/60"
+                className="h-auto border-border px-2 py-0.5 text-sm text-ink-faint line-through decoration-ink-faint/60"
             >
                 {DECISION_LABEL[decision]}
             </Badge>

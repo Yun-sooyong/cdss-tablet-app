@@ -114,7 +114,7 @@ export default function NotificationsPage({
                                 <span className="min-w-0 flex-1">
                                     <span
                                         className={cn(
-                                            'block text-[15px]',
+                                            'block text-base',
                                             n.is_read ? 'text-ink-muted' : 'text-ink',
                                         )}
                                     >
