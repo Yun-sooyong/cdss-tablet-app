@@ -15,13 +15,15 @@ from .serializers import (
     PatientRegisterSerializer,
     PatientSearchQuerySerializer,
     PatientSerializer,
+    PatientStaffCreateSerializer,
     PatientSummarySerializer,
 )
 
 
 class PatientRegisterView(APIView):
-    """설계문서 3.1-a — 이메일/비밀번호 방식 환자 회원가입.
-    카카오 소셜 로그인(POST /auth/social/{provider})은 별도로 나중에."""
+    """아이디/비밀번호 방식 환자 회원가입 (2026-08-05, 이메일 방식에서
+    변경 — 정은님 요청). 카카오 소셜 로그인(POST /auth/social/{provider})은
+    별도로 나중에."""
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
@@ -34,18 +36,63 @@ class PatientRegisterView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        if User.objects.filter(email=data["email"]).exists():
-            raise ValidationError("이미 가입된 이메일입니다.")
+        if User.objects.filter(username=data["username"]).exists():
+            raise ValidationError("이미 사용 중인 아이디입니다.")
 
-        # User.username에 email을 그대로 넣는다 — 로그인은 여전히
-        # POST /auth/login/ + username 필드지만, 값은 email이 된다.
+        # 병원이 접수처에서 먼저 등록해둔 환자(user=null)가 나중에 앱
+        # 가입하는 경우 — 이름 + chart_number(uuid) 일치를 확인해 기존
+        # 레코드에 계정을 붙인다. 없으면 기존과 동일하게 새로 만든다.
+        # (정다희, 2026-08-05 — 매칭 키를 전화번호가 아니라 이름+차트번호로 결정)
+        chart_number = data.get("chart_number", "")
+        existing_patient = None
+        if chart_number:
+            existing_patient = Patient.objects.filter(
+                chart_number=chart_number, user__isnull=True, deleted_at__isnull=True
+            ).first()
+            if existing_patient is None:
+                raise ValidationError("차트번호를 찾을 수 없거나 이미 연결된 계정입니다.")
+            if existing_patient.name != data["name"]:
+                raise ValidationError("차트번호와 이름이 일치하지 않습니다.")
+
         user = User.objects.create_user(
-            username=data["email"],
-            email=data["email"],
+            username=data["username"],
             password=data["password"],
         )
+
+        if existing_patient:
+            existing_patient.user = user
+            existing_patient.save(update_fields=["user", "updated_at"])
+            patient = existing_patient
+        else:
+            patient = Patient.objects.create(
+                user=user,
+                name=data["name"],
+                birth_date=data["birth_date"],
+                sex=data["sex"],
+                phone=data["phone"],
+                address=data.get("address", ""),
+            )
+        return Response(PatientSerializer(patient).data, status=status.HTTP_201_CREATED)
+
+
+class PatientStaffCreateView(APIView):
+    """의료진용 환자 등록(워크인) — 회원가입 여부와 무관하게 병원이 먼저
+    환자 정보를 보유해야 한다는 요구사항으로 추가 (2026-08-05). 계정 없이
+    Patient만 생성하고, chart_number를 나중에 환자가 앱 가입 시 계정
+    연결 키로 쓴다 (PatientRegisterSerializer.chart_number 참고)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=PatientStaffCreateSerializer, responses=PatientSerializer)
+    def post(self, request):
+        get_staff_or_403(request.user)
+
+        serializer = PatientStaffCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
         patient = Patient.objects.create(
-            user=user,
+            user=None,
             name=data["name"],
             birth_date=data["birth_date"],
             sex=data["sex"],
@@ -102,13 +149,17 @@ class PatientMeView(APIView):
 
 
 class PatientSearchView(APIView):
-    """의료진용 환자 검색 — 최일운 요청, 2026-08-04.
+    """의료진용 환자 검색 — 최일운 요청, 2026-08-04. name+birth_date
+    조합은 윤수용 요청, 2026-08-05(접수처 시나리오 — QR·앱 없는 환자를
+    "성함이랑 생년월일" 불러받아 찾는 흐름).
 
     name/birth_date/phone은 암호화 컬럼이라 서버가 DB 레벨에서 LIKE·범위
     검색을 할 수 없다(모든 행을 복호화해야 해서 성능·보안 둘 다 안 좋음).
-    그래서 검색 키는 두 개로 한정한다:
+    그래서 검색 키는 세 가지로 한정한다:
     - chart_number: 평문 인덱스 컬럼, 부분일치 가능
     - phone: phone_hash(SHA-256)로 정확히 일치하는 것만 (부분검색 불가)
+    - name+birth_date: name_dob_hash(SHA-256)로 정확히 일치하는 것만
+      (부분검색 불가 — 이름 철자가 하나라도 다르면 안 찾아짐)
     """
 
     permission_classes = [permissions.IsAuthenticated]
@@ -124,12 +175,19 @@ class PatientSearchView(APIView):
         qs = Patient.objects.filter(deleted_at__isnull=True)
         chart_number = data.get("chart_number")
         phone = data.get("phone")
+        name = data.get("name")
+        birth_date = data.get("birth_date")
 
         if chart_number:
             qs = qs.filter(chart_number__icontains=chart_number)
-        else:
+        elif phone:
             phone_hash = hashlib.sha256(phone.encode()).hexdigest()
             qs = qs.filter(phone_hash=phone_hash)
+        else:
+            name_dob_hash = hashlib.sha256(
+                f"{name.strip()}|{birth_date.isoformat()}".encode()
+            ).hexdigest()
+            qs = qs.filter(name_dob_hash=name_dob_hash)
 
         results = qs.order_by("chart_number")[:20]
         return Response(PatientSummarySerializer(results, many=True).data)

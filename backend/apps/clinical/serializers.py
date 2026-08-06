@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Department
 
 from .models import Diagnosis, Disease, DoseLog, Drug, Prescription, PrescriptionDrug, Reservation, Visit
@@ -7,11 +8,16 @@ from .services import build_file_url
 
 
 class ReservationSerializer(serializers.ModelSerializer):
+    # 의료진용 목록/확정 화면에서 환자 맥락 필요 — 최일운 batch/job
+    # patient_summary와 같은 패턴 (정다희, 2026-08-05).
+    patient_summary = PatientSummarySerializer(source="patient", read_only=True)
+
     class Meta:
         model = Reservation
         fields = [
             "id",
             "patient",
+            "patient_summary",
             "staff",
             "department",
             "scheduled_at",
@@ -30,6 +36,10 @@ class ReservationSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+class ReservationConfirmSerializer(serializers.Serializer):
+    staff_id = serializers.UUIDField(required=False)
 
 
 class ReservationCreateSerializer(serializers.Serializer):
