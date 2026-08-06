@@ -40,7 +40,7 @@ export default function DashboardPage() {
         return <Failed error={batches.error} onRetry={() => void batches.refetch()} />;
     }
 
-    const review = (jobs.data ?? []).filter((j) => needsReview(j.result));
+    const review = (jobs.data ?? []).filter((j) => needsReview(j));
 
     // 배치 기준 >> 서버가 한 페이지만 주므로 이 건수는 최근 것 기준이다
     const processing = all.filter((b) => b.status === 'processing').length;

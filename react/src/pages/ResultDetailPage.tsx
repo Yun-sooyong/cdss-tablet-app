@@ -12,7 +12,7 @@ import { ClinicalNotice } from '@/components/ClinicalNotice';
 import { IntervalBar } from '@/components/IntervalBar';
 import { Failed, Pending } from '@/components/QueryState';
 import { SlideViewer } from '@/components/SlideViewer';
-import { DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
+import { ConfirmedDecision, DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
 import { toIntervalView } from '@/lib/decision';
 import { patientLabelFull } from '@/lib/patient';
 import { SEG_CLASSES } from '@/lib/seg';
@@ -97,7 +97,11 @@ export default function ResultDetailPage() {
                 </div>
 
                 <div className="flex shrink-0 gap-2">
-                    {result && <DecisionBadge decision={result.decision} />}
+                    {result && (job.review ? (
+                        <ConfirmedDecision decision={result.decision} review={job.review} />
+                    ) : (
+                        <DecisionBadge decision={result.decision} />
+                    ))}
                     <JobStatusBadge status={job.status} />
                 </div>
             </div>
