@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Android 13+ 는 알림 표시에 런타임 권한이 필요하다 (FCM) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- QR 스캔 -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- 카메라가 없는 기기에서도 설치되게 한다 (QR은 부가 기능이다) -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="tablet"
         android:name="${applicationName}"
@@ -17,6 +24,7 @@
                  while the Flutter UI initializes. After that, this theme continues
                  to determine the Window background behind the Flutter UI. -->
             <meta-data
+
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />

@@ -43,6 +43,14 @@ dependencies:
   go_router: ^17.3.0
   sidebarx: ^0.17.2
   flutter_hooks: ^0.21.3+1
+  dio: ^5.11.0
+  flutter_secure_storage: ^10.3.1
+  file_picker: 11.0.0
+  firebase_core: ^4.13.0
+  firebase_messaging: ^16.5.0
+  mime: ^2.0.0
+  mobile_scanner: ^7.4.0
+  photo_view: ^0.15.0
 
 dev_dependencies:
   flutter_test:

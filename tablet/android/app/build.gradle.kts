@@ -4,6 +4,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// FCM: google-services 플러그인은 google-services.json 이 없으면 빌드를 실패시킨다.
+// 파일을 android/app/ 에 넣는 순간 자동으로 켜지도록 조건부로 적용한다.
+// (Firebase 콘솔 > 프로젝트 설정 > Android 앱 com.cdssplatform.tablet 에서 받는다)
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+}
+
 android {
     namespace = "com.cdssplatform.tablet"
     compileSdk = flutter.compileSdkVersion
