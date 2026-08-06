@@ -19,9 +19,17 @@ urlpatterns = [
         name="reservation-confirm",
     ),
     path(
+        "visits/", views.StaffVisitListCreateView.as_view(), name="staff-visit-list-create"
+    ),
+    path(
         "visits/<uuid:visit_id>/",
         views.VisitDetailView.as_view(),
         name="visit-detail",
+    ),
+    path(
+        "prescriptions/",
+        views.StaffPrescriptionListCreateView.as_view(),
+        name="staff-prescription-list-create",
     ),
     path(
         "prescriptions/<uuid:prescription_id>/",
@@ -38,4 +46,6 @@ urlpatterns = [
         views.MedicationLogDeleteView.as_view(),
         name="medication-log-delete",
     ),
+    path("diseases/", views.DiseaseSearchView.as_view(), name="disease-search"),
+    path("drugs/", views.DrugSearchView.as_view(), name="drug-search"),
 ]
