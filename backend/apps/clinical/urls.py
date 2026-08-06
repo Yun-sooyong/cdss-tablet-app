@@ -18,10 +18,16 @@ urlpatterns = [
         views.ReservationConfirmView.as_view(),
         name="reservation-confirm",
     ),
+    path("visits/", views.StaffVisitCreateView.as_view(), name="staff-visit-create"),
     path(
         "visits/<uuid:visit_id>/",
         views.VisitDetailView.as_view(),
         name="visit-detail",
+    ),
+    path(
+        "prescriptions/",
+        views.StaffPrescriptionCreateView.as_view(),
+        name="staff-prescription-create",
     ),
     path(
         "prescriptions/<uuid:prescription_id>/",

@@ -10,6 +10,7 @@ from apps.common.permissions import get_patient_or_404, get_staff_or_403
 from apps.staff.models import Staff
 
 from .models import (
+    Diagnosis,
     DoseLog,
     DoseSchedule,
     Prescription,
@@ -22,13 +23,16 @@ from .serializers import (
     DoseLogSerializer,
     DrugSerializer,
     MedicationLogCreateSerializer,
+    PrescriptionCreateSerializer,
     PrescriptionSerializer,
     ReservationConfirmSerializer,
     ReservationCreateSerializer,
     ReservationRescheduleSerializer,
     ReservationSerializer,
+    VisitCreateSerializer,
     VisitSerializer,
 )
+from .services import generate_dose_schedules
 
 
 class PatientReservationListCreateView(APIView):
@@ -203,6 +207,45 @@ class PatientVisitListView(APIView):
         return Response(VisitSerializer(qs, many=True).data)
 
 
+class StaffVisitCreateView(APIView):
+    """POST /visits/ — 의료진용 진료기록 생성.
+
+    지금까지 Visit/Prescription을 만드는 API가 없어서 전부 스크립트로
+    직접 넣어왔다 — 그 공백을 메우는 첫 엔드포인트. diagnoses를 같이
+    받아서 한 번의 요청으로 진단까지 붙인다(Diagnosis 단독 생성 API는
+    없음, 진료 기록 시점에 항상 같이 만들어지는 데이터라서)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=VisitCreateSerializer, responses=VisitSerializer)
+    def post(self, request):
+        staff = get_staff_or_403(request.user)
+        serializer = VisitCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        visit = Visit.objects.create(
+            patient=data["patient"],
+            staff=staff,
+            department=data["department"],
+            visited_at=data["visited_at"],
+            note=data["note"],
+        )
+        Diagnosis.objects.bulk_create(
+            [
+                Diagnosis(
+                    visit=visit,
+                    disease=d["disease"],
+                    is_primary=d["is_primary"],
+                )
+                for d in data["diagnoses"]
+            ]
+        )
+
+        visit = Visit.objects.prefetch_related("diagnoses__disease").get(id=visit.id)
+        return Response(VisitSerializer(visit).data, status=status.HTTP_201_CREATED)
+
+
 class VisitDetailView(APIView):
     """설계문서 7.3절 — GET /visits/{id}. 본인 진료만 접근 가능."""
 
@@ -234,6 +277,47 @@ class PatientPrescriptionListView(APIView):
             .order_by("-prescribed_at")
         )
         return Response(PrescriptionSerializer(qs, many=True).data)
+
+
+class StaffPrescriptionCreateView(APIView):
+    """POST /prescriptions/ — 의료진용 처방 생성.
+
+    drugs 항목마다 PrescriptionDrug를 만들고, 그때마다
+    generate_dose_schedules()로 dose_schedule을 같이 생성한다 — 이게
+    없으면 처방은 생기는데 환자 앱 복약 캘린더엔 아무것도 안 뜬다.
+    처방전 파일 업로드는 범위 밖(필요해지면 batch 이미지 업로드와 같은
+    서명 URL 패턴으로 추가)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=PrescriptionCreateSerializer, responses=PrescriptionSerializer)
+    def post(self, request):
+        staff = get_staff_or_403(request.user)
+        serializer = PrescriptionCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        prescription = Prescription.objects.create(
+            visit=data["visit"],
+            staff=staff,
+            prescribed_at=data["prescribed_at"],
+        )
+        for drug_data in data["drugs"]:
+            prescription_drug = PrescriptionDrug.objects.create(
+                prescription=prescription,
+                drug=drug_data["drug"],
+                dose_per_take=drug_data["dose_per_take"],
+                times_per_day=drug_data["times_per_day"],
+                total_days=drug_data["total_days"],
+            )
+            generate_dose_schedules(prescription_drug, data["prescribed_at"])
+
+        prescription = Prescription.objects.prefetch_related("drugs__drug").get(
+            id=prescription.id
+        )
+        return Response(
+            PrescriptionSerializer(prescription).data, status=status.HTTP_201_CREATED
+        )
 
 
 class PrescriptionDetailView(APIView):
