@@ -43,6 +43,11 @@ urlpatterns = [
     path("jobs/", views.JobListView.as_view(), name="job-list"),
     path("jobs/<uuid:job_id>/", views.JobDetailView.as_view(), name="job-detail"),
     path(
+        "jobs/<uuid:job_id>/review/",
+        views.JobReviewCreateView.as_view(),
+        name="job-review-create",
+    ),
+    path(
         "jobs/<uuid:job_id>/callback/",
         views.JobCallbackView.as_view(),
         name="job-callback",
