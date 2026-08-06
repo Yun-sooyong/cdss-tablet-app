@@ -12,6 +12,7 @@ import { ClinicalNotice } from '@/components/ClinicalNotice';
 import { IntervalBar } from '@/components/IntervalBar';
 import { Failed, Pending } from '@/components/QueryState';
 import { SlideViewer } from '@/components/SlideViewer';
+import { ShareSheet } from '@/components/ShareSheet';
 import { ConfirmedDecision, DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
 import { toIntervalView } from '@/lib/decision';
 import { patientLabelFull } from '@/lib/patient';
@@ -83,26 +84,33 @@ export default function ResultDetailPage() {
         <div>
             <div className="mb-6 flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                    <p className="truncate text-[15px]" title={patientLabelFull(job.patient_summary)}>
+                    <p className="truncate text-base" title={patientLabelFull(job.patient_summary)}>
                         {patientLabelFull(job.patient_summary)}
                     </p>
 
-                    {filename && (
-                        <p className="mt-0.5 truncate text-[13px] text-ink-faint" title={filename}>
-                            {filename}
-                        </p>
-                    )}
+                    {/* 처리 상태는 파일명 옆에. 판정 배지와 나란히 두면 무엇이 완료인지 헷갈린다 */}
+                    <div className="mt-0.5 flex min-w-0 items-center gap-2">
+                        {filename && (
+                            <p className="truncate text-sm text-ink-faint" title={filename}>
+                                {filename}
+                            </p>
+                        )}
+                        <JobStatusBadge status={job.status} className="shrink-0" />
+                    </div>
 
                     <JobId id={job.id} />
                 </div>
 
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 items-center gap-2">
+                    {job.image_summary && (
+                        <ShareSheet batchId={job.image_summary.batch} />
+                    )}
+
                     {result && (job.review ? (
                         <ConfirmedDecision decision={result.decision} review={job.review} />
                     ) : (
                         <DecisionBadge decision={result.decision} />
                     ))}
-                    <JobStatusBadge status={job.status} />
                 </div>
             </div>
 

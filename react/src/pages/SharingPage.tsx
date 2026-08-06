@@ -284,12 +284,12 @@ export default function SharingPage() {
                                             className="min-w-0 transition-colors hover:text-brand"
                                         >
                                             <span
-                                                className="block truncate text-[15px]"
+                                                className="block truncate text-base"
                                                 title={patientLabel(batch?.patient_summary ?? null)}
                                             >
                                                 {patientLabel(batch?.patient_summary ?? null)}
                                             </span>
-                                            <span className="block truncate font-mono text-[13px] text-ink-faint">
+                                            <span className="block truncate font-mono text-sm text-ink-faint">
                                                 {share.batch.slice(0, 8)}
                                             </span>
                                         </Link>

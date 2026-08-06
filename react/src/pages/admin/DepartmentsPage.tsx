@@ -47,7 +47,7 @@ export default function AdminDepartmentsPage() {
                                 {department.dept_code}
                             </span>
 
-                            <span className="truncate text-[15px]">{department.name}</span>
+                            <span className="truncate text-base">{department.name}</span>
 
                             <span className="text-right font-mono text-sm tabular-nums text-ink-muted">
                                 {department.extension}

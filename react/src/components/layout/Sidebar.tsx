@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
@@ -7,6 +7,7 @@ import { getAccountRequests, getLatestJobs, getMe, getNotifications } from '@/ap
 import { qk } from '@/api/keys';
 import { Logo } from '@/components/Logo';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useUploads } from '@/components/upload/context';
 import { UploadIndicator } from '@/components/upload/UploadIndicator';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { APP_NAME } from '@/lib/app';
@@ -143,7 +144,7 @@ function Brand({
                     {subtitle && (
                         <span
                             className={cn(
-                                'rounded px-1.5 py-0.5 text-[11px] font-medium',
+                                'rounded px-1.5 py-0.5 text-xs font-medium',
                                 TONE[tone].chip,
                             )}
                         >
@@ -260,7 +261,7 @@ function NavList({
                                                     {badge > 0 && (
                                                         <span
                                                             className={cn(
-                                                                'inline-flex h-[18px] min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-bold tabular-nums',
+                                                                'inline-flex h-[18px] min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold tabular-nums',
                                                                 badgeTone.pill,
                                                             )}
                                                         >
@@ -283,23 +284,35 @@ function NavList({
 
 function Foot({ tone, collapsed } : { tone : Tone; collapsed? : boolean }) {
     const { data: me } = useQuery({ queryKey: qk.me, queryFn: getMe });
+    const { items } = useUploads();
 
-    const base = tone === 'admin' ? '/admin' : '';
     const initial = me?.username?.[0]?.toUpperCase() ?? '-';
     const role = me ? `${me.department || '소속 미지정'} · ${ROLE_LABEL[me.role]}` : '';
 
+    // 업로드가 걸리면 로고가 자리를 내준다. 접힌 사이드바에는 둘 다 폭이 없다
+    const showLogo = items.length === 0 && !collapsed;
+
     return (
         <div className={cn('shrink-0 pb-3', collapsed ? 'px-2' : 'px-3')}>
-            <UploadIndicator collapsed={collapsed} />
+            {showLogo ? (
+                <div className="flex flex-col items-center gap-1 py-4">
+                    <Logo className="size-36 text-logo/70" />
+                    <span className="text-xs font-semibold tracking-[0.2em] text-logo/70">
+                        {APP_NAME}
+                    </span>
+                </div>
+            ) : (
+                <UploadIndicator collapsed={collapsed} />
+            )}
 
             <div className="my-2 h-px bg-border" />
 
+            {/* 누구로 로그인했는지만 보여준다. 내 정보는 메뉴에 따로 있다 */}
             <div className={cn('flex items-center gap-1', collapsed && 'flex-col')}>
-                <Link
-                    to={`${base}/profile`}
+                <div
                     title={collapsed ? `${me?.username ?? ''} · ${role}` : undefined}
                     className={cn(
-                        'flex min-w-0 items-center gap-2 rounded-md p-1 transition-colors hover:bg-ink/[0.04]',
+                        'flex min-w-0 items-center gap-2 p-1',
                         !collapsed && 'flex-1',
                     )}
                 >
@@ -317,12 +330,12 @@ function Foot({ tone, collapsed } : { tone : Tone; collapsed? : boolean }) {
                             <span className="block truncate text-xs font-semibold text-ink">
                                 {me?.username ?? '-'}
                             </span>
-                            <span className="block truncate text-[11px] text-ink-muted">
+                            <span className="block truncate text-xs text-ink-muted">
                                 {role}
                             </span>
                         </span>
                     )}
-                </Link>
+                </div>
 
                 <ThemeToggle iconOnly />
             </div>

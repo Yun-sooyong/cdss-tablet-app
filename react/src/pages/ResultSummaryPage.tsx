@@ -11,6 +11,7 @@ import { BUTTON_QUIET } from '@/components/form';
 import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
 import { IntervalBar } from '@/components/IntervalBar';
 import { Empty, Failed, Pending } from '@/components/QueryState';
+import { ShareSheet } from '@/components/ShareSheet';
 import { ConfirmedDecision, DecisionBadge, JobStatusBadge } from '@/components/StatusBadge';
 import { stalledBatchIds, useUploads } from '@/components/upload/context';
 import { CUTOFF, toIntervalView } from '@/lib/decision';
@@ -83,8 +84,9 @@ export default function ResultSummaryPage() {
 
     return (
         <div>
-            <div className="mb-6">
-                <p className="text-[15px]" title={patientLabelFull(batch.data.patient_summary)}>
+            <div className="mb-6 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                <p className="text-base" title={patientLabelFull(batch.data.patient_summary)}>
                     {patientLabelFull(batch.data.patient_summary)}
                 </p>
 
@@ -99,6 +101,9 @@ export default function ResultSummaryPage() {
                         {modelLabel} · {new Date(batch.data.created_at).toLocaleString('ko-KR')}
                     </span>
                 </div>
+                </div>
+
+                <ShareSheet batchId={batch.data.id} />
             </div>
 
             {rows.length === 0 ? (
@@ -163,7 +168,7 @@ function SlideRow({
                 to={`/results/${row.job.id}`}
                 className={`${AXIS_GRID} w-full py-4 transition-colors hover:bg-brand-soft/50`}
             >
-                <span className="truncate text-[15px]" title={row.filename}>
+                <span className="truncate text-base" title={row.filename}>
                     {row.filename}
                 </span>
 
@@ -195,7 +200,7 @@ function SlideRow({
 
     return (
         <div className={`${AXIS_GRID} w-full py-4`}>
-            <span className="truncate text-[15px]" title={row.filename}>
+            <span className="truncate text-base" title={row.filename}>
                 {row.filename}
             </span>
 
