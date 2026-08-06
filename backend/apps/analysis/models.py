@@ -95,13 +95,43 @@ class Job(BaseModel):
         ]
 
 
+class JobReview(BaseModel):
+    """병리의의 판정 유보(ABSTAIN) 확정 (일운님 스펙, 2026-08-06).
+
+    Job.result/status는 절대 건드리지 않는다 — apply_job_result가
+    콜백마다 result를 통째로 덮어쓰므로, 재실행 한 번이면 확정값이
+    날아간다. 화면에서 "AI: 유보 / 사람: 낮음"을 나란히 보여줘야 해서
+    AI 원본이 남아 있어야 한다. status도 파이프라인 상태와 축이 달라
+    그대로 둔다.
+
+    append-only — 번복해도 UPDATE하지 않고 새 행을 쌓는다. 같은 job에
+    여러 건이 있을 수 있고, created_at 기준 최신 1건이 유효한 값
+    (reservation_history와 같은 취지 — 판독을 뒤집은 이력 자체가
+    추적 대상)."""
+
+    class Decision(models.TextChoices):
+        LOW = "LOW", "낮음"
+        HIGH = "HIGH", "높음"
+
+    job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="reviews")
+    decision = models.CharField(max_length=10, choices=Decision.choices)
+    reason = models.TextField()
+    reviewed_by = models.ForeignKey(
+        Staff, on_delete=models.PROTECT, related_name="job_reviews"
+    )
+
+    class Meta:
+        db_table = "job_review"
+        ordering = ["-created_at"]
+
+
 class AnalysisShare(BaseModel):
     """분석 결과 공유. 설계문서 6.7절 — 「본인이 분석한 내용만 표시」와
-    「다른 유저도 확인할 수 있도록 공유」를 동시에 만족시키는 조회 권한 기준."""
+    「다른 유저도 확인할 수 있도록 공유」를 동시에 만족시키는 조회 권한 기준.
 
-    class Permission(models.TextChoices):
-        READ = "read", "읽기"
-        COMMENT = "comment", "댓글"
+    읽기/댓글 권한 구분은 없앴다 — 공유는 항상 조회만 가능하고, 대신
+    공유하는 사람이 그 자리에서 소견(opinion)을 같이 남기는 방식으로
+    바뀌었다 (사용자 요청, 2026-08-06)."""
 
     batch = models.ForeignKey(Batch, on_delete=models.CASCADE, related_name="shares")
     shared_by = models.ForeignKey(
@@ -110,9 +140,7 @@ class AnalysisShare(BaseModel):
     shared_to = models.ForeignKey(
         Staff, on_delete=models.CASCADE, related_name="shares_received"
     )
-    permission = models.CharField(
-        max_length=10, choices=Permission.choices, default=Permission.READ
-    )
+    opinion = models.CharField(max_length=200, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)  # NULL이면 무기한
     revoked_at = models.DateTimeField(null=True, blank=True)
 
