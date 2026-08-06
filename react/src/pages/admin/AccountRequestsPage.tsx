@@ -1,5 +1,6 @@
 // 관리 콘솔 · 계정 요청 >> 승인하면 서버가 계정을 만들고 임시 비밀번호를 1회 돌려준다
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Copy, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -8,10 +9,16 @@ import {
     approveAccountRequest,
     getAccountRequests,
     getDepartments,
+    getStaff,
     rejectAccountRequest,
 } from '@/api';
 import { qk } from '@/api/keys';
-import type { AccountRequest, AccountRequestApproved, Role } from '@/api/types';
+import type {
+    AccountRequest,
+    AccountRequestApproved,
+    AccountRequestStatus,
+    Role,
+} from '@/api/types';
 import { BUTTON_PRIMARY, BUTTON_QUIET, FIELD_INPUT } from '@/components/form';
 import { ListCount } from '@/components/ListCount';
 import { Failed, Pending } from '@/components/QueryState';
@@ -25,13 +32,28 @@ const GRID =
 
 const ROLE_OPTIONS : Role[] = ['doctor', 'nurse', 'admin'];
 
+const STATUS_TABS : AccountRequestStatus[] = ['pending', 'approved', 'rejected'];
+
 export default function AdminAccountRequestsPage() {
     const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    const status = (searchParams.get('status') ?? 'pending') as AccountRequestStatus;
 
     const requests = useQuery({
-        queryKey: qk.accountRequests('pending'),
-        queryFn: () => getAccountRequests('pending'),
+        queryKey: qk.accountRequests(status),
+        queryFn: () => getAccountRequests(status),
     });
+
+    // 승인자는 staff id로 오므로 아이디를 붙이려면 구성원 목록이 필요하다
+    const { data: staff } = useQuery({ queryKey: qk.staff, queryFn: getStaff });
+    const staffById = new Map((staff ?? []).map((s) => [s.id, s]));
+
+    function setStatus(next : AccountRequestStatus) {
+        const params = new URLSearchParams(searchParams);
+        params.set('status', next);
+        setSearchParams(params, { replace: true });
+    }
 
     // 승인 응답을 붙들어 둔다. 닫으면 임시 비밀번호를 다시 볼 수 없다
     const [issued, setIssued] = useState<AccountRequestApproved | null>(null);
@@ -40,7 +62,30 @@ export default function AdminAccountRequestsPage() {
         <div>
             {issued && <IssuedPanel issued={issued} onClose={() => setIssued(null)} />}
 
-            <ListCount value={requests.data?.length} unit="건" prefix="대기" />
+            <div className="mb-4 flex items-center gap-0.5 rounded-md border border-border p-0.5 w-fit">
+                {STATUS_TABS.map((tab) => (
+                    <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setStatus(tab)}
+                        aria-pressed={status === tab}
+                        className={cn(
+                            'flex h-8 items-center rounded px-3 text-sm transition-colors',
+                            status === tab
+                                ? 'bg-surface-raised font-medium text-ink shadow-sm'
+                                : 'text-ink-muted hover:bg-ink/[0.04] hover:text-ink',
+                        )}
+                    >
+                        {REQUEST_STATUS_LABEL[tab]}
+                    </button>
+                ))}
+            </div>
+
+            <ListCount
+                value={requests.data?.length}
+                unit="건"
+                prefix={REQUEST_STATUS_LABEL[status]}
+            />
 
             <div
                 className={cn(
@@ -54,7 +99,9 @@ export default function AdminAccountRequestsPage() {
                 <span>소속</span>
                 <span>상태</span>
                 <span className="text-right">요청</span>
-                <span />
+                <span className="text-right">
+                    {status === 'pending' ? '' : '처리'}
+                </span>
             </div>
 
             {requests.isPending ? (
@@ -63,7 +110,7 @@ export default function AdminAccountRequestsPage() {
                 <Failed error={requests.error} onRetry={() => void requests.refetch()} />
             ) : requests.data.length === 0 ? (
                 <div className="py-16 text-center text-sm text-ink-faint">
-                    대기 중인 요청이 없습니다
+                    {REQUEST_STATUS_LABEL[status]} 상태인 요청이 없습니다
                 </div>
             ) : (
                 <div className="divide-y divide-border">
@@ -71,16 +118,21 @@ export default function AdminAccountRequestsPage() {
                         <RequestRow
                             key={request.id}
                             request={request}
+                            reviewer={
+                                request.reviewed_by
+                                    ? staffById.get(request.reviewed_by)?.username
+                                    : undefined
+                            }
                             onIssued={(next) => {
                                 setIssued(next);
                                 void queryClient.invalidateQueries({
-                                    queryKey: qk.accountRequests('pending'),
+                                    queryKey: qk.accountRequests(status),
                                 });
                                 void queryClient.invalidateQueries({ queryKey: qk.staff });
                             }}
                             onRejected={() =>
                                 void queryClient.invalidateQueries({
-                                    queryKey: qk.accountRequests('pending'),
+                                    queryKey: qk.accountRequests(status),
                                 })
                             }
                         />
@@ -97,10 +149,12 @@ export default function AdminAccountRequestsPage() {
 
 function RequestRow({
     request,
+    reviewer,
     onIssued,
     onRejected,
 } : {
     request : AccountRequest;
+    reviewer? : string;
     onIssued : (issued : AccountRequestApproved) => void;
     onRejected : () => void;
 }) {
@@ -147,7 +201,7 @@ function RequestRow({
     return (
         <div className="py-3.5">
             <div className={GRID}>
-                <span className="truncate text-[15px]">{request.name}</span>
+                <span className="truncate text-base">{request.name}</span>
 
                 <span className="truncate text-sm text-ink-muted" title={request.email}>
                     {request.email}
@@ -170,6 +224,13 @@ function RequestRow({
                     {formatShort(request.created_at)}
                 </span>
 
+                {request.status !== 'pending' ? (
+                    // 처리된 요청은 이력이다. 누가 언제 처리했는지만 남긴다
+                    <span className="truncate text-right text-xs text-ink-faint">
+                        {request.reviewed_at ? formatShort(request.reviewed_at) : '-'}
+                        {reviewer && <span className="block truncate">{reviewer}</span>}
+                    </span>
+                ) : (
                 <span className="flex justify-end gap-1.5">
                     <button
                         type="button"
@@ -191,6 +252,7 @@ function RequestRow({
                         거절
                     </button>
                 </span>
+                )}
             </div>
 
             {/* 아이디는 관리자가 정한다. 직군·소속은 요청값을 기본으로 두되 고칠 수 있다 */}

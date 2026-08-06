@@ -1,15 +1,13 @@
 // 대시보드
 import { Link } from 'react-router-dom';
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 
-import { getBatches, getJobsByBatch, getLatestJobs } from '@/api';
+import { getBatches, getLatestJobs } from '@/api';
 import { qk } from '@/api/keys';
-import { AXIS_GRID, IntervalAxis } from '@/components/IntervalAxis';
-import { IntervalBar } from '@/components/IntervalBar';
 import { Failed, Pending } from '@/components/QueryState';
 import { BatchStatusBadge, DecisionBadge } from '@/components/StatusBadge';
-import { CUTOFF, needsReview, toIntervalView } from '@/lib/decision';
+import { needsReview } from '@/lib/decision';
 import { formatShort } from '@/lib/format';
 import { patientLabel } from '@/lib/patient';
 import { cn } from '@/lib/utils';
@@ -27,20 +25,14 @@ export default function DashboardPage() {
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
         .slice(0, PREVIEW_COUNT);
 
-    // 슬라이드 수 >> 배치 목록 응답에 없어 미리보기 행만 따로 조회
-    const slideQueries = useQueries({
-        queries: recent.map((batch) => ({
-            queryKey: qk.jobsByBatch(batch.id),
-            queryFn: () => getJobsByBatch(batch.id),
-        })),
-    });
-
     if (batches.isPending) return <Pending />;
     if (batches.isError) {
         return <Failed error={batches.error} onRetry={() => void batches.refetch()} />;
     }
 
     const review = (jobs.data ?? []).filter((j) => needsReview(j));
+
+    const total = batches.data?.count ?? 0;
 
     // 배치 기준 >> 서버가 한 페이지만 주므로 이 건수는 최근 것 기준이다
     const processing = all.filter((b) => b.status === 'processing').length;
@@ -62,100 +54,79 @@ export default function DashboardPage() {
                 />
             </div>
 
-            {review.length > 0 && (
-                <section className="mb-10">
+            {/* 확인 필요와 최근 판독을 나란히. 좁아지면 위아래로 접힌다 */}
+            <div className="grid gap-8 lg:grid-cols-2">
+                <section>
                     <SectionHeader title="확인 필요" count={review.length} accent to="/review" />
 
-                    <IntervalAxis
-                        cutoff={CUTOFF}
-                        leading={<span>환자 · 슬라이드</span>}
-                        trailing={
-                            <>
-                                <span className="text-right">sTIL %</span>
-                                <span className="text-right">불확실성 σ</span>
-                                <span className="text-right">판정</span>
-                            </>
-                        }
-                    >
-                        <div className="divide-y divide-border">
+                    {review.length === 0 ? (
+                        <EmptyLine label="확인이 필요한 기권 케이스가 없습니다" />
+                    ) : (
+                        <div className="divide-y divide-border border-t border-border">
                             {review.slice(0, PREVIEW_COUNT).map((job) => {
                                 const result = job.result!;
+
                                 return (
                                     <Link
                                         key={job.id}
                                         to={`/results/${job.id}`}
-                                        className={cn(
-                                            AXIS_GRID,
-                                            'py-4 transition-colors hover:bg-brand-soft/50',
-                                        )}
+                                        className="flex items-center gap-3 py-3 transition-colors hover:bg-brand-soft/50"
                                     >
-                                        <span className="min-w-0">
-                                            <span
-                                                className="block truncate text-[15px]"
-                                                title={patientLabel(job.patient_summary)}
-                                            >
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block truncate text-base">
                                                 {patientLabel(job.patient_summary)}
                                             </span>
-                                            <span className="block truncate text-[13px] text-ink-faint">
-                                                {job.image_summary?.original_filename ?? job.id.slice(0, 8)}
+                                            <span className="block truncate text-sm text-ink-faint">
+                                                {job.image_summary?.original_filename ??
+                                                    job.id.slice(0, 8)}
                                             </span>
                                         </span>
 
-                                        <IntervalBar
-                                            view={toIntervalView(result)}
-                                            decision={result.decision}
-                                        />
-
-                                        <span className="text-right font-mono text-base tabular-nums">
+                                        <span className="shrink-0 font-mono text-base tabular-nums">
                                             {result.stil_value.toFixed(1)}
+                                            <span className="ml-0.5 text-xs text-ink-muted">%</span>
                                         </span>
-                                        <span className="text-right font-mono text-sm tabular-nums text-ink-muted">
-                                            {result.sigma.toFixed(1)}
-                                        </span>
-                                        <span className="flex justify-end">
-                                            <DecisionBadge decision={result.decision} />
-                                        </span>
+
+                                        <DecisionBadge decision={result.decision} />
                                     </Link>
                                 );
                             })}
                         </div>
-                    </IntervalAxis>
+                    )}
                 </section>
-            )}
 
-            <section>
-                <SectionHeader title="최근 판독" to="/cases" />
+                <section>
+                    <SectionHeader title="최근 판독" count={total} to="/cases" />
 
-                {recent.length === 0 ? (
-                    <div className="py-10 text-center text-sm text-ink-faint">
-                        등록된 케이스가 없습니다
-                    </div>
-                ) : (
-                    <div className="divide-y divide-border">
-                        {recent.map((batch, at) => (
-                            <Link
-                                key={batch.id}
-                                to={`/batches/${batch.id}`}
-                                className="flex items-center gap-4 py-4 transition-colors hover:bg-brand-soft/50"
-                            >
-                                <span
-                                    className="min-w-0 flex-1 truncate text-[15px]"
-                                    title={patientLabel(batch.patient_summary)}
+                    {recent.length === 0 ? (
+                        <EmptyLine label="등록된 케이스가 없습니다" />
+                    ) : (
+                        <div className="divide-y divide-border border-t border-border">
+                            {recent.map((batch) => (
+                                <Link
+                                    key={batch.id}
+                                    to={`/batches/${batch.id}`}
+                                    className="flex items-center gap-3 py-3 transition-colors hover:bg-brand-soft/50"
                                 >
-                                    {patientLabel(batch.patient_summary)}
-                                </span>
-                                <span className="font-mono text-sm tabular-nums text-ink-muted">
-                                    슬라이드 {slideQueries[at]?.data?.length ?? '-'}
-                                </span>
-                                <BatchStatusBadge status={batch.status} />
-                                <span className="w-24 text-right text-sm text-ink-muted">
-                                    {formatShort(batch.created_at)}
-                                </span>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </section>
+                                    <span className="min-w-0 flex-1 truncate text-base">
+                                        {patientLabel(batch.patient_summary)}
+                                    </span>
+
+                                    <span className="shrink-0 font-mono text-sm tabular-nums text-ink-muted">
+                                        슬라이드 {batch.image_count}
+                                    </span>
+
+                                    <BatchStatusBadge status={batch.status} />
+
+                                    <span className="w-20 shrink-0 text-right text-sm text-ink-muted">
+                                        {formatShort(batch.created_at)}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            </div>
         </div>
     );
 }
@@ -192,6 +163,14 @@ function StatLink({
 
 function Dot() {
     return <span className="text-ink-faint">·</span>;
+}
+
+function EmptyLine({ label } : { label : string }) {
+    return (
+        <div className="border-t border-border py-10 text-center text-sm text-ink-faint">
+            {label}
+        </div>
+    );
 }
 
 function SectionHeader({

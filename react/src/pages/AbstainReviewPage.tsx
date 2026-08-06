@@ -21,7 +21,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import type { IntervalView } from '@/lib/decision';
-import { CUTOFF, DECISION_LABEL, toIntervalView } from '@/lib/decision';
+import { CUTOFF, DECISION_LABEL, needsReview, toIntervalView } from '@/lib/decision';
 import { formatShort } from '@/lib/format';
 import { patientLabel, patientLabelFull } from '@/lib/patient';
 import { cn } from '@/lib/utils';
@@ -72,7 +72,7 @@ export default function AbstainReviewPage() {
 
     return (
         <div>
-            <div className="mb-2 text-[15px] text-ink-muted">
+            <div className="mb-2 text-base text-ink-muted">
                 결과 {rows.length}건 중{' '}
                 <span className="font-semibold text-decision-abstain">
                     확인 필요 {reviewCount}건
@@ -83,6 +83,8 @@ export default function AbstainReviewPage() {
 
             {rows.length === 0 ? (
                 <Empty label="판독 결과가 없습니다" />
+            ) : reviewCount === 0 ? (
+                <Empty label="확인이 필요한 기권 케이스가 없습니다" />
             ) : rows.length <= 3 ? (
                 <CardLayout rows={rows} onSelect={select} />
             ) : (
@@ -124,13 +126,13 @@ function SlideRows({
                 >
                     <span className="min-w-0">
                         <span
-                            className="block truncate text-[15px]"
+                            className="block truncate text-base"
                             title={patientLabel(row.job.patient_summary)}
                         >
                             {patientLabel(row.job.patient_summary)}
                         </span>
                         <span
-                            className="block truncate text-[13px] text-ink-faint"
+                            className="block truncate text-sm text-ink-faint"
                             title={row.filename}
                         >
                             {row.filename}
@@ -184,13 +186,13 @@ function CardLayout({
                             <div className="flex items-start justify-between gap-2">
                                 <span className="min-w-0">
                                     <span
-                                        className="block truncate text-[15px]"
+                                        className="block truncate text-base"
                                         title={patientLabel(row.job.patient_summary)}
                                     >
                                         {patientLabel(row.job.patient_summary)}
                                     </span>
                                     <span
-                                        className="block truncate text-[13px] text-ink-faint"
+                                        className="block truncate text-sm text-ink-faint"
                                         title={row.filename}
                                     >
                                         {row.filename}

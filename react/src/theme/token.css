@@ -13,6 +13,8 @@
   --logo: #558055;
 
   --bg: #F2F1E4;
+  /* bg-sunken >> --bg와 같은 톤에서 명도만 낮춘 값. 카드 밖처럼 한 겹 뒤 */
+  --bg-sunken: #E7E5D4;
   --surface: #FFFFFF;
   --surface-raised: #FFFFFF;
   --border: #D3D9C7;
@@ -41,14 +43,15 @@
   --logo: #8FAE8B;
 
   --bg: #131714;
+  --bg-sunken: #0D100E;
   --surface: #1C221E;
   --surface-raised: #242B26;
   --border: #2E3630;
   --border-strong: #4A5647;
 
   --ink: #E8EBE3;
-  --ink-muted: #9BA79F;
-  --ink-faint: #6B756F;
+  --ink-muted: #A9B4AC;
+  --ink-faint: #869089;
 
   --warning: #D6A93C;
   --danger: #E8695F;

@@ -9,6 +9,8 @@ import type { PatientSummary, Sex } from '@/api/types';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_INPUT } from '@/components/form';
 import { SEX_LABEL, patientFull } from '@/lib/patient';
 
+const TODAY = new Date().toISOString().slice(0, 10);
+
 // PatientRegisterForm
 export function PatientRegisterForm({
     onCancel,
@@ -24,7 +26,20 @@ export function PatientRegisterForm({
     const [sex, setSex] = useState<Sex>('U');
     const [phone, setPhone] = useState('');
 
-    const canSubmit = !!name.trim() && !!birthDate && !!phone.trim();
+    // 숫자만 남기고 010-0000-0000 꼴로 끊는다. 11자리를 넘기면 더 받지 않는다
+    function formatPhone(next : string) : string {
+        const digits = next.replace(/\D/g, '').slice(0, 11);
+        if (digits.length < 4) return digits;
+        if (digits.length < 8) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+        return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    }
+
+    const phoneDigits = phone.replace(/\D/g, '');
+    const phoneValid = phoneDigits.length === 10 || phoneDigits.length === 11;
+    // 태어나지 않은 날짜와 6자리 연도를 막는다
+    const birthValid = !!birthDate && birthDate >= '1900-01-01' && birthDate <= TODAY;
+
+    const canSubmit = !!name.trim() && birthValid && phoneValid;
     const dirty = !!name.trim() || !!birthDate || !!phone.trim();
 
     const register = useMutation({
@@ -71,6 +86,8 @@ export function PatientRegisterForm({
                         type="date"
                         value={birthDate}
                         onChange={(e) => setBirthDate(e.target.value)}
+                        min="1900-01-01"
+                        max={TODAY}
                         className={FIELD_INPUT}
                     />
                 </LabelledField>
@@ -95,8 +112,9 @@ export function PatientRegisterForm({
             <LabelledField label="전화번호">
                 <input
                     type="tel"
+                    inputMode="numeric"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(formatPhone(e.target.value))}
                     placeholder="010-0000-0000"
                     className={FIELD_INPUT}
                 />

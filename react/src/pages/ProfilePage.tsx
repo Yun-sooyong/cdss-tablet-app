@@ -11,9 +11,8 @@ import { qk } from '@/api/keys';
 import { BUTTON_PRIMARY, BUTTON_SECONDARY, FIELD_INPUT } from '@/components/form';
 import { PasswordField } from '@/components/PasswordField';
 import { Empty, Failed, Pending } from '@/components/QueryState';
-import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
-import { EMPLOYMENT_LABEL, ROLE_LABEL } from '@/lib/staff';
+import { ROLE_LABEL } from '@/lib/staff';
 
 export default function ProfilePage() {
     const navigate = useNavigate();
@@ -64,11 +63,6 @@ export default function ProfilePage() {
                 <Row label="아이디">{staff.username}</Row>
                 <Row label="이메일">{staff.email}</Row>
                 <Row label="직군">{ROLE_LABEL[staff.role]}</Row>
-                <Row label="재직 상태">
-                    <Badge variant="outline" className="text-sm font-medium">
-                        {EMPLOYMENT_LABEL[staff.employment_status]}
-                    </Badge>
-                </Row>
                 <Row label="가입일">{formatDate(staff.created_at)}</Row>
             </dl>
 
@@ -195,7 +189,7 @@ function Row({ label, children } : { label : string; children : ReactNode }) {
     return (
         <div className="flex items-center justify-between gap-4 py-3.5">
             <dt className="shrink-0 text-sm text-ink-muted">{label}</dt>
-            <dd className="min-w-0 truncate text-[15px]">{children}</dd>
+            <dd className="min-w-0 truncate text-base">{children}</dd>
         </div>
     );
 }

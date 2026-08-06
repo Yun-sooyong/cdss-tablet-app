@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 
-import { deactivateStaff, getMe, getStaff } from '@/api';
+import { deactivateStaff, getDepartments, getMe, getStaff, updateStaff } from '@/api';
 import { qk } from '@/api/keys';
-import { ICON_BUTTON } from '@/components/form';
+import type { Role } from '@/api/types';
+import { FIELD_INPUT, ICON_BUTTON } from '@/components/form';
 import { ListCount } from '@/components/ListCount';
 import { ListFrame } from '@/components/ListFrame';
 import { Failed, Pending } from '@/components/QueryState';
@@ -14,7 +15,10 @@ import { ROLE_LABEL } from '@/lib/staff';
 import { cn } from '@/lib/utils';
 
 const GRID =
-    'grid min-w-[42rem] grid-cols-[minmax(6rem,1fr)_minmax(9rem,1.5fr)_4rem_minmax(5rem,1fr)_5.5rem_2rem] items-center gap-x-4';
+    'grid min-w-[46rem] grid-cols-[minmax(6rem,1fr)_minmax(9rem,1.5fr)_6rem_minmax(7rem,1fr)_5.5rem_2rem] items-center gap-x-4';
+
+// 표 안에서 쓰는 낮은 높이의 선택 상자
+const ROW_SELECT = `${FIELD_INPUT} h-8 px-2 text-sm disabled:opacity-50`;
 
 export default function AdminStaffPage() {
     const queryClient = useQueryClient();
@@ -22,6 +26,23 @@ export default function AdminStaffPage() {
     // me가 오기 전엔 본인 행을 못 가리므로 퇴사 버튼을 전부 잠근다
     const { data: me, isPending: mePending } = useQuery({ queryKey: qk.me, queryFn: getMe });
     const members = useQuery({ queryKey: qk.staff, queryFn: getStaff });
+
+    const { data: departments } = useQuery({
+        queryKey: qk.departments,
+        queryFn: getDepartments,
+    });
+
+    // 본인 직군은 서버가 막지 않는다. 권한을 스스로 내리면 되돌릴 사람이 없어진다
+    const change = useMutation({
+        mutationFn: ({ id, body } : { id : string; body : { role? : Role; department? : string } }) =>
+            updateStaff(id, body),
+        onSuccess: (staff) => {
+            void queryClient.invalidateQueries({ queryKey: qk.staff });
+            toast.success(`${staff.username} 정보를 바꿨습니다`);
+        },
+        onError: (error : Error) =>
+            toast.error('바꾸지 못했습니다', { description: error.message }),
+    });
 
     const deactivate = useMutation({
         mutationFn: (id : string) => deactivateStaff(id),
@@ -69,7 +90,7 @@ export default function AdminStaffPage() {
 
                         return (
                             <div key={member.id} className={cn(GRID, 'py-3.5')}>
-                                <span className="truncate text-[15px]">
+                                <span className="truncate text-base">
                                     {member.username}
                                     {self && <span className="ml-1.5 text-xs text-ink-faint">나</span>}
                                 </span>
@@ -78,13 +99,48 @@ export default function AdminStaffPage() {
                                     {member.email}
                                 </span>
 
-                                <span className="text-sm text-ink-muted">
-                                    {ROLE_LABEL[member.role]}
-                                </span>
+                                {/* 본인 직군을 내리면 되돌릴 관리자가 없어질 수 있다 */}
+                                <select
+                                    value={member.role}
+                                    onChange={(e) =>
+                                        change.mutate({
+                                            id: member.id,
+                                            body: { role: e.target.value as Role },
+                                        })
+                                    }
+                                    disabled={self || change.isPending}
+                                    aria-label={`${member.username} 직군`}
+                                    title={self ? '본인 직군은 바꿀 수 없습니다' : undefined}
+                                    className={ROW_SELECT}
+                                >
+                                    {(Object.entries(ROLE_LABEL) as [Role, string][]).map(
+                                        ([value, label]) => (
+                                            <option key={value} value={value}>
+                                                {label}
+                                            </option>
+                                        ),
+                                    )}
+                                </select>
 
-                                <span className="truncate text-sm text-ink-muted">
-                                    {member.department || '미지정'}
-                                </span>
+                                <select
+                                    value={member.department || ''}
+                                    onChange={(e) =>
+                                        change.mutate({
+                                            id: member.id,
+                                            body: { department: e.target.value },
+                                        })
+                                    }
+                                    disabled={change.isPending}
+                                    aria-label={`${member.username} 소속`}
+                                    className={ROW_SELECT}
+                                >
+                                    <option value="">미지정</option>
+                                    {(departments ?? []).map((d) => (
+                                        <option key={d.dept_code} value={d.name}>
+                                            {d.name}
+                                        </option>
+                                    ))}
+                                </select>
 
                                 <span className="truncate text-right text-sm text-ink-muted">
                                     {formatDate(member.created_at)}

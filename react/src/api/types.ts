@@ -80,6 +80,7 @@ export interface Batch {
 export interface ImageSummary {
     id : string;
     original_filename : string;
+    batch : string;
 }
 
 // BatchDetail

@@ -3,8 +3,9 @@
 const FOCUS =
     'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand';
 
+// 어두운 배경에서는 입력칸이 바탕과 같은 색으로 묻힌다. 한 단 올리고 테두리를 세운다
 export const FIELD_INPUT =
-    `h-10 w-full rounded-md border border-border bg-surface px-3 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none ${FOCUS}`;
+    `h-10 w-full rounded-md border border-border bg-surface px-3 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand focus:outline-none dark:border-border-strong dark:bg-surface-raised ${FOCUS}`;
 
 export const FIELD_SUBMIT =
     `h-10 w-full rounded-md bg-brand text-[15px] font-medium text-on-brand transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS}`;
