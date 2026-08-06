@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -11,8 +12,10 @@ from apps.staff.models import Staff
 
 from .models import (
     Diagnosis,
+    Disease,
     DoseLog,
     DoseSchedule,
+    Drug,
     Prescription,
     PrescriptionDrug,
     Reservation,
@@ -20,6 +23,7 @@ from .models import (
     Visit,
 )
 from .serializers import (
+    DiseaseSerializer,
     DoseLogSerializer,
     DrugSerializer,
     MedicationLogCreateSerializer,
@@ -207,15 +211,36 @@ class PatientVisitListView(APIView):
         return Response(VisitSerializer(qs, many=True).data)
 
 
-class StaffVisitCreateView(APIView):
-    """POST /visits/ — 의료진용 진료기록 생성.
+class StaffVisitListCreateView(APIView):
+    """GET·POST /visits/ — 의료진용 진료기록 조회/생성.
 
     지금까지 Visit/Prescription을 만드는 API가 없어서 전부 스크립트로
     직접 넣어왔다 — 그 공백을 메우는 첫 엔드포인트. diagnoses를 같이
     받아서 한 번의 요청으로 진단까지 붙인다(Diagnosis 단독 생성 API는
-    없음, 진료 기록 시점에 항상 같이 만들어지는 데이터라서)."""
+    없음, 진료 기록 시점에 항상 같이 만들어지는 데이터라서).
+
+    GET은 생성 API만 있고 조회 API가 없다는 지적(정은님, 2026-08-06)으로
+    추가 — ?patient= 필수. batch/analysis_share처럼 소유 개념을 두지
+    않고(StaffReservationListView와 같은 방침) 활성 의료진이면 누구든
+    특정 환자의 진료기록을 조회할 수 있게 했다 — 접수·진료과가 바뀌어도
+    차트를 봐야 하는 화면이라고 판단."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=VisitSerializer(many=True))
+    def get(self, request):
+        get_staff_or_403(request.user)
+
+        patient_id = request.query_params.get("patient")
+        if not patient_id:
+            raise ValidationError("patient 쿼리 파라미터가 필요합니다.")
+
+        qs = (
+            Visit.objects.filter(patient_id=patient_id, deleted_at__isnull=True)
+            .prefetch_related("diagnoses__disease")
+            .order_by("-visited_at")
+        )
+        return Response(VisitSerializer(qs, many=True).data)
 
     @extend_schema(request=VisitCreateSerializer, responses=VisitSerializer)
     def post(self, request):
@@ -247,19 +272,25 @@ class StaffVisitCreateView(APIView):
 
 
 class VisitDetailView(APIView):
-    """설계문서 7.3절 — GET /visits/{id}. 본인 진료만 접근 가능."""
+    """설계문서 7.3절 — GET /visits/{id}. 환자는 본인 진료만, 의료진은
+    (StaffVisitListCreateView와 같은 방침으로) 아무 환자의 진료기록이나
+    조회 가능."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(responses=VisitSerializer)
     def get(self, request, visit_id):
-        patient = get_patient_or_404(request.user)
-        visit = get_object_or_404(
-            Visit.objects.prefetch_related("diagnoses__disease"),
-            id=visit_id,
-            patient=patient,
-            deleted_at__isnull=True,
+        qs = Visit.objects.prefetch_related("diagnoses__disease").filter(
+            deleted_at__isnull=True
         )
+
+        patient = getattr(request.user, "patient", None)
+        if patient is not None:
+            qs = qs.filter(patient=patient)
+        else:
+            get_staff_or_403(request.user)
+
+        visit = get_object_or_404(qs, id=visit_id)
         return Response(VisitSerializer(visit).data)
 
 
@@ -279,16 +310,39 @@ class PatientPrescriptionListView(APIView):
         return Response(PrescriptionSerializer(qs, many=True).data)
 
 
-class StaffPrescriptionCreateView(APIView):
-    """POST /prescriptions/ — 의료진용 처방 생성.
+class StaffPrescriptionListCreateView(APIView):
+    """GET·POST /prescriptions/ — 의료진용 처방 조회/생성.
 
     drugs 항목마다 PrescriptionDrug를 만들고, 그때마다
     generate_dose_schedules()로 dose_schedule을 같이 생성한다 — 이게
     없으면 처방은 생기는데 환자 앱 복약 캘린더엔 아무것도 안 뜬다.
     처방전 파일 업로드는 범위 밖(필요해지면 batch 이미지 업로드와 같은
-    서명 URL 패턴으로 추가)."""
+    서명 URL 패턴으로 추가).
+
+    GET은 StaffVisitListCreateView와 같은 이유로 추가(정은님, 2026-08-06,
+    생성 API만 있고 조회 API가 없다는 지적) — ?visit= 또는 ?patient=
+    중 하나 필수."""
 
     permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=PrescriptionSerializer(many=True))
+    def get(self, request):
+        get_staff_or_403(request.user)
+
+        visit_id = request.query_params.get("visit")
+        patient_id = request.query_params.get("patient")
+        if not visit_id and not patient_id:
+            raise ValidationError("visit 또는 patient 쿼리 파라미터가 필요합니다.")
+
+        qs = Prescription.objects.prefetch_related("drugs__drug")
+        if visit_id:
+            qs = qs.filter(visit_id=visit_id)
+        if patient_id:
+            qs = qs.filter(visit__patient_id=patient_id)
+
+        return Response(
+            PrescriptionSerializer(qs.order_by("-prescribed_at"), many=True).data
+        )
 
     @extend_schema(request=PrescriptionCreateSerializer, responses=PrescriptionSerializer)
     def post(self, request):
@@ -321,18 +375,23 @@ class StaffPrescriptionCreateView(APIView):
 
 
 class PrescriptionDetailView(APIView):
-    """설계문서 7.3절 — GET /prescriptions/{id}. 처방전 상세 + 파일 서명 URL."""
+    """설계문서 7.3절 — GET /prescriptions/{id}. 처방전 상세 + 파일 서명 URL.
+    환자는 본인 처방만, 의료진은 (VisitDetailView와 같은 방침으로) 아무
+    환자의 처방이나 조회 가능."""
 
     permission_classes = [permissions.IsAuthenticated]
 
     @extend_schema(responses=PrescriptionSerializer)
     def get(self, request, prescription_id):
-        patient = get_patient_or_404(request.user)
-        prescription = get_object_or_404(
-            Prescription.objects.prefetch_related("drugs__drug"),
-            id=prescription_id,
-            visit__patient=patient,
-        )
+        qs = Prescription.objects.prefetch_related("drugs__drug")
+
+        patient = getattr(request.user, "patient", None)
+        if patient is not None:
+            qs = qs.filter(visit__patient=patient)
+        else:
+            get_staff_or_403(request.user)
+
+        prescription = get_object_or_404(qs, id=prescription_id)
         return Response(PrescriptionSerializer(prescription).data)
 
 
@@ -443,3 +502,47 @@ class MedicationLogDeleteView(APIView):
         )
         DoseLog.objects.filter(schedule=schedule).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+_CODE_SEARCH_MIN_LENGTH = 2
+
+
+class DiseaseSearchView(APIView):
+    """GET /diseases/?q= — 병명 검색 (code, name_ko 부분일치).
+
+    disease/drug는 표준코드 테이블이라 건수가 많을 수 있어서, q 없이
+    통째로 내려주지 않는다 — q가 2글자 미만이면 빈 목록(진료기록 작성
+    화면에서 드롭다운 전체를 긁어오는 실수를 막기 위함)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=DiseaseSerializer(many=True))
+    def get(self, request):
+        q = request.query_params.get("q", "")
+        if len(q) < _CODE_SEARCH_MIN_LENGTH:
+            return Response([])
+
+        diseases = Disease.objects.filter(
+            Q(code__icontains=q) | Q(name_ko__icontains=q)
+        ).order_by("name_ko")
+        return Response(DiseaseSerializer(diseases, many=True).data)
+
+
+class DrugSearchView(APIView):
+    """GET /drugs/?q= — 약품 검색 (code, product_name, ingredient 부분일치).
+    q가 2글자 미만이면 빈 목록 — DiseaseSearchView와 같은 이유."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(responses=DrugSerializer(many=True))
+    def get(self, request):
+        q = request.query_params.get("q", "")
+        if len(q) < _CODE_SEARCH_MIN_LENGTH:
+            return Response([])
+
+        drugs = Drug.objects.filter(
+            Q(code__icontains=q)
+            | Q(product_name__icontains=q)
+            | Q(ingredient__icontains=q)
+        ).order_by("product_name")
+        return Response(DrugSerializer(drugs, many=True).data)
