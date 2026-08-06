@@ -109,6 +109,15 @@ class VisitCreateSerializer(serializers.Serializer):
 
 class VisitSerializer(serializers.ModelSerializer):
     diagnoses = DiagnosisSerializer(many=True, read_only=True)
+    # 환자 앱이 department/staff를 코드·UUID 그대로 못 쓰고 이름이
+    # 필요하다고 해서 추가 — AccountRequestSerializer.reviewed_by_username과
+    # 같은 방식 (수용님, 2026-08-06).
+    department_name = serializers.CharField(
+        source="department.name", read_only=True, default=None
+    )
+    staff_name = serializers.CharField(
+        source="staff.user.username", read_only=True, default=None
+    )
 
     class Meta:
         model = Visit
@@ -116,7 +125,9 @@ class VisitSerializer(serializers.ModelSerializer):
             "id",
             "patient",
             "staff",
+            "staff_name",
             "department",
+            "department_name",
             "visited_at",
             "note",
             "diagnoses",
