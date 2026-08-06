@@ -190,7 +190,13 @@ class PatientQRIssueView(APIView):
 
 
 class QRVerifyView(APIView):
-    """설계문서 7.4절 — POST /qr/verify. 태블릿 전용, 의료진 인증 필요."""
+    """설계문서 7.4절 — POST /qr/verify. 태블릿 전용, 의료진 인증 필요.
+
+    QR 스캔 확인 화면 정보 보강 (수용님 요청, 2026-08-06) — 연락처는
+    PatientSerializer에 이미 있었고, 추가로 최근 방문일/최근 방문
+    주진단명/오늘 예약 목록(여러 건 가능)을 같이 내려준다.
+    `Patient.last_visit_at`은 DB 컬럼은 있지만 실제로 채워주는 코드가
+    없어 항상 비어있으므로 쓰지 않고, 그때그때 Visit에서 직접 조회한다."""
 
     permission_classes = [permissions.IsAuthenticated]
 
@@ -216,9 +222,42 @@ class QRVerifyView(APIView):
             patient=qr.patient,
         )
 
+        from apps.clinical.models import Reservation, Visit  # noqa: PLC0415 — 순환 임포트 회피
+        from apps.clinical.serializers import ReservationSerializer
         from apps.patients.serializers import PatientSerializer
 
-        return Response(PatientSerializer(qr.patient).data)
+        patient = qr.patient
+
+        last_visit = (
+            Visit.objects.filter(patient=patient, deleted_at__isnull=True)
+            .prefetch_related("diagnoses__disease")
+            .order_by("-visited_at")
+            .first()
+        )
+        last_visit_diagnosis = None
+        if last_visit:
+            primary = next(
+                (d for d in last_visit.diagnoses.all() if d.is_primary), None
+            )
+            if primary:
+                last_visit_diagnosis = primary.disease.name_ko
+
+        today_reservations = (
+            Reservation.objects.filter(
+                patient=patient, scheduled_at__date=timezone.localdate()
+            )
+            .exclude(status=Reservation.Status.CANCELED)
+            .order_by("scheduled_at")
+        )
+
+        data = PatientSerializer(patient).data
+        data["last_visit_at"] = last_visit.visited_at if last_visit else None
+        data["last_visit_diagnosis"] = last_visit_diagnosis
+        data["today_reservations"] = ReservationSerializer(
+            today_reservations, many=True
+        ).data
+
+        return Response(data)
 
 
 class DeviceTokenRegisterView(APIView):

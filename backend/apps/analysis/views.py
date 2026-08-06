@@ -10,8 +10,9 @@ from rest_framework.views import APIView
 
 from apps.common.permissions import get_staff_or_403
 from apps.patients.models import Patient
+from apps.staff.models import Staff
 
-from .models import AnalysisShare, Batch, Image, Job, ModelVersion, WorkerHeartbeat
+from .models import AnalysisShare, Batch, Image, Job, JobReview, ModelVersion, WorkerHeartbeat
 from .serializers import (
     AnalysisShareCreateSerializer,
     AnalysisShareSerializer,
@@ -23,6 +24,8 @@ from .serializers import (
     ImageUploadResponseSerializer,
     JobCallbackSerializer,
     JobCreateSerializer,
+    JobReviewCreateSerializer,
+    JobReviewSerializer,
     JobSerializer,
     ModelVersionSerializer,
     UploadSignedUrlRequestSerializer,
@@ -64,7 +67,10 @@ def with_batch_counts(queryset):
             filter=Q(
                 images__jobs__status__in=[Job.Status.STIL_DONE, Job.Status.SUCCEEDED]
             )
-            & Q(images__jobs__result__decision="ABSTAIN"),
+            & Q(images__jobs__result__decision="ABSTAIN")
+            # 병리의가 확정(JobReview)한 건 더 이상 "확인 필요"가 아니다
+            # (일운님 스펙, 2026-08-06) — 확정 없이는 그대로 유보로 남는다.
+            & Q(images__jobs__reviews__isnull=True),
             distinct=True,
         ),
     )
@@ -145,6 +151,12 @@ class BatchListCreateView(APIView):
         patient_id = request.query_params.get("patient")
         if patient_id:
             batches = batches.filter(patient_id=patient_id)
+
+        # ?shared=true — 본인이 만든 배치 제외하고 "나한테 공유된 것"만.
+        # 위에서 이미 본인+공유받은 걸로 좁혀놨으니, id__in=shared_batch_ids로
+        # 한 번 더 좁히면 교집합(=공유받은 것만)이 된다.
+        if request.query_params.get("shared", "").lower() == "true":
+            batches = batches.filter(id__in=shared_batch_ids)
 
         status_filter = request.query_params.get("status")
         if status_filter:
@@ -234,6 +246,7 @@ class BatchDetailView(APIView):
         jobs = (
             Job.objects.filter(image__batch=batch)
             .select_related("image", "image__batch__patient")
+            .prefetch_related("reviews")
             .order_by("-created_at")
         )
         data["jobs"] = JobSerializer(jobs, many=True).data
@@ -414,6 +427,7 @@ class JobListView(APIView):
                 image__batch__deleted_at__isnull=True,
             )
             .select_related("image", "image__batch__patient")
+            .prefetch_related("reviews")
             .distinct()
             .order_by("-created_at")
         )
@@ -435,6 +449,38 @@ class JobDetailView(APIView):
         job = get_object_or_404(Job, id=job_id)
         get_accessible_batch_or_404(staff, job.image.batch_id)
         return Response(JobSerializer(job).data)
+
+
+class JobReviewCreateView(APIView):
+    """POST /analysis/jobs/{job_id}/review/ — 판정 유보(ABSTAIN) 확정
+    (일운님 스펙, 2026-08-06). role=doctor만 가능. Job.result/status는
+    건드리지 않고 JobReview를 append-only로 쌓는다 — apps/analysis/models.py
+    JobReview 참고."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    @extend_schema(request=JobReviewCreateSerializer, responses=JobReviewSerializer)
+    def post(self, request, job_id):
+        staff = get_staff_or_403(request.user)
+        if staff.role != Staff.Role.DOCTOR:
+            raise PermissionDenied("의사만 판정을 확정할 수 있습니다.")
+
+        job = get_object_or_404(Job, id=job_id)
+        get_accessible_batch_or_404(staff, job.image.batch_id)
+
+        serializer = JobReviewCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        review = JobReview.objects.create(
+            job=job,
+            decision=data["decision"],
+            reason=data["reason"],
+            reviewed_by=staff,
+        )
+        return Response(
+            JobReviewSerializer(review).data, status=status.HTTP_201_CREATED
+        )
 
 
 class AnalysisShareListView(APIView):
@@ -491,7 +537,7 @@ class BatchShareListCreateView(APIView):
             batch=batch,
             shared_by=staff,
             shared_to=data["shared_to"],
-            permission=data["permission"],
+            opinion=data["opinion"],
             expires_at=data["expires_at"],
         )
 
@@ -499,10 +545,17 @@ class BatchShareListCreateView(APIView):
         # (정다희, 2026-08-05 — 사용자 요청으로 연결).
         from apps.accounts.services import notify  # noqa: PLC0415 — 순환 임포트 회피
 
+        body = f"{staff.user.username}님이 분석 결과를 공유했습니다."
+        if share.opinion:
+            body += f" 소견: {share.opinion}"
+        # Notification.body는 VARCHAR(255) — opinion이 200자까지 허용이라
+        # username이 길면 넘칠 수 있어 DB 에러 방지용으로 자른다.
+        body = body[:255]
+
         notify(
             share.shared_to.user,
             "share",
-            f"{staff.user.username}님이 분석 결과를 공유했습니다 (batch {batch.id}).",
+            body,
             target_type="batch",
             target_id=batch.id,
         )

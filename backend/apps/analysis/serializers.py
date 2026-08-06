@@ -4,7 +4,7 @@ from apps.patients.models import Patient
 from apps.patients.serializers import PatientSummarySerializer
 from apps.staff.models import Staff
 
-from .models import AnalysisShare, Batch, Image, Job, ModelVersion
+from .models import AnalysisShare, Batch, Image, Job, JobReview, ModelVersion
 from .services import build_mask_read_url, build_original_read_url
 
 
@@ -113,6 +113,23 @@ class ImageSummarySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 
+class JobReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = JobReview
+        fields = ["id", "decision", "reason", "reviewed_by", "created_at"]
+        read_only_fields = fields
+
+
+class JobReviewCreateSerializer(serializers.Serializer):
+    decision = serializers.ChoiceField(choices=JobReview.Decision.choices)
+    reason = serializers.CharField()
+
+    def validate_reason(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("reason은 비어 있을 수 없습니다.")
+        return value
+
+
 class JobSerializer(serializers.ModelSerializer):
     """job은 patient FK가 없어 image.batch.patient를 타고 올라가 요약을
     붙인다 — 최일운 요청, 2026-08-04. 파일명만 보이던 07·08·09 화면에
@@ -122,6 +139,7 @@ class JobSerializer(serializers.ModelSerializer):
     image_summary = ImageSummarySerializer(source="image", read_only=True)
     original_url = serializers.SerializerMethodField()
     mask_url = serializers.SerializerMethodField()
+    review = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -136,6 +154,7 @@ class JobSerializer(serializers.ModelSerializer):
             "mask_url",
             "error_message",
             "patient_summary",
+            "review",
             "started_at",
             "finished_at",
             "created_at",
@@ -153,6 +172,13 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_mask_url(self, obj) -> str | None:
         return build_mask_read_url(obj)
+
+    def get_review(self, obj) -> dict | None:
+        # JobReview.Meta.ordering = ["-created_at"]라 [0]이 항상 최신
+        # 1건 — reviews가 prefetch_related로 캐시돼 있으면(목록 화면)
+        # 추가 쿼리 없이 캐시에서 바로 나간다.
+        reviews = list(obj.reviews.all())
+        return JobReviewSerializer(reviews[0]).data if reviews else None
 
 
 class JobCreateSerializer(serializers.Serializer):
@@ -173,7 +199,7 @@ class AnalysisShareSerializer(serializers.ModelSerializer):
             "batch",
             "shared_by",
             "shared_to",
-            "permission",
+            "opinion",
             "expires_at",
             "revoked_at",
             "created_at",
@@ -183,8 +209,8 @@ class AnalysisShareSerializer(serializers.ModelSerializer):
 
 class AnalysisShareCreateSerializer(serializers.Serializer):
     shared_to = serializers.PrimaryKeyRelatedField(queryset=Staff.objects.all())
-    permission = serializers.ChoiceField(
-        choices=AnalysisShare.Permission.choices, default=AnalysisShare.Permission.READ
+    opinion = serializers.CharField(
+        max_length=200, required=False, allow_blank=True, default=""
     )
     expires_at = serializers.DateTimeField(required=False, allow_null=True, default=None)
 
