@@ -8,7 +8,7 @@ class DocumentDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = reservation.purpose.replaceFirst('서류 발급 · ', '');
+    final title = reservation.documentType.label;
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: Padding(

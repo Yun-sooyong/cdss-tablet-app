@@ -14,6 +14,10 @@ class QrScreen extends StatefulWidget {
 }
 
 class _QrScreenState extends State<QrScreen> {
+  // 서버가 발급 시각을 안 주기 때문에, API 스펙에 명시된 "5분 만료"를 고정값으로 써서
+  // 진행바(남은 시간 비율)를 계산함. 백엔드가 만료 시간을 바꾸면 이 값도 같이 바꿔야 함.
+  static const _totalDuration = Duration(minutes: 5);
+
   QrToken? _token;
   bool _isLoading = true;
   Timer? _timer;
@@ -62,8 +66,16 @@ class _QrScreenState extends State<QrScreen> {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final progress = _token == null
+        ? 0.0
+        : (_token!.remaining.inSeconds / _totalDuration.inSeconds)
+            .clamp(0.0, 1.0);
+
     return Scaffold(
-      appBar: AppBar(title: const Text('환자 확인용 QR')),
+      appBar: AppBar(
+        title: const Text('환자 확인용 QR'),
+        centerTitle: true,
+      ),
       body: Center(
         child: _isLoading
             ? const LoadingSpinner()
@@ -72,11 +84,18 @@ class _QrScreenState extends State<QrScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    Image.asset('assets/images/vtree_leaf_primary.png',
+                        width: 40),
+                    const SizedBox(height: 12),
                     Text(
-                      '진료 접수 시 QR코드를 보여주세요.',
-                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                      '진료 접수를 위한\n환자 확인 QR입니다',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
+                        fontSize: 14,
+                      ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
                     Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -92,38 +111,72 @@ class _QrScreenState extends State<QrScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.access_time,
-                            size: 18,
-                            color: _token!.isExpired
-                                ? colorScheme.error
-                                : colorScheme.onSurfaceVariant),
-                        const SizedBox(width: 6),
-                        Text(
+                    Text(
+                      _token!.isExpired
+                          ? '유효시간이 만료되었어요'
+                          : '유효시간 ${_fmt(_token!.remaining)}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: _token!.isExpired ? colorScheme.error : null,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 6,
+                        backgroundColor: Colors.grey.shade200,
+                        valueColor: AlwaysStoppedAnimation(
                           _token!.isExpired
-                              ? '유효시간이 만료되었어요'
-                              : '유효시간 ${_fmt(_token!.remaining)}',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: _token!.isExpired ? colorScheme.error : null,
-                          ),
+                              ? colorScheme.error
+                              : colorScheme.primary,
                         ),
-                      ],
+                      ),
                     ),
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
                       height: 48,
-                      child: OutlinedButton(
+                      child: FilledButton.tonalIcon(
                         onPressed: _reissue,
-                        style: OutlinedButton.styleFrom(
-                          side: BorderSide(color: colorScheme.primary),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: colorScheme.primary.withOpacity(0.12),
                           foregroundColor: colorScheme.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(28),
+                          ),
                         ),
-                        child: const Text('재발급'),
+                        icon: const Icon(Icons.refresh, size: 20),
+                        label: const Text('재발급'),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Image.asset('assets/images/vtree_leaf_primary.png',
+                              width: 20),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'QR 코드를 접수처에 보여주세요.\n빠르고 안전하게 진료를 진행할 수 있어요.',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: colorScheme.onSurfaceVariant,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],

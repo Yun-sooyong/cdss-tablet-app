@@ -19,6 +19,19 @@ DoseTime doseTimeFromHour(int hour) {
   return DoseTime.evening;
 }
 
+// 한국은 UTC+9 고정(서머타임 없음). 기기 OS 타임존이 한국이 아닌 환경(에뮬레이터, 웹, CI 등)에서는
+// .toLocal()이 엉뚱한 시각을 돌려줘서 아침/점심/저녁이 잘못 갈리니까, 기기 설정에 기대지 않고
+// 여기서 직접 한국 시각으로 변환한다.
+DateTime toKoreaTime(DateTime dateTime) =>
+    dateTime.toUtc().add(const Duration(hours: 9));
+
+DateTime nowInKorea() => toKoreaTime(DateTime.now());
+
+// KST 캘린더 날짜(년/월/일)의 자정을 실제 UTC 시각으로 변환 — API 쿼리 범위에 씀.
+DateTime koreaMidnightUtc(DateTime koreaDate) =>
+    DateTime.utc(koreaDate.year, koreaDate.month, koreaDate.day)
+        .subtract(const Duration(hours: 9));
+
 class DoseItem {
   final String id;
   final DateTime date;
@@ -41,10 +54,10 @@ class DoseItem {
     String medicationName,
     double? remainingPercent,
   ) {
-    // 서버는 UTC로 내려줘("...Z"). .hour를 바로 읽으면 UTC 기준 시간으로 아침/점심/저녁을
-    // 나눠버리게 되니까, 파싱하자마자 .toLocal()로 한국 시간으로 바꾼 다음에 써야 해.
+    // 서버는 UTC로 내려줘("...Z"). 기기 타임존에 기대지 않고 한국 시간(UTC+9 고정)으로
+    // 직접 바꾼 다음에 써야 아침/점심/저녁이 기기 설정과 무관하게 항상 올바르게 갈린다.
     final scheduledAt =
-        DateTime.parse(json['scheduled_at'] as String).toLocal();
+        toKoreaTime(DateTime.parse(json['scheduled_at'] as String));
     return DoseItem(
       id: json['id'] as String,
       date: scheduledAt,

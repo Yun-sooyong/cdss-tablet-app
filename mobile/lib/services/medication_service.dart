@@ -42,10 +42,13 @@ class MedicationService {
   }
 
   Future<List<DoseItem>> fetchTodayDoses() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
+    final today = nowInKorea();
+    final startOfDay = DateTime(today.year, today.month, today.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
-    return _fetchAllDoses(from: startOfDay, to: endOfDay);
+    return _fetchAllDoses(
+      from: koreaMidnightUtc(startOfDay),
+      to: koreaMidnightUtc(endOfDay),
+    );
   }
 
   Future<void> markTaken(String doseId) async {
@@ -65,12 +68,15 @@ class MedicationService {
   }
 
   Future<List<DailyDoseRecord>> fetchWeeklyDoseHistory() async {
-    final now = DateTime.now();
+    final now = nowInKorea();
     final today = DateTime(now.year, now.month, now.day);
     final startOfWeek = today.subtract(Duration(days: now.weekday % 7));
     final endOfWeek = startOfWeek.add(const Duration(days: 7));
 
-    final allDoses = await _fetchAllDoses(from: startOfWeek, to: endOfWeek);
+    final allDoses = await _fetchAllDoses(
+      from: koreaMidnightUtc(startOfWeek),
+      to: koreaMidnightUtc(endOfWeek),
+    );
 
     final records = <DailyDoseRecord>[];
     for (var i = 0; i < 7; i++) {

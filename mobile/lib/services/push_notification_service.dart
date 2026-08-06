@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'api_client.dart';
+import '../utils/app_navigator.dart';
+import '../utils/top_banner.dart';
 
 /// 파이어베이스 기기 토큰을 발급받아 서버(POST /api/v1/devices/tokens/)에 등록.
 /// 로그인된 상태에서만 호출해야 함 — 이 엔드포인트가 인증 필요라서.
@@ -11,6 +14,7 @@ class PushNotificationService {
 
   final _messaging = FirebaseMessaging.instance;
   final _client = ApiClient.instance;
+  bool _foregroundHandlerRegistered = false;
 
   Future<void> registerDeviceToken() async {
     // iOS는 권한 요청 필수, 안드로이드는 13 미만이면 이 호출이 사실상 no-op.
@@ -31,6 +35,22 @@ class PushNotificationService {
     // 토큰은 앱 재설치·OS 백업 복원 등으로 언제든 바뀔 수 있어.
     // 바뀔 때마다 여기서 자동으로 다시 등록해줘야 서버가 옛날 토큰으로 헛쏘는 걸 막음.
     _messaging.onTokenRefresh.listen(_sendTokenToServer);
+    _listenForegroundMessages();
+  }
+
+  // 앱이 백그라운드/종료 상태면 OS가 알아서 시스템 알림으로 띄워주지만,
+  // 포그라운드(화면 보고 있는 중)일 땐 FCM이 자동으로 아무것도 안 보여준다.
+  // 그래서 직접 받아서 상단 배너로 띄워줌. 여러 번 중복 등록되지 않게 가드.
+  void _listenForegroundMessages() {
+    if (_foregroundHandlerRegistered) return;
+    _foregroundHandlerRegistered = true;
+    FirebaseMessaging.onMessage.listen((message) {
+      final body = message.notification?.body;
+      if (body == null || body.isEmpty) return;
+      final context = appNavigatorKey.currentContext;
+      if (context == null) return;
+      showTopBanner(context, body, icon: Icons.notifications_active_outlined);
+    });
   }
 
   Future<void> _sendTokenToServer(String token) async {

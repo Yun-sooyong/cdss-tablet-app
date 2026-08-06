@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class LoadingSpinner extends StatefulWidget {
   final double size;
 
-  const LoadingSpinner({super.key, this.size = 48});
+  const LoadingSpinner({super.key, this.size = 72}); // 기존 48의 150%
 
   @override
   State<LoadingSpinner> createState() => _LoadingSpinnerState();

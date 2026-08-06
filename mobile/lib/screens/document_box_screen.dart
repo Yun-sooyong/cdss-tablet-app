@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/reservation.dart';
 import '../services/reservation_service.dart';
+import '../widgets/loading_spinner.dart';
 import 'document_detail_screen.dart';
 
 class DocumentBoxScreen extends StatefulWidget {
@@ -37,7 +38,7 @@ class _DocumentBoxScreenState extends State<DocumentBoxScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('문서함')),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: LoadingSpinner())
           : _documents.isEmpty
               ? Center(
                   child: Text('신청한 서류가 없어요',
@@ -56,7 +57,7 @@ class _DocumentBoxScreenState extends State<DocumentBoxScreen> {
                           child: Icon(Icons.description_outlined,
                               color: colorScheme.primary, size: 20),
                         ),
-                        title: Text(r.purpose.replaceFirst('서류 발급 · ', '')),
+                        title: Text(r.documentType.label),
                         subtitle: Text(
                             '${r.dateTime.year}.${r.dateTime.month}.${r.dateTime.day} · ${r.department} · ${r.doctorName}'),
                         trailing: Text(r.status.label,

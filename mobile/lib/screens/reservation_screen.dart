@@ -3,6 +3,8 @@ import '../models/reservation.dart';
 import '../services/reservation_service.dart';
 import '../services/visit_service.dart';
 import '../utils/top_banner.dart';
+import '../widgets/korean_calendar_sheet.dart';
+import '../widgets/korean_time_sheet.dart';
 import '../widgets/loading_spinner.dart';
 import 'new_reservation_screen.dart';
 
@@ -55,17 +57,19 @@ class _ReservationScreenState extends State<ReservationScreen> {
   }
 
   Future<DateTime?> _pickDateTime({DateTime? initial}) async {
-    final date = await showDatePicker(
-      context: context,
+    final date = await showKoreanCalendarSheet(
+      context,
       initialDate: initial ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2030),
+      firstDay: DateTime.now(),
+      lastDay: DateTime(2030),
+      confirmLabel: '이 날짜로 변경',
     );
     if (date == null || !mounted) return null;
-    final time = await showTimePicker(
-      context: context,
+    final time = await showKoreanTimeSheet(
+      context,
       initialTime:
           initial != null ? TimeOfDay.fromDateTime(initial) : TimeOfDay.now(),
+      title: '시간 변경',
     );
     if (time == null) return null;
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
@@ -157,7 +161,7 @@ class _ReservationScreenState extends State<ReservationScreen> {
             ..._past.map((r) {
               const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
               final weekday = weekdayLabels[r.dateTime.weekday - 1];
-              final visitLabel = _visitTypeLabel(r.purpose);
+              final visitLabel = _visitTypeLabel(r.reason);
               return Card(
                 margin: const EdgeInsets.only(bottom: 8),
                 child: ListTile(

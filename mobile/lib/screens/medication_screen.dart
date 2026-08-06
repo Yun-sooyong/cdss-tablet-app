@@ -52,8 +52,20 @@ class _MedicationScreenState extends State<MedicationScreen> {
             medicationService: widget.medicationService)));
   }
 
+  void _openHistory() {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => WeeklyMedicationHistoryScreen(
+            medicationService: widget.medicationService)));
+  }
+
   String _fmtTime(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  String _fmtDate(DateTime d) {
+    const weekdayLabels = ['월', '화', '수', '목', '금', '토', '일'];
+    final weekday = weekdayLabels[d.weekday - 1];
+    return '${d.year}.${d.month.toString().padLeft(2, '0')}.${d.day.toString().padLeft(2, '0')} ($weekday)';
+  }
 
   Future<void> _load() async {
     setState(() => _isLoading = true);
@@ -90,6 +102,8 @@ class _MedicationScreenState extends State<MedicationScreen> {
     }
 
     final colorScheme = Theme.of(context).colorScheme;
+    final doneCount = _doses.where((d) => d.taken).length;
+    final allTaken = _doses.isNotEmpty && doneCount == _doses.length;
     final DoseItem? nextDose = _doses.where((d) => !d.taken).isNotEmpty
         ? _doses.firstWhere((d) => !d.taken)
         : null;
@@ -102,52 +116,19 @@ class _MedicationScreenState extends State<MedicationScreen> {
           if (_adherence != null)
             _AdherenceCard(
               adherence: _adherence!,
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => WeeklyMedicationHistoryScreen(
-                      medicationService: widget.medicationService))),
+              onTap: _openHistory,
               onOpenPrescriptions: _openPrescriptions,
             ),
           const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('다음 복용',
-                            style: TextStyle(
-                                fontSize: 13, color: colorScheme.onSurfaceVariant)),
-                        const SizedBox(height: 8),
-                        Text(
-                            nextDose != null
-                                ? _fmtTime(nextDose.date)
-                                : '오늘 복용 완료',
-                            style: const TextStyle(
-                                fontSize: 22, fontWeight: FontWeight.bold)),
-                        if (nextDose != null) ...[
-                          const SizedBox(height: 2),
-                          Text(nextDose.medicationName,
-                              style: const TextStyle(fontSize: 14)),
-                        ],
-                      ],
-                    ),
-                  ),
-                  TextButton.icon(
-                    icon: const Icon(Icons.notifications_none, size: 18),
-                    label: const Text('복용 알림 설정'),
-                    onPressed: _openDoseTimeSettings,
-                  ),
-                ],
-              ),
-            ),
+          _TodayHeroCard(
+            date: _fmtDate(DateTime.now()),
+            allTaken: allTaken,
+            hasDoses: _doses.isNotEmpty,
+            nextDose: nextDose,
+            fmtTime: _fmtTime,
+            onOpenSettings: _openDoseTimeSettings,
           ),
           const SizedBox(height: 20),
-          const Text('오늘 복용',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
           if (_doses.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -160,17 +141,181 @@ class _MedicationScreenState extends State<MedicationScreen> {
               if (group.isEmpty) return <Widget>[];
               return [
                 Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 4),
-                  child: Text(doseTime.label,
-                      style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onSurfaceVariant)),
+                  padding: const EdgeInsets.only(top: 8, bottom: 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        doseTime == DoseTime.evening
+                            ? Icons.nightlight_round
+                            : Icons.wb_sunny_outlined,
+                        size: 16,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(doseTime.label,
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onSurfaceVariant)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text('${group.length}개',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.onSurfaceVariant)),
+                      ),
+                    ],
+                  ),
                 ),
                 ...group.map((dose) =>
                     _DoseTile(dose: dose, onTaken: () => _toggleTaken(dose))),
+                const SizedBox(height: 4),
               ];
             }),
+          const SizedBox(height: 8),
+          _ForgotReminderCard(onTap: _openHistory),
+        ],
+      ),
+    );
+  }
+}
+
+class _TodayHeroCard extends StatelessWidget {
+  final String date;
+  final bool allTaken;
+  final bool hasDoses;
+  final DoseItem? nextDose;
+  final String Function(DateTime) fmtTime;
+  final VoidCallback onOpenSettings;
+
+  const _TodayHeroCard({
+    required this.date,
+    required this.allTaken,
+    required this.hasDoses,
+    required this.nextDose,
+    required this.fmtTime,
+    required this.onOpenSettings,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final headline = !hasDoses
+        ? '오늘은 예정된\n복용이 없어요'
+        : allTaken
+            ? '오늘 복용을\n모두 마쳤어요'
+            : '오늘 복용할\n약이 있어요';
+    final subtitle = !hasDoses
+        ? '새로운 처방이 등록되면 여기에 표시돼요.'
+        : allTaken
+            ? '수고하셨어요, 내일도 잊지 말고 챙겨주세요.'
+            : nextDose != null
+                ? '다음 복용 ${fmtTime(nextDose!.date)} · ${nextDose!.medicationName}'
+                : '처방된 약을 꼭 챙겨 복용하세요.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: colorScheme.primary,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -8,
+            bottom: -8,
+            child: Icon(Icons.health_and_safety_outlined,
+                size: 84, color: Colors.white.withOpacity(0.15)),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 11,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      allTaken ? Icons.check : Icons.schedule,
+                      size: 14,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(date,
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none,
+                        color: Colors.white),
+                    onPressed: onOpenSettings,
+                    tooltip: '복용 알림 설정',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(headline,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      height: 1.3)),
+              const SizedBox(height: 8),
+              Text(subtitle,
+                  style: TextStyle(color: Colors.white.withOpacity(0.9))),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ForgotReminderCard extends StatelessWidget {
+  final VoidCallback onTap;
+  const _ForgotReminderCard({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: colorScheme.primary.withOpacity(0.15),
+            child: Icon(Icons.eco_outlined, color: colorScheme.primary, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('복용을 잊으셨나요?',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('기록을 확인하고 관리할 수 있어요.',
+                    style: TextStyle(
+                        fontSize: 12, color: colorScheme.onSurfaceVariant)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: onTap,
+            child: const Text('복용 기록 보기'),
+          ),
         ],
       ),
     );
@@ -283,21 +428,26 @@ class _DoseTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         onTap: onTaken,
-        leading: CircleAvatar(
-          radius: 20,
-          backgroundColor: dose.taken
-              ? colorScheme.primary.withOpacity(0.15)
-              : colorScheme.surfaceContainerHighest,
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: dose.taken
+                ? colorScheme.primary.withOpacity(0.15)
+                : colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Icon(
             Icons.medication_outlined,
             color: dose.taken ? colorScheme.primary : colorScheme.onSurfaceVariant,
-            size: 20,
+            size: 22,
           ),
         ),
         title: Text(dose.medicationName),
         trailing: dose.taken
-            ? Icon(Icons.check_circle, color: colorScheme.primary, size: 20)
-            : Icon(Icons.schedule, color: colorScheme.onSurfaceVariant, size: 20),
+            ? Icon(Icons.check_circle, color: colorScheme.primary, size: 22)
+            : Icon(Icons.radio_button_unchecked,
+                color: colorScheme.onSurfaceVariant, size: 22),
       ),
     );
   }

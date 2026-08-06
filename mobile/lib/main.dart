@@ -4,6 +4,7 @@ import 'services/auth_service.dart';
 import 'services/theme_controller.dart';
 import 'screens/splash_screen.dart';
 import 'theme/app_theme.dart';
+import 'utils/app_navigator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,6 +34,7 @@ class _PatientAppState extends State<PatientApp> {
       valueListenable: ThemeController.instance.mode,
       builder: (context, mode, _) {
         return MaterialApp(
+          navigatorKey: appNavigatorKey,
           title: 'V-Tree',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,

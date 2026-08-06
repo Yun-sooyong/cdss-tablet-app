@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:table_calendar/table_calendar.dart';
 import '../models/visit.dart';
 import '../services/visit_service.dart';
 import 'visit_detail.screen.dart';
+import '../widgets/korean_calendar_sheet.dart';
 import '../widgets/loading_spinner.dart';
 
 class VisitHistoryScreen extends StatefulWidget {
@@ -43,10 +43,13 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
   Future<void> _pickDate() async {
     final visitDates = await widget.visitService.fetchVisitDates();
     if (!mounted) return;
-    final picked = await showModalBottomSheet<DateTime>(
-      context: context,
-      builder: (_) => _VisitCalendarSheet(
-          markedDates: visitDates, initialDate: _filterDate),
+    final picked = await showKoreanCalendarSheet(
+      context,
+      firstDay: DateTime(2020),
+      lastDay: DateTime(2030),
+      initialDate: _filterDate,
+      markedDates: visitDates,
+      confirmLabel: '이 날짜로 검색',
     );
     if (picked != null) {
       setState(() => _filterDate = picked);
@@ -157,74 +160,6 @@ class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
             ),
           ),
       ],
-    );
-  }
-}
-
-class _VisitCalendarSheet extends StatefulWidget {
-  final Set<DateTime> markedDates;
-  final DateTime? initialDate;
-
-  const _VisitCalendarSheet({required this.markedDates, this.initialDate});
-
-  @override
-  State<_VisitCalendarSheet> createState() => _VisitCalendarSheetState();
-}
-
-class _VisitCalendarSheetState extends State<_VisitCalendarSheet> {
-  late DateTime _focusedDay;
-  DateTime? _selectedDay;
-
-  @override
-  void initState() {
-    super.initState();
-    _focusedDay = widget.initialDate ?? DateTime.now();
-    _selectedDay = widget.initialDate;
-  }
-
-  bool _hasVisit(DateTime day) {
-    return widget.markedDates.any(
-        (d) => d.year == day.year && d.month == day.month && d.day == day.day);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TableCalendar(
-            firstDay: DateTime(2020),
-            lastDay: DateTime(2030),
-            focusedDay: _focusedDay,
-            selectedDayPredicate: (day) =>
-                _selectedDay != null && isSameDay(_selectedDay, day),
-            onDaySelected: (selected, focused) {
-              setState(() {
-                _selectedDay = selected;
-                _focusedDay = focused;
-              });
-            },
-            calendarBuilders: CalendarBuilders(
-              markerBuilder: (context, day, events) {
-                if (!_hasVisit(day)) return null;
-                return const Positioned(
-                  bottom: 4,
-                  child: Icon(Icons.circle, size: 6, color: Colors.redAccent),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: _selectedDay == null
-                ? null
-                : () => Navigator.of(context).pop(_selectedDay),
-            child: const Text('이 날짜로 검색'),
-          ),
-        ],
-      ),
     );
   }
 }
