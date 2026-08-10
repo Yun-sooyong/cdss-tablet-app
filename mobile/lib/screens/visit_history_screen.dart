@@ -1,0 +1,165 @@
+import 'package:flutter/material.dart';
+import '../models/visit.dart';
+import '../services/visit_service.dart';
+import 'visit_detail.screen.dart';
+import '../widgets/korean_calendar_sheet.dart';
+import '../widgets/loading_spinner.dart';
+
+class VisitHistoryScreen extends StatefulWidget {
+  final VisitService visitService;
+  const VisitHistoryScreen({super.key, required this.visitService});
+
+  @override
+  State<VisitHistoryScreen> createState() => _VisitHistoryScreenState();
+}
+
+class _VisitHistoryScreenState extends State<VisitHistoryScreen> {
+  final _searchController = TextEditingController();
+  VisitSearchField _field = VisitSearchField.memo;
+  DateTime? _filterDate;
+  List<Visit> _visits = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _isLoading = true);
+    final visits = await widget.visitService.fetchVisits(
+      query: _searchController.text,
+      field: _field,
+      onDate: _filterDate,
+    );
+    if (!mounted) return;
+    setState(() {
+      _visits = visits;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _pickDate() async {
+    final visitDates = await widget.visitService.fetchVisitDates();
+    if (!mounted) return;
+    final picked = await showKoreanCalendarSheet(
+      context,
+      firstDay: DateTime(2020),
+      lastDay: DateTime(2030),
+      initialDate: _filterDate,
+      markedDates: visitDates,
+      confirmLabel: '이 날짜로 검색',
+    );
+    if (picked != null) {
+      setState(() => _filterDate = picked);
+      _load();
+    }
+  }
+
+  String _fieldLabel(VisitSearchField f) {
+    switch (f) {
+      case VisitSearchField.all:
+        return '통합';
+      case VisitSearchField.memo:
+        return '병명';
+      case VisitSearchField.department:
+        return '진료과';
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              PopupMenuButton<VisitSearchField>(
+                icon: Icon(Icons.filter_list, color: colorScheme.primary),
+                tooltip: '${_fieldLabel(_field)}로 검색 중',
+                onSelected: (f) {
+                  setState(() => _field = f);
+                  _load();
+                },
+                itemBuilder: (context) => VisitSearchField.values
+                    .map((f) => PopupMenuItem(
+                        value: f, child: Text('${_fieldLabel(f)}로 검색')))
+                    .toList(),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: '${_fieldLabel(_field)} 검색 (예: 요통, 감기)',
+                    prefixIcon: const Icon(Icons.search, size: 20),
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _load(),
+                ),
+              ),
+              IconButton(
+                  icon: Icon(Icons.calendar_today, color: colorScheme.primary),
+                  onPressed: _pickDate,
+                  tooltip: '날짜로 필터'),
+              if (_filterDate != null)
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    setState(() => _filterDate = null);
+                    _load();
+                  },
+                ),
+            ],
+          ),
+        ),
+        if (_isLoading)
+          const Expanded(child: Center(child: LoadingSpinner()))
+        else if (_visits.isEmpty)
+          Expanded(
+              child: Center(
+                  child: Text('진료 기록이 없어',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant))))
+        else
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _visits.length,
+              itemBuilder: (context, i) {
+                final v = _visits[i];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      radius: 20,
+                      backgroundColor: colorScheme.surfaceContainerHighest,
+                      child: Icon(Icons.health_and_safety_outlined,
+                          color: colorScheme.primary, size: 20),
+                    ),
+                    title: Text(v.memo),
+                    subtitle: Text(
+                        '${v.department}${v.doctorName != null ? ' · ${v.doctorName}' : ''}'),
+                    trailing: Text(
+                      '${v.date.year}.${v.date.month.toString().padLeft(2, '0')}.${v.date.day.toString().padLeft(2, '0')}',
+                      style: TextStyle(color: colorScheme.onSurfaceVariant),
+                    ),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => VisitDetailScreen(visit: v)),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
