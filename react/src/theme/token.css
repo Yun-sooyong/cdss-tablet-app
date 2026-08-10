@@ -1,0 +1,102 @@
+/* 세이지 팔레트 */
+
+:root {
+  /* color-scheme */
+  color-scheme: light;
+
+  --brand: #0B5D4E;
+  --brand-dark: #084438;
+  --brand-soft: #E6EFEA;
+  --on-brand: #FFFFFF;
+
+  /* logo >> 밝은 바탕에서는 진한 쪽이 읽힌다 */
+  --logo: #558055;
+
+  --bg: #F2F1E4;
+  /* bg-sunken >> --bg와 같은 톤에서 명도만 낮춘 값. 카드 밖처럼 한 겹 뒤 */
+  --bg-sunken: #E7E5D4;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --border: #D3D9C7;
+  --border-strong: #B7BFAE;
+
+  --ink: #1A2420;
+  --ink-muted: #5A6660;
+  --ink-faint: #8A948E;
+
+  --warning: #8A6D1F;
+  --danger: #B3261E;
+
+  --decision-low: #0F8A6E;
+  --decision-high: #1E6FD9;
+  --decision-abstain: #D18700;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --brand: #3FA88F;
+  --brand-dark: #2E8A74;
+  --brand-soft: #12302A;
+  --on-brand: #04342C;
+
+  --logo: #8FAE8B;
+
+  --bg: #131714;
+  --bg-sunken: #0D100E;
+  --surface: #1C221E;
+  --surface-raised: #242B26;
+  --border: #2E3630;
+  --border-strong: #4A5647;
+
+  --ink: #E8EBE3;
+  --ink-muted: #A9B4AC;
+  --ink-faint: #869089;
+
+  --warning: #D6A93C;
+  --danger: #E8695F;
+
+  --decision-low: #2FD3A9;
+  --decision-high: #5CA8FF;
+  --decision-abstain: #F5B93B;
+}
+
+/* decisionHigh에 빨강을 쓰지 않는다 >> sTIL이 높다는 것은 면역 침윤이 활발하다는
+   뜻이고 유방암에서는 예후가 좋은 쪽이다. 빨강은 나쁨으로 읽혀 오해를 부른다.
+   주목을 끄는 것은 decisionAbstain 하나뿐이다. */
+
+/* 관리 콘솔 크롬 >> 판독 콘솔과 한눈에 갈리라고 쓰는 색.
+   판정에도 세그멘테이션에도 쓰이지 않으므로 팔레트 합의 대상이 아니다.
+   세이지(브랜드)와 확실히 다른 계열이어야 두 콘솔을 헷갈리지 않는다. */
+:root {
+  --admin: #4C5A78;
+  --admin-soft: #E6E9F0;
+  /* admin-bg >> 본문 바탕. 판독 콘솔의 --bg(따뜻한 크림)와 계열이 갈려야 한다 */
+  --admin-bg: #EDEFF4;
+}
+
+.dark {
+  --admin: #93A4C6;
+  --admin-soft: #1E2430;
+  --admin-bg: #161A22;
+}
+
+/* 아래는 테마 무관 >> .dark 에서 재정의하지 않는다 */
+
+/* 세그멘테이션 >> 브랜드 색이 아니라 판독 규약. 팔레트 합의 대상에서 제외 */
+:root {
+  --seg-tumor: #E6194B;
+  --seg-stroma: #3CB44B;
+  --seg-tils: #FFE119;
+  --seg-necrosis: #0082C8;
+  --seg-other: #808080;
+  --seg-abstain: #F59E0B;
+}
+
+/* 뷰어 영역 >> 라이트에서도 어둡게 유지. 흰 배경에서는 seg-tils가 묻힌다 */
+:root {
+  --viewer-bg: #0F1310;
+  --viewer-chrome: #1A1F1B;
+  --viewer-border: #2A322C;
+  --viewer-ink: #E8EBE3;
+}
